@@ -40,25 +40,23 @@ struct EditorView: View {
         .background(Color(white: 0.10).ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingSystemColorPicker) {
-            ZStack(alignment: .topTrailing) {
+            NavigationStack {
                 SystemColorPicker(
                     initialColor: state.color,
                     onChange: { state.color = $0 }
                 )
                 .ignoresSafeArea(edges: [.bottom, .horizontal])
-
-                Button {
-                    showingSystemColorPicker = false
-                } label: {
-                    Text("USE")
-                        .font(.pixel(12))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Capsule().fill(.black))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showingSystemColorPicker = false
+                        } label: {
+                            Text("USE")
+                                .font(.pixel(12))
+                        }
+                    }
                 }
-                .padding(.top, 14)
-                .padding(.trailing, 16)
             }
             .presentationDetents([.large])
         }
