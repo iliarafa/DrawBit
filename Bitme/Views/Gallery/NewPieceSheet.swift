@@ -13,11 +13,11 @@ struct NewPieceSheet: View {
                 } label: {
                     HStack {
                         Text(size.displayName)
-                            .font(.title3)
+                            .font(.pixel(16))
                         Spacer()
                         Text("\(size.pixelCount) pixels")
                             .foregroundStyle(.secondary)
-                            .font(.subheadline)
+                            .font(.pixel(11))
                     }
                     .contentShape(Rectangle())
                     .padding(.vertical, 4)
@@ -28,8 +28,13 @@ struct NewPieceSheet: View {
             .navigationTitle("New piece")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("NEW PIECE")
+                        .font(.pixel(14))
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") { dismiss() }
+                        .font(.pixel(12))
                 }
             }
         }
