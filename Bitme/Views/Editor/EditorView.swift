@@ -70,15 +70,24 @@ struct EditorView: View {
             Button {
                 dismiss()
             } label: {
-                Label("Gallery", systemImage: "chevron.left")
-                    .labelStyle(.titleAndIcon)
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                    Text("GALLERY")
+                        .font(.pixel(11))
+                }
             }
             .accessibilityIdentifier("Gallery")
             Spacer()
             Text(piece.size.displayName)
+                .font(.pixel(12))
                 .foregroundStyle(.white.opacity(0.85))
             Spacer()
-            Button("Share") { showingShareSheet = true }
+            Button {
+                showingShareSheet = true
+            } label: {
+                Text("SHARE")
+                    .font(.pixel(11))
+            }
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 18)
