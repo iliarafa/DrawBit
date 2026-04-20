@@ -16,65 +16,24 @@ struct GalleryView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                if pieces.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "square.grid.2x2")
-                            .font(.system(size: 44, weight: .regular))
-                            .foregroundStyle(.secondary)
-                        Text("NO PIECES YET")
-                            .font(.pixel(16))
-                            .foregroundStyle(.primary)
-                        Text("Tap + New to create your first canvas.")
-                            .font(.pixel(11))
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.top, 80)
-                    .frame(maxWidth: .infinity)
-                } else {
+            VStack(spacing: 0) {
+                topBar
+                ScrollView {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(pieces) { piece in
-                            PieceThumbnailView(piece: piece)
-                                .onTapGesture { selectedPiece = piece }
-                                .contextMenu {
-                                    Button("Rename") {
-                                        renameTarget = piece
-                                        renameDraft = piece.name ?? ""
-                                    }
-                                    Button("Duplicate") { duplicate(piece) }
-                                    Divider()
-                                    Button("Delete", role: .destructive) { deleteTarget = piece }
-                                }
+                            thumbnailCell(for: piece)
                         }
+                        NewPieceTile(dimension: pieces.last?.size.dimension ?? 32)
+                            .onTapGesture { showingNewSheet = true }
+                            .accessibilityLabel("New")
+                            .accessibilityIdentifier("NewButton")
                     }
                     .padding()
                 }
+                .scrollContentBackground(.hidden)
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("BITME")
-                        .font(.pixel(20))
-                        .foregroundStyle(.primary)
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        onHome()
-                    } label: {
-                        Image(systemName: "house.fill")
-                    }
-                    .accessibilityIdentifier("HomeButton")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingNewSheet = true
-                    } label: {
-                        Label("New", systemImage: "plus")
-                    }
-                    .accessibilityIdentifier("NewButton")
-                }
-            }
+            .background(Color(white: 0.10).ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingNewSheet) {
                 NewPieceSheet { size in
                     do {
@@ -126,8 +85,80 @@ struct GalleryView: View {
         }
     }
 
+    private var topBar: some View {
+        ZStack {
+            Text("BITME")
+                .font(.pixel(20))
+            HStack {
+                Button {
+                    onHome()
+                } label: {
+                    PixelArtIcon(pattern: GalleryView.housePattern, size: 22)
+                }
+                .accessibilityLabel("Home")
+                .accessibilityIdentifier("HomeButton")
+                Spacer()
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+    }
+
+    private static let housePattern: [String] = [
+        "...##...",
+        "..####..",
+        ".######.",
+        "########",
+        "########",
+        ".#.##.#.",
+        ".#.##.#.",
+        ".#.##.#.",
+    ]
+
+    @ViewBuilder
+    private func thumbnailCell(for piece: Piece) -> some View {
+        PieceThumbnailView(piece: piece)
+            .onTapGesture { selectedPiece = piece }
+            .contextMenu {
+                Button("Rename") {
+                    renameTarget = piece
+                    renameDraft = piece.name ?? ""
+                }
+                Button("Duplicate") { duplicate(piece) }
+                Divider()
+                Button("Delete", role: .destructive) { deleteTarget = piece }
+            }
+    }
+
     private func duplicate(_ piece: Piece) {
         let repo = PieceRepository(context: modelContext)
         _ = try? repo.duplicate(piece: piece)
+    }
+}
+
+struct PixelArtIcon: View {
+    let pattern: [String]
+    let size: CGFloat
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let cols = pattern.first?.count ?? 0
+            let rows = pattern.count
+            guard cols > 0, rows > 0 else { return }
+            let cell = min(sz.width / CGFloat(cols), sz.height / CGFloat(rows))
+            for (y, row) in pattern.enumerated() {
+                for (x, ch) in row.enumerated() where ch == "#" {
+                    let rect = CGRect(
+                        x: CGFloat(x) * cell,
+                        y: CGFloat(y) * cell,
+                        width: cell,
+                        height: cell
+                    )
+                    ctx.fill(Path(rect), with: .foreground)
+                }
+            }
+        }
+        .frame(width: size, height: size)
     }
 }
