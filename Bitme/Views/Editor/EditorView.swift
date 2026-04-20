@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct EditorView: View {
     let piece: Piece
@@ -9,7 +10,6 @@ struct EditorView: View {
     @State private var pencilAvailability = PencilAvailability()
     @State private var recentHex: [String] = []
     @State private var showingSystemColorPicker = false
-    @State private var pickerColor = Color.black
     @State private var showingShareSheet = false
 
     init(piece: Piece) {
@@ -40,20 +40,16 @@ struct EditorView: View {
         .background(Color(white: 0.10).ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingSystemColorPicker) {
-            VStack {
-                ColorPicker("Pick a color", selection: $pickerColor, supportsOpacity: false)
-                    .padding()
-                Button("Use") {
-                    if let cg = pickerColor.cgColor, let rgba = RGBA(cgColor: cg) {
-                        state.color = rgba
-                        addRecent(rgba.hex)
-                    }
+            SystemColorPicker(
+                initialColor: state.color,
+                onChange: { state.color = $0 },
+                onFinish: {
+                    addRecent(state.color.hex)
                     showingSystemColorPicker = false
                 }
-                .buttonStyle(.borderedProminent)
-                .padding()
-            }
-            .presentationDetents([.medium])
+            )
+            .ignoresSafeArea()
+            .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(piece: piece)
@@ -63,9 +59,6 @@ struct EditorView: View {
             let repo = PieceRepository(context: modelContext)
             if let settings = try? repo.appSettings() {
                 recentHex = settings.recentColors
-            }
-            if let first = recentHex.first, let color = RGBA(hex: first) {
-                state.color = color
             }
         }
     }
@@ -144,6 +137,44 @@ struct EditorView: View {
             settings.addRecentColor(hex)
             recentHex = settings.recentColors
             try? modelContext.save()
+        }
+    }
+}
+
+private struct SystemColorPicker: UIViewControllerRepresentable {
+    var initialColor: RGBA
+    var onChange: (RGBA) -> Void
+    var onFinish: () -> Void
+
+    func makeUIViewController(context: Context) -> UIColorPickerViewController {
+        let controller = UIColorPickerViewController()
+        controller.supportsAlpha = false
+        controller.selectedColor = UIColor(
+            red: CGFloat(initialColor.r) / 255,
+            green: CGFloat(initialColor.g) / 255,
+            blue: CGFloat(initialColor.b) / 255,
+            alpha: 1
+        )
+        controller.delegate = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIColorPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    final class Coordinator: NSObject, UIColorPickerViewControllerDelegate {
+        let parent: SystemColorPicker
+        init(parent: SystemColorPicker) { self.parent = parent }
+
+        func colorPickerViewControllerDidSelectColor(_ viewController: UIColorPickerViewController) {
+            if let rgba = RGBA(cgColor: viewController.selectedColor.cgColor) {
+                parent.onChange(rgba)
+            }
+        }
+
+        func colorPickerViewControllerDidFinish(_ viewController: UIColorPickerViewController) {
+            parent.onFinish()
         }
     }
 }

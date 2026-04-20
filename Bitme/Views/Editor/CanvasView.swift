@@ -2,7 +2,8 @@ import SwiftUI
 import UIKit
 import CoreGraphics
 
-/// Renders the pixel grid as a crisp Image + a checkered background, and hosts the input layer.
+/// Renders the pixel grid as a crisp Image on a transparent background, with a medium-grey
+/// grid overlay outlining each pixel cell, and hosts the input layer.
 /// Uses Image(uiImage:).interpolation(.none).antialiased(false) so pixels stay sharp at any
 /// zoom / rotation — Image.interpolation propagates through .scaleEffect/.rotationEffect.
 struct CanvasView: View {
@@ -19,7 +20,7 @@ struct CanvasView: View {
         GeometryReader { geo in
             let edge = baseEdge(in: geo)
             ZStack {
-                if let image = composedImage() {
+                if let image = pixelImage() {
                     Image(uiImage: image)
                         .resizable()
                         .interpolation(.none)
@@ -29,6 +30,24 @@ struct CanvasView: View {
                         .rotationEffect(.radians(state.rotation))
                         .offset(state.translation)
                 }
+                Canvas { ctx, size in
+                    let dim = state.grid.dimension
+                    let cell = size.width / CGFloat(dim)
+                    var path = Path()
+                    for i in 0...dim {
+                        let p = CGFloat(i) * cell
+                        path.move(to: CGPoint(x: p, y: 0))
+                        path.addLine(to: CGPoint(x: p, y: size.height))
+                        path.move(to: CGPoint(x: 0, y: p))
+                        path.addLine(to: CGPoint(x: size.width, y: p))
+                    }
+                    ctx.stroke(path, with: .color(Color(white: 0.4)), lineWidth: max(0.5 / state.scale, 0.1))
+                }
+                .frame(width: edge, height: edge)
+                .scaleEffect(state.scale)
+                .rotationEffect(.radians(state.rotation))
+                .offset(state.translation)
+                .allowsHitTesting(false)
                 CanvasHostView(
                     state: state,
                     pencilAvailability: pencilAvailability,
@@ -55,50 +74,10 @@ struct CanvasView: View {
         return max(perPixel, 1) * dim
     }
 
-    /// Composite checkerboard + pixel data into a single UIImage at canvas native resolution.
-    private func composedImage() -> UIImage? {
-        let dim = state.grid.dimension
-        guard let pixels = pixelsToCGImage(state.grid) else { return nil }
-        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
-        guard let ctx = CGContext(
-            data: nil,
-            width: dim,
-            height: dim,
-            bitsPerComponent: 8,
-            bytesPerRow: dim * 4,
-            space: colorSpace,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return nil }
-
-        ctx.interpolationQuality = .none
-        ctx.setShouldAntialias(false)
-
-        // Checkerboard (1-pixel tiles). Fill the full canvas first, then overlay pixels.
-        let tile = 1
-        for y in stride(from: 0, to: dim, by: tile) {
-            for x in stride(from: 0, to: dim, by: tile) {
-                let isDark = ((x / tile) + (y / tile)) % 2 == 0
-                ctx.setFillColor(UIColor(white: isDark ? 0.72 : 0.88, alpha: 1).cgColor)
-                ctx.fill(CGRect(x: x, y: y, width: tile, height: tile))
-            }
-        }
-        ctx.draw(pixels, in: CGRect(x: 0, y: 0, width: dim, height: dim))
-
-        // Grid overlay: only when zoomed in enough that grid lines read as visible hairlines.
-        if state.scale >= 4 {
-            ctx.setStrokeColor(UIColor(white: 0, alpha: 0.35).cgColor)
-            ctx.setLineWidth(max(1.0 / state.scale, 0.1))
-            for i in 1..<dim {
-                let p = CGFloat(i)
-                ctx.move(to: CGPoint(x: p, y: 0))
-                ctx.addLine(to: CGPoint(x: p, y: CGFloat(dim)))
-                ctx.move(to: CGPoint(x: 0, y: p))
-                ctx.addLine(to: CGPoint(x: CGFloat(dim), y: p))
-            }
-            ctx.strokePath()
-        }
-
-        guard let cg = ctx.makeImage() else { return nil }
+    /// Raw pixel data wrapped as a UIImage at canvas native resolution. Transparent where
+    /// pixels are unset; grid outlines are drawn separately in SwiftUI at display resolution.
+    private func pixelImage() -> UIImage? {
+        guard let cg = pixelsToCGImage(state.grid) else { return nil }
         return UIImage(cgImage: cg)
     }
 }

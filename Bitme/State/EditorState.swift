@@ -6,7 +6,7 @@ final class EditorState {
     let pieceID: UUID
     var grid: PixelGrid
     var tool: Tool = .pencil
-    var color: RGBA = RGBA(r: 0, g: 0, b: 0, a: 255)
+    var color: RGBA = RGBA(r: 255, g: 255, b: 255, a: 255)
 
     // View transform (rotation in radians). Rotation is view-only, not persisted.
     var translation: CGSize = .zero
