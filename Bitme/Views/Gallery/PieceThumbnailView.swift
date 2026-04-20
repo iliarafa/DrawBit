@@ -5,17 +5,15 @@ struct PieceThumbnailView: View {
     let piece: Piece
 
     var body: some View {
-        Group {
+        ZStack {
+            CheckerboardView()
             if let image = thumbnailImage {
                 Image(uiImage: image)
                     .resizable()
                     .interpolation(.none)
-                    .aspectRatio(1, contentMode: .fit)
-            } else {
-                CheckerboardView()
-                    .aspectRatio(1, contentMode: .fit)
             }
         }
+        .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.25), lineWidth: 0.5))
         .accessibilityIdentifier("PieceThumbnail")
