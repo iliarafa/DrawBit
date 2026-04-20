@@ -107,24 +107,21 @@ struct GalleryView: View {
                 )
                 .presentationDetents([.height(220)])
             }
-            .confirmationDialog(
-                "Delete this piece?",
-                isPresented: Binding(
-                    get: { deleteTarget != nil },
-                    set: { if !$0 { deleteTarget = nil } }
-                ),
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let target = deleteTarget {
-                        let repo = PieceRepository(context: modelContext)
-                        try? repo.delete(piece: target)
+            .sheet(isPresented: Binding(
+                get: { deleteTarget != nil },
+                set: { if !$0 { deleteTarget = nil } }
+            )) {
+                DeletePieceSheet(
+                    onCancel: { deleteTarget = nil },
+                    onDelete: {
+                        if let target = deleteTarget {
+                            let repo = PieceRepository(context: modelContext)
+                            try? repo.delete(piece: target)
+                        }
+                        deleteTarget = nil
                     }
-                    deleteTarget = nil
-                }
-                Button("Cancel", role: .cancel) { deleteTarget = nil }
-            } message: {
-                Text("This cannot be undone.")
+                )
+                .presentationDetents([.height(200)])
             }
         }
     }
