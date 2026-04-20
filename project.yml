@@ -12,7 +12,7 @@ settings:
 targets:
   Bitme:
     type: application
-    supportedDestinations: [iPad]
+    platform: iOS
     sources:
       - path: Bitme
     settings:
@@ -27,7 +27,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Bitme
   BitmeTests:
     type: bundle.unit-test
-    supportedDestinations: [iPad]
+    platform: iOS
     sources:
       - path: BitmeTests
     dependencies:
@@ -35,11 +35,12 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
+        GENERATE_INFOPLIST_FILE: "YES"
         BUNDLE_LOADER: "$(TEST_HOST)"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Bitme.app/Bitme"
   BitmeUITests:
     type: bundle.ui-testing
-    supportedDestinations: [iPad]
+    platform: iOS
     sources:
       - path: BitmeUITests
     dependencies:
@@ -47,3 +48,5 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: Bitme

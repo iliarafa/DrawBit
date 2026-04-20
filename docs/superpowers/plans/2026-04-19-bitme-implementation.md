@@ -43,7 +43,7 @@ settings:
 targets:
   Bitme:
     type: application
-    supportedDestinations: [iPad]
+    platform: iOS
     sources:
       - path: Bitme
     settings:
@@ -58,7 +58,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Bitme
   BitmeTests:
     type: bundle.unit-test
-    supportedDestinations: [iPad]
+    platform: iOS
     sources:
       - path: BitmeTests
     dependencies:
@@ -66,11 +66,12 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
+        GENERATE_INFOPLIST_FILE: "YES"
         BUNDLE_LOADER: "$(TEST_HOST)"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Bitme.app/Bitme"
   BitmeUITests:
     type: bundle.ui-testing
-    supportedDestinations: [iPad]
+    platform: iOS
     sources:
       - path: BitmeUITests
     dependencies:
@@ -78,6 +79,8 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: Bitme
 ```
 
 - [ ] **Step 3: Create the three source-root folders so xcodegen doesn't fail**
@@ -154,7 +157,7 @@ Expected: prints `Loaded project:` and `Created project at Bitme.xcodeproj`.
 
 Run:
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' -configuration Debug build | tail -20
+xcodebuild -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' -configuration Debug build | tail -20
 ```
 Expected: `** BUILD SUCCEEDED **`. If the destination name is not found, list available simulators with `xcrun simctl list devices available | grep iPad` and pick an iPad simulator.
 
@@ -162,7 +165,7 @@ Expected: `** BUILD SUCCEEDED **`. If the destination name is not found, list av
 
 Run:
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' test | tail -20
+xcodebuild -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' test | tail -20
 ```
 Expected: `** TEST SUCCEEDED **`.
 
@@ -241,7 +244,7 @@ enum CanvasSize: Int, CaseIterable, Codable, Identifiable {
 
 - [ ] **Step 4: Regenerate project, run tests — expect pass**
 
-Run: `xcodegen generate && xcodebuild -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' test | tail -5`
+Run: `xcodegen generate && xcodebuild -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' test | tail -5`
 Expected: `** TEST SUCCEEDED **`.
 
 - [ ] **Step 5: Commit**
@@ -316,7 +319,7 @@ enum Tool: String, CaseIterable, Codable {
 
 - [ ] **Step 4: Regenerate + test — expect pass.**
 
-Run: `xcodegen generate && xcodebuild test -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' | tail -5`
+Run: `xcodegen generate && xcodebuild test -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' | tail -5`
 
 - [ ] **Step 5: Commit**
 
@@ -1737,7 +1740,7 @@ struct GalleryView: View {
 
 ```bash
 xcodegen generate
-xcodebuild test -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' | tail -5
+xcodebuild test -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' | tail -5
 ```
 Expected: `** TEST SUCCEEDED **`.
 
@@ -1876,7 +1879,7 @@ struct GalleryView: View {
 
 ```bash
 xcodegen generate
-xcodebuild build -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' | tail -5
+xcodebuild build -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' | tail -5
 ```
 
 - [ ] **Step 4: Commit**
@@ -3335,7 +3338,7 @@ var body: some Scene {
 
 ```bash
 xcodegen generate
-xcodebuild test -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4)' -only-testing:BitmeUITests | tail -10
+xcodebuild test -project Bitme.xcodeproj -scheme Bitme -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' -only-testing:BitmeUITests | tail -10
 ```
 Expected: `** TEST SUCCEEDED **`.
 
