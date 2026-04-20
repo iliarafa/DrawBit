@@ -60,7 +60,7 @@ struct EditorView: View {
                 .padding(.top, 14)
                 .padding(.trailing, 16)
             }
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
         }
         .onChange(of: showingSystemColorPicker) { _, isShowing in
             if !isShowing {
