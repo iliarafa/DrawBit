@@ -6,7 +6,20 @@ struct PieceThumbnailView: View {
 
     var body: some View {
         ZStack {
-            CheckerboardView()
+            Color(white: 0.10)
+            Canvas { ctx, size in
+                let dim = piece.size.dimension
+                let cell = size.width / CGFloat(dim)
+                var path = Path()
+                for i in 0...dim {
+                    let p = CGFloat(i) * cell
+                    path.move(to: CGPoint(x: p, y: 0))
+                    path.addLine(to: CGPoint(x: p, y: size.height))
+                    path.move(to: CGPoint(x: 0, y: p))
+                    path.addLine(to: CGPoint(x: size.width, y: p))
+                }
+                ctx.stroke(path, with: .color(Color(white: 0.22)), lineWidth: 0.5)
+            }
             if let image = thumbnailImage {
                 Image(uiImage: image)
                     .resizable()
