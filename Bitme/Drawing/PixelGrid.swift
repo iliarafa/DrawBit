@@ -20,7 +20,9 @@ struct PixelGrid: Equatable {
 
     init(data: Data, size: CanvasSize) {
         precondition(data.count == size.byteCount, "data length must equal size.byteCount")
-        self.data = data
+        // Defensive copy: normalizes start-index so data[0] always points at the first byte.
+        // A sliced Data would otherwise trap on data[0] or hand the wrong bytes to CGDataProvider.
+        self.data = Data(data)
         self.size = size
     }
 

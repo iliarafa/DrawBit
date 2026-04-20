@@ -35,4 +35,16 @@ final class PixelGridTests: XCTestCase {
         let grid2 = PixelGrid(data: grid.data, size: .s32)
         XCTAssertEqual(grid2.pixel(x: 10, y: 20), RGBA(r: 1, g: 2, b: 3, a: 4))
     }
+
+    func testSlicedDataIsNormalized() {
+        var source = PixelGrid(size: .s16)
+        source.setPixel(x: 0, y: 0, color: RGBA(r: 1, g: 2, b: 3, a: 4))
+        // Surround source data with padding bytes, then slice exactly byteCount out.
+        var padded = Data(repeating: 0xFF, count: 8)
+        padded.append(source.data)
+        padded.append(Data(repeating: 0xFF, count: 8))
+        let slice = padded[8 ..< (8 + CanvasSize.s16.byteCount)]
+        let grid = PixelGrid(data: slice, size: .s16)
+        XCTAssertEqual(grid.pixel(x: 0, y: 0), RGBA(r: 1, g: 2, b: 3, a: 4))
+    }
 }
