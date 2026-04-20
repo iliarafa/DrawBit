@@ -15,16 +15,27 @@ targets:
     platform: iOS
     sources:
       - path: Bitme
+    info:
+      path: Bitme/Info.plist
+      properties:
+        CFBundleDisplayName: Bitme
+        UIRequiresFullScreen: false
+        UILaunchScreen:
+          UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations: {}
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortraitUpsideDown
+        UIAppFonts:
+          - PressStart2P-Regular.ttf
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
         PRODUCT_BUNDLE_IDENTIFIER: com.iamilias.bitme
-        GENERATE_INFOPLIST_FILE: "YES"
-        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortraitUpsideDown"
-        INFOPLIST_KEY_UIRequiresFullScreen: "NO"
-        INFOPLIST_KEY_CFBundleDisplayName: Bitme
   BitmeTests:
     type: bundle.unit-test
     platform: iOS
