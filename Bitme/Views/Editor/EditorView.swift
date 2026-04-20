@@ -40,16 +40,34 @@ struct EditorView: View {
         .background(Color(white: 0.10).ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingSystemColorPicker) {
-            SystemColorPicker(
-                initialColor: state.color,
-                onChange: { state.color = $0 },
-                onFinish: {
-                    addRecent(state.color.hex)
-                    showingSystemColorPicker = false
+            NavigationStack {
+                SystemColorPicker(
+                    initialColor: state.color,
+                    onChange: { state.color = $0 }
+                )
+                .ignoresSafeArea(edges: [.bottom, .horizontal])
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text("COLORS")
+                            .font(.pixel(14))
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showingSystemColorPicker = false
+                        } label: {
+                            Text("USE")
+                                .font(.pixel(12))
+                        }
+                    }
                 }
-            )
-            .ignoresSafeArea()
+            }
             .presentationDetents([.medium, .large])
+        }
+        .onChange(of: showingSystemColorPicker) { _, isShowing in
+            if !isShowing {
+                addRecent(state.color.hex)
+            }
         }
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(piece: piece)
@@ -153,7 +171,6 @@ struct EditorView: View {
 private struct SystemColorPicker: UIViewControllerRepresentable {
     var initialColor: RGBA
     var onChange: (RGBA) -> Void
-    var onFinish: () -> Void
 
     func makeUIViewController(context: Context) -> UIColorPickerViewController {
         let controller = UIColorPickerViewController()
@@ -180,10 +197,6 @@ private struct SystemColorPicker: UIViewControllerRepresentable {
             if let rgba = RGBA(cgColor: viewController.selectedColor.cgColor) {
                 parent.onChange(rgba)
             }
-        }
-
-        func colorPickerViewControllerDidFinish(_ viewController: UIColorPickerViewController) {
-            parent.onFinish()
         }
     }
 }
