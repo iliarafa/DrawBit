@@ -85,13 +85,7 @@ struct EditorView: View {
             Text(piece.size.displayName)
                 .foregroundStyle(.white.opacity(0.85))
             Spacer()
-            HStack(spacing: 18) {
-                Button { state.undo() } label: { Image(systemName: "arrow.left") }
-                    .disabled(!state.canUndo)
-                Button { state.redo() } label: { Image(systemName: "arrow.right") }
-                    .disabled(!state.canRedo)
-                Button("Share") { showingShareSheet = true }
-            }
+            Button("Share") { showingShareSheet = true }
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 18)

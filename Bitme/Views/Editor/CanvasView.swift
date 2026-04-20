@@ -73,8 +73,8 @@ struct CanvasView: View {
         ctx.interpolationQuality = .none
         ctx.setShouldAntialias(false)
 
-        // Checkerboard (2-pixel tiles). Fill the full canvas first, then overlay pixels.
-        let tile = 2
+        // Checkerboard (1-pixel tiles). Fill the full canvas first, then overlay pixels.
+        let tile = 1
         for y in stride(from: 0, to: dim, by: tile) {
             for x in stride(from: 0, to: dim, by: tile) {
                 let isDark = ((x / tile) + (y / tile)) % 2 == 0
