@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct GalleryView: View {
-    var onHome: () -> Void = {}
+    var onHome: () -> Void
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Piece.updatedAt, order: .reverse) private var pieces: [Piece]
     @State private var showingNewSheet = false
@@ -18,12 +18,20 @@ struct GalleryView: View {
         NavigationStack {
             ScrollView {
                 if pieces.isEmpty {
-                    ContentUnavailableView(
-                        "No pieces yet",
-                        systemImage: "square.grid.2x2",
-                        description: Text("Tap + New to create your first canvas.")
-                    )
+                    VStack(spacing: 10) {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.system(size: 44, weight: .regular))
+                            .foregroundStyle(.secondary)
+                        Text("NO PIECES YET")
+                            .font(.pixel(16))
+                            .foregroundStyle(.primary)
+                        Text("Tap + New to create your first canvas.")
+                            .font(.pixel(11))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                     .padding(.top, 80)
+                    .frame(maxWidth: .infinity)
                 } else {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(pieces) { piece in
@@ -43,8 +51,21 @@ struct GalleryView: View {
                     .padding()
                 }
             }
-            .navigationTitle("Pieces")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("BITME")
+                        .font(.pixel(20))
+                        .foregroundStyle(.primary)
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        onHome()
+                    } label: {
+                        Image(systemName: "house.fill")
+                    }
+                    .accessibilityIdentifier("HomeButton")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingNewSheet = true
