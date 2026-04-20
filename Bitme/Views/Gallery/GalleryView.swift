@@ -90,22 +90,22 @@ struct GalleryView: View {
             .navigationDestination(item: $selectedPiece) { piece in
                 EditorView(piece: piece)
             }
-            .alert(
-                "Rename piece",
-                isPresented: Binding(
-                    get: { renameTarget != nil },
-                    set: { if !$0 { renameTarget = nil } }
-                )
-            ) {
-                TextField("Name", text: $renameDraft)
-                Button("Save") {
-                    if let target = renameTarget {
-                        let repo = PieceRepository(context: modelContext)
-                        try? repo.rename(piece: target, to: renameDraft)
+            .sheet(isPresented: Binding(
+                get: { renameTarget != nil },
+                set: { if !$0 { renameTarget = nil } }
+            )) {
+                RenamePieceSheet(
+                    draft: $renameDraft,
+                    onCancel: { renameTarget = nil },
+                    onSave: {
+                        if let target = renameTarget {
+                            let repo = PieceRepository(context: modelContext)
+                            try? repo.rename(piece: target, to: renameDraft)
+                        }
+                        renameTarget = nil
                     }
-                    renameTarget = nil
-                }
-                Button("Cancel", role: .cancel) { renameTarget = nil }
+                )
+                .presentationDetents([.height(220)])
             }
             .confirmationDialog(
                 "Delete this piece?",
