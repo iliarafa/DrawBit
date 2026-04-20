@@ -14,24 +14,39 @@ struct ShareSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Scale") {
+                Section {
                     Picker("Scale", selection: $selectedScale) {
                         ForEach([1, 2, 4, 8, 16], id: \.self) { s in
                             let edge = piece.size.dimension * s
-                            Text("\(s)× · \(edge) × \(edge)").tag(s)
+                            Text("\(s)× · \(edge) × \(edge)")
+                                .font(.pixel(12))
+                                .tag(s)
                         }
                     }
                     .pickerStyle(.inline)
+                } header: {
+                    Text("SCALE")
+                        .font(.pixel(11))
                 }
                 Section {
-                    Button("Share") { share() }
+                    Button {
+                        share()
+                    } label: {
+                        Text("SHARE")
+                            .font(.pixel(14))
+                    }
                 }
             }
             .navigationTitle("Export")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("EXPORT")
+                        .font(.pixel(14))
+                }
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
+                        .font(.pixel(12))
                 }
             }
         }
