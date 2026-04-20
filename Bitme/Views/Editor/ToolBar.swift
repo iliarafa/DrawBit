@@ -40,8 +40,8 @@ struct ToolBar: View {
         VStack(spacing: 2) {
             Image(systemName: systemImage)
                 .font(.system(size: 20, weight: .regular))
-            Text(title)
-                .font(.caption2)
+            Text(title.uppercased())
+                .font(.pixel(8))
         }
         .frame(minWidth: 44, minHeight: 44)
     }
