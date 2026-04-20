@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct GalleryView: View {
+    var onHome: () -> Void = {}
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Piece.updatedAt, order: .reverse) private var pieces: [Piece]
     @State private var showingNewSheet = false

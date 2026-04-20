@@ -3,7 +3,7 @@ import XCTest
 final class DrawAndSaveTest: XCTestCase {
     func testCreatePieceDrawAndReopen() {
         let app = XCUIApplication()
-        app.launchArguments = ["-UITest-reset"]
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
 
         // 1. Create a 32x32 piece from the gallery.

@@ -5,7 +5,7 @@ import SwiftData
 struct BitmeApp: App {
     var body: some Scene {
         WindowGroup {
-            GalleryView()
+            RootView()
         }
         .modelContainer(
             for: [Piece.self, AppSettings.self],
