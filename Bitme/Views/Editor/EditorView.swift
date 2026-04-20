@@ -46,7 +46,7 @@ struct EditorView: View {
                 ),
                 onDismiss: { showingSystemColorPicker = false }
             )
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
         }
         .onChange(of: showingSystemColorPicker) { _, isShowing in
             if !isShowing {
