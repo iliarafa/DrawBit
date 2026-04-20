@@ -6,24 +6,38 @@ struct NewPieceSheet: View {
 
     var body: some View {
         NavigationStack {
-            List(CanvasSize.allCases) { size in
-                Button {
-                    onCreate(size)
-                    dismiss()
-                } label: {
-                    HStack {
-                        Text(size.displayName)
-                            .font(.pixel(16))
-                        Spacer()
-                        Text("\(size.pixelCount) pixels")
-                            .foregroundStyle(.secondary)
-                            .font(.pixel(11))
+            ZStack {
+                Color(white: 0.10).ignoresSafeArea()
+                VStack(spacing: 0) {
+                    ForEach(CanvasSize.allCases) { size in
+                        Button {
+                            onCreate(size)
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Text(size.displayName)
+                                    .font(.pixel(16))
+                                    .foregroundStyle(.white)
+                                Spacer()
+                                Text("\(size.pixelCount) pixels")
+                                    .font(.pixel(11))
+                                    .foregroundStyle(.white.opacity(0.55))
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 16)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("NewPiece-\(size.rawValue)")
+                        if size != CanvasSize.allCases.last {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.08))
+                                .frame(height: 0.5)
+                                .padding(.horizontal, 20)
+                        }
                     }
-                    .contentShape(Rectangle())
-                    .padding(.vertical, 4)
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("NewPiece-\(size.rawValue)")
             }
             .navigationTitle("New piece")
             .navigationBarTitleDisplayMode(.inline)
@@ -31,12 +45,21 @@ struct NewPieceSheet: View {
                 ToolbarItem(placement: .principal) {
                     Text("NEW PIECE")
                         .font(.pixel(14))
+                        .foregroundStyle(.white)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cancel") { dismiss() }
-                        .font(.pixel(12))
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("CANCEL")
+                            .font(.pixel(12))
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
                 }
             }
+            .toolbarBackground(Color(white: 0.10), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
 }
