@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import UIKit
 
 struct EditorView: View {
     let piece: Piece
@@ -40,25 +39,14 @@ struct EditorView: View {
         .background(Color(white: 0.10).ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingSystemColorPicker) {
-            NavigationStack {
-                SystemColorPicker(
-                    initialColor: state.color,
-                    onChange: { state.color = $0 }
-                )
-                .ignoresSafeArea(edges: [.bottom, .horizontal])
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            showingSystemColorPicker = false
-                        } label: {
-                            Text("USE")
-                                .font(.pixel(12))
-                        }
-                    }
-                }
-            }
-            .presentationDetents([.large])
+            BitmeColorPicker(
+                color: Binding(
+                    get: { state.color },
+                    set: { state.color = $0 }
+                ),
+                onDismiss: { showingSystemColorPicker = false }
+            )
+            .presentationDetents([.medium, .large])
         }
         .onChange(of: showingSystemColorPicker) { _, isShowing in
             if !isShowing {
@@ -164,35 +152,3 @@ struct EditorView: View {
     }
 }
 
-private struct SystemColorPicker: UIViewControllerRepresentable {
-    var initialColor: RGBA
-    var onChange: (RGBA) -> Void
-
-    func makeUIViewController(context: Context) -> UIColorPickerViewController {
-        let controller = UIColorPickerViewController()
-        controller.supportsAlpha = false
-        controller.selectedColor = UIColor(
-            red: CGFloat(initialColor.r) / 255,
-            green: CGFloat(initialColor.g) / 255,
-            blue: CGFloat(initialColor.b) / 255,
-            alpha: 1
-        )
-        controller.delegate = context.coordinator
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: UIColorPickerViewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
-
-    final class Coordinator: NSObject, UIColorPickerViewControllerDelegate {
-        let parent: SystemColorPicker
-        init(parent: SystemColorPicker) { self.parent = parent }
-
-        func colorPickerViewControllerDidSelectColor(_ viewController: UIColorPickerViewController) {
-            if let rgba = RGBA(cgColor: viewController.selectedColor.cgColor) {
-                parent.onChange(rgba)
-            }
-        }
-    }
-}
