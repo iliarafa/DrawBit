@@ -39,29 +39,15 @@ struct PieceThumbnailView: View {
 }
 
 struct NewPieceTile: View {
-    let dimension: Int
-
     var body: some View {
         ZStack {
-            Color(white: 0.10)
-            Canvas { ctx, size in
-                let cell = size.width / CGFloat(dimension)
-                var path = Path()
-                for i in 0...dimension {
-                    let p = CGFloat(i) * cell
-                    path.move(to: CGPoint(x: p, y: 0))
-                    path.addLine(to: CGPoint(x: p, y: size.height))
-                    path.move(to: CGPoint(x: 0, y: p))
-                    path.addLine(to: CGPoint(x: size.width, y: p))
-                }
-                ctx.stroke(path, with: .color(Color(white: 0.22)), lineWidth: 0.5)
-            }
+            Color(white: 0.14)
             PixelArtIcon(pattern: NewPieceTile.plusPattern, size: 56)
-                .foregroundStyle(.white)
+                .foregroundStyle(.white.opacity(0.5))
         }
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.25), lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2), lineWidth: 0.5))
         .contentShape(Rectangle())
         .accessibilityAddTraits(.isButton)
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ToolBar: View {
     @Bindable var state: EditorState
+    var onClear: () -> Void
 
     var body: some View {
         HStack(spacing: 22) {
@@ -33,6 +34,15 @@ struct ToolBar: View {
             .buttonStyle(.plain)
             .disabled(!state.canRedo)
             .accessibilityIdentifier("Redo")
+            Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
+            Button {
+                onClear()
+            } label: {
+                iconLabel(systemImage: "trash", title: "Clear")
+                    .foregroundStyle(Color.white.opacity(0.85))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("Clear")
         }
     }
 
@@ -42,6 +52,8 @@ struct ToolBar: View {
                 .font(.system(size: 20, weight: .regular))
             Text(title.uppercased())
                 .font(.pixel(8))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .frame(minWidth: 44, minHeight: 44)
     }

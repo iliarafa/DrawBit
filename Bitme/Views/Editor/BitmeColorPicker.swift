@@ -3,6 +3,7 @@ import SwiftUI
 struct BitmeColorPicker: View {
     @Binding var color: RGBA
     var onDismiss: () -> Void
+    var recentHex: [String] = []
 
     private enum Tab: String, CaseIterable, Identifiable {
         case grid = "GRID"
@@ -107,16 +108,42 @@ struct BitmeColorPicker: View {
         )
     }
 
-    // MARK: - Grid tab (DB32 palette)
+    // MARK: - Grid tab (DB32 palette + user history)
 
     private var paletteGrid: some View {
-        let cols = 8
-        let rows = Self.db32Hex.count / cols
+        VStack(spacing: 14) {
+            if !olderRecents.isEmpty {
+                historySection
+            }
+            swatchGrid(hexes: Self.db32Hex, columns: 8)
+        }
+    }
+
+    private var olderRecents: [String] {
+        Array(recentHex.dropFirst(RecentColorsStrip.maxSwatches).prefix(16))
+    }
+
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("HISTORY")
+                .font(.pixel(9))
+                .foregroundStyle(.white.opacity(0.55))
+            swatchGrid(hexes: olderRecents, columns: 8)
+        }
+    }
+
+    private func swatchGrid(hexes: [String], columns: Int) -> some View {
+        let rows = Int((Double(hexes.count) / Double(columns)).rounded(.up))
         return VStack(spacing: 4) {
             ForEach(0..<rows, id: \.self) { row in
                 HStack(spacing: 4) {
-                    ForEach(0..<cols, id: \.self) { col in
-                        swatch(hex: Self.db32Hex[row * cols + col])
+                    ForEach(0..<columns, id: \.self) { col in
+                        let i = row * columns + col
+                        if i < hexes.count {
+                            swatch(hex: hexes[i])
+                        } else {
+                            Color.clear.aspectRatio(1, contentMode: .fit)
+                        }
                     }
                 }
             }

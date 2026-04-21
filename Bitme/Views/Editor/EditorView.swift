@@ -44,9 +44,11 @@ struct EditorView: View {
                     get: { state.color },
                     set: { state.color = $0 }
                 ),
-                onDismiss: { showingSystemColorPicker = false }
+                onDismiss: { showingSystemColorPicker = false },
+                recentHex: recentHex
             )
             .presentationDetents([.large])
+            .presentationCornerRadius(0)
         }
         .onChange(of: showingSystemColorPicker) { _, isShowing in
             if !isShowing {
@@ -97,17 +99,21 @@ struct EditorView: View {
     }
 
     private var bottomBar: some View {
-        HStack(spacing: 20) {
-            ToolBar(state: state)
-            Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
-            RecentColorsStrip(
-                selectedColor: Binding(
-                    get: { state.color },
-                    set: { state.color = $0 }
-                ),
-                recentHex: $recentHex,
-                onRequestColorPicker: { showingSystemColorPicker = true }
-            )
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            HStack(spacing: 20) {
+                ToolBar(state: state, onClear: clearCanvas)
+                Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
+                RecentColorsStrip(
+                    selectedColor: Binding(
+                        get: { state.color },
+                        set: { state.color = $0 }
+                    ),
+                    recentHex: $recentHex,
+                    onRequestColorPicker: { showingSystemColorPicker = true }
+                )
+            }
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
@@ -130,6 +136,14 @@ struct EditorView: View {
                 state.color = picked
             }
         }
+    }
+
+    private func clearCanvas() {
+        state.beginStrokeSnapshot()
+        state.grid = PixelGrid(size: piece.size)
+        state.commitStroke()
+        let repo = PieceRepository(context: modelContext)
+        try? repo.save(piece: piece, pixels: state.grid.data)
     }
 
     private func commitStrokeAndSave() {

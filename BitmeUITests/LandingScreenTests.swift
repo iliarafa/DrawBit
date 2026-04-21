@@ -16,19 +16,4 @@ final class LandingScreenTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 3))
     }
-
-    func testHomeIconReturnsToLanding() {
-        let app = XCUIApplication()
-        app.launchArguments = ["-UITest-reset"]
-        app.launch()
-
-        let start = landingStart(app)
-        XCTAssertTrue(start.waitForExistence(timeout: 5))
-        start.tap()
-
-        XCTAssertTrue(app.buttons["HomeButton"].waitForExistence(timeout: 3))
-        app.buttons["HomeButton"].tap()
-
-        XCTAssertTrue(landingStart(app).waitForExistence(timeout: 3))
-    }
 }

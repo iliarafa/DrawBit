@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 
 struct GalleryView: View {
-    var onHome: () -> Void
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Piece.updatedAt, order: .reverse) private var pieces: [Piece]
     @State private var showingNewSheet = false
@@ -23,12 +22,14 @@ struct GalleryView: View {
                         ForEach(pieces) { piece in
                             thumbnailCell(for: piece)
                         }
-                        NewPieceTile(dimension: pieces.last?.size.dimension ?? 32)
+                        NewPieceTile()
                             .onTapGesture { showingNewSheet = true }
                             .accessibilityLabel("New")
                             .accessibilityIdentifier("NewButton")
                     }
-                    .padding()
+                    .padding(.horizontal, 20)
+                    .padding(.top, 28)
+                    .padding(.bottom, 24)
                 }
                 .scrollContentBackground(.hidden)
             }
@@ -86,35 +87,13 @@ struct GalleryView: View {
     }
 
     private var topBar: some View {
-        ZStack {
-            Text("BITME")
-                .font(.pixel(20))
-            HStack {
-                Button {
-                    onHome()
-                } label: {
-                    PixelArtIcon(pattern: GalleryView.housePattern, size: 22)
-                }
-                .accessibilityLabel("Home")
-                .accessibilityIdentifier("HomeButton")
-                Spacer()
-            }
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        Text("GALLERY")
+            .font(.pixel(20))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 22)
     }
-
-    private static let housePattern: [String] = [
-        "...##...",
-        "..####..",
-        ".######.",
-        "########",
-        "########",
-        ".#.##.#.",
-        ".#.##.#.",
-        ".#.##.#.",
-    ]
 
     @ViewBuilder
     private func thumbnailCell(for piece: Piece) -> some View {

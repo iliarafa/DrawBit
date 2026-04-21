@@ -15,7 +15,7 @@ struct RootView: View {
         case .landing:
             LandingView(onStart: { screen = .gallery })
         case .gallery:
-            GalleryView(onHome: { screen = .landing })
+            GalleryView()
         }
     }
 }

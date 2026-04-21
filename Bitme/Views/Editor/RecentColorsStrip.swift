@@ -5,31 +5,44 @@ struct RecentColorsStrip: View {
     @Binding var recentHex: [String]
     var onRequestColorPicker: () -> Void
 
+    static let maxSwatches = 7
+
+    static let reservedWidth: CGFloat = {
+        let swatch: CGFloat = 34
+        let plus: CGFloat = 26
+        let spacing: CGFloat = 10
+        let horizontalPadding: CGFloat = 8
+        let elements = CGFloat(maxSwatches) + 1
+        return CGFloat(maxSwatches) * swatch
+            + plus
+            + (elements - 1) * spacing
+            + horizontalPadding
+    }()
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(recentHex, id: \.self) { hex in
-                    SwatchButton(
-                        hex: hex,
-                        isSelected: RGBA(hex: hex) == selectedColor,
-                        action: {
-                            if let c = RGBA(hex: hex) { selectedColor = c }
-                        }
-                    )
-                }
-                Button(action: onRequestColorPicker) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 26, height: 26)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 3)
-                                .stroke(Color.white.opacity(0.25), style: .init(lineWidth: 1, dash: [2, 2]))
-                        )
-                }
+        HStack(spacing: 10) {
+            ForEach(recentHex.prefix(Self.maxSwatches), id: \.self) { hex in
+                SwatchButton(
+                    hex: hex,
+                    isSelected: RGBA(hex: hex) == selectedColor,
+                    action: {
+                        if let c = RGBA(hex: hex) { selectedColor = c }
+                    }
+                )
             }
-            .padding(.horizontal, 4)
+            Button(action: onRequestColorPicker) {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 26, height: 26)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3)
+                            .stroke(Color.white.opacity(0.25), style: .init(lineWidth: 1, dash: [2, 2]))
+                    )
+            }
         }
+        .padding(.horizontal, 4)
+        .frame(width: Self.reservedWidth, alignment: .leading)
     }
 }
 
