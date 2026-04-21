@@ -58,6 +58,7 @@ struct EditorView: View {
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(piece: piece)
                 .presentationDetents([.medium])
+                .presentationCornerRadius(0)
         }
         .onAppear {
             let repo = PieceRepository(context: modelContext)

@@ -46,6 +46,7 @@ struct GalleryView: View {
                     }
                 }
                 .presentationDetents([.medium])
+                .presentationCornerRadius(0)
             }
             .navigationDestination(item: $selectedPiece) { piece in
                 EditorView(piece: piece)
@@ -66,6 +67,7 @@ struct GalleryView: View {
                     }
                 )
                 .presentationDetents([.height(220)])
+                .presentationCornerRadius(0)
             }
             .sheet(isPresented: Binding(
                 get: { deleteTarget != nil },
@@ -82,6 +84,7 @@ struct GalleryView: View {
                     }
                 )
                 .presentationDetents([.height(200)])
+                .presentationCornerRadius(0)
             }
         }
     }
