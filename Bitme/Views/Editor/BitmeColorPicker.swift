@@ -217,10 +217,8 @@ struct BitmeColorPicker: View {
             )
 
             HStack(spacing: 12) {
-                Text("BRIGHT")
-                    .font(.pixel(10))
-                    .foregroundStyle(.white.opacity(0.8))
-                    .frame(width: 56, alignment: .leading)
+                pixelSun
+                    .frame(width: 22, height: 22)
                 Slider(value: Binding(
                     get: { brightness },
                     set: { newB in
@@ -231,6 +229,35 @@ struct BitmeColorPicker: View {
                     }
                 ), in: 0...1)
                 .tint(.white)
+            }
+        }
+    }
+
+    private var pixelSun: some View {
+        Canvas { ctx, size in
+            let cols = 11
+            let pixel = min(size.width, size.height) / CGFloat(cols)
+            let pattern: [[Int]] = [
+                [0,0,0,0,0,1,0,0,0,0,0],
+                [0,1,0,0,0,1,0,0,0,1,0],
+                [0,0,1,0,0,0,0,0,1,0,0],
+                [0,0,0,0,1,1,1,0,0,0,0],
+                [0,0,0,1,1,1,1,1,0,0,0],
+                [1,1,0,1,1,1,1,1,0,1,1],
+                [0,0,0,1,1,1,1,1,0,0,0],
+                [0,0,0,0,1,1,1,0,0,0,0],
+                [0,0,1,0,0,0,0,0,1,0,0],
+                [0,1,0,0,0,1,0,0,0,1,0],
+                [0,0,0,0,0,1,0,0,0,0,0],
+            ]
+            for (j, row) in pattern.enumerated() {
+                for (i, v) in row.enumerated() where v == 1 {
+                    let rect = CGRect(x: CGFloat(i) * pixel,
+                                      y: CGFloat(j) * pixel,
+                                      width: pixel,
+                                      height: pixel)
+                    ctx.fill(Path(rect), with: .color(.white.opacity(0.85)))
+                }
             }
         }
     }
@@ -322,7 +349,7 @@ struct BitmeColorPicker: View {
                 .foregroundStyle(.white.opacity(0.8))
 
             TextField("", text: $hexDraft)
-                .font(.system(.body, design: .monospaced))
+                .font(.pixel(14))
                 .foregroundStyle(.white)
                 .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled(true)
