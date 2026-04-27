@@ -5,6 +5,7 @@ enum Tool: String, CaseIterable, Codable {
     case eraser
     case fill
     case eyedropper
+    case marquee
 
     var sfSymbol: String {
         switch self {
@@ -12,6 +13,7 @@ enum Tool: String, CaseIterable, Codable {
         case .eraser: "eraser"
         case .fill: "drop.fill"
         case .eyedropper: "eyedropper"
+        case .marquee: "rectangle.dashed"
         }
     }
 
@@ -21,6 +23,7 @@ enum Tool: String, CaseIterable, Codable {
         case .eraser: "Eraser"
         case .fill: "Fill"
         case .eyedropper: "Pick"
+        case .marquee: "Laso"
         }
     }
 }

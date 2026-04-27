@@ -48,6 +48,16 @@ struct CanvasView: View {
                 .rotationEffect(.radians(state.rotation))
                 .offset(state.translation)
                 .allowsHitTesting(false)
+
+                if let rect = state.pendingMarqueeRect {
+                    pendingRectOverlay(rect: rect, edge: edge)
+                }
+
+                if let sel = state.selection {
+                    floatingSelectionLayer(selection: sel, edge: edge)
+                    marchingAnts(bounds: sel.displayBounds, edge: edge)
+                }
+
                 CanvasHostView(
                     state: state,
                     pencilAvailability: pencilAvailability,
@@ -79,5 +89,80 @@ struct CanvasView: View {
     private func pixelImage() -> UIImage? {
         guard let cg = pixelsToCGImage(state.grid) else { return nil }
         return UIImage(cgImage: cg)
+    }
+
+    private func selectionImage(_ sel: MarqueeSelection) -> UIImage? {
+        guard let cg = pixelsToCGImage(sel.extracted.pixels) else { return nil }
+        return UIImage(cgImage: cg)
+    }
+
+    @ViewBuilder
+    private func floatingSelectionLayer(selection sel: MarqueeSelection, edge: CGFloat) -> some View {
+        if let image = selectionImage(sel) {
+            let perPixel = edge / CGFloat(state.grid.dimension)
+            Image(uiImage: image)
+                .resizable()
+                .interpolation(.none)
+                .antialiased(false)
+                .frame(width: edge, height: edge)
+                .offset(x: CGFloat(sel.dragOffset.dx) * perPixel,
+                        y: CGFloat(sel.dragOffset.dy) * perPixel)
+                .scaleEffect(state.scale)
+                .rotationEffect(.radians(state.rotation))
+                .offset(state.translation)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func pendingRectOverlay(rect: PixelRect, edge: CGFloat) -> some View {
+        Canvas { ctx, size in
+            let perPixel = size.width / CGFloat(state.grid.dimension)
+            let r = CGRect(
+                x: CGFloat(rect.x) * perPixel,
+                y: CGFloat(rect.y) * perPixel,
+                width: CGFloat(rect.width) * perPixel,
+                height: CGFloat(rect.height) * perPixel
+            )
+            ctx.stroke(Path(r), with: .color(.white), lineWidth: max(1.0 / state.scale, 0.25))
+        }
+        .frame(width: edge, height: edge)
+        .scaleEffect(state.scale)
+        .rotationEffect(.radians(state.rotation))
+        .offset(state.translation)
+        .allowsHitTesting(false)
+    }
+
+    private func marchingAnts(bounds: PixelRect, edge: CGFloat) -> some View {
+        TimelineView(.animation) { timeline in
+            Canvas { ctx, size in
+                let perPixel = size.width / CGFloat(state.grid.dimension)
+                let r = CGRect(
+                    x: CGFloat(bounds.x) * perPixel,
+                    y: CGFloat(bounds.y) * perPixel,
+                    width: CGFloat(bounds.width) * perPixel,
+                    height: CGFloat(bounds.height) * perPixel
+                )
+                let elapsed = timeline.date.timeIntervalSinceReferenceDate
+                let phase = elapsed.truncatingRemainder(dividingBy: 1.0) * Double(perPixel * 2)
+                let dashLen = perPixel * 0.75
+                let style = StrokeStyle(
+                    lineWidth: max(1.0 / state.scale, 0.25),
+                    dash: [dashLen, dashLen],
+                    dashPhase: CGFloat(phase)
+                )
+                let path = Path(r)
+                ctx.stroke(path, with: .color(.black.opacity(0.85)), style: style)
+                ctx.stroke(path, with: .color(.white),
+                           style: StrokeStyle(
+                            lineWidth: max(1.0 / state.scale, 0.25),
+                            dash: [dashLen, dashLen],
+                            dashPhase: CGFloat(phase) + dashLen))
+            }
+        }
+        .frame(width: edge, height: edge)
+        .scaleEffect(state.scale)
+        .rotationEffect(.radians(state.rotation))
+        .offset(state.translation)
+        .allowsHitTesting(false)
     }
 }

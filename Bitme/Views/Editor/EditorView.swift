@@ -24,14 +24,10 @@ struct EditorView: View {
                 state: state,
                 pencilAvailability: pencilAvailability,
                 onStrokePoint: { x, y in applyDrawPoint(x: x, y: y) },
-                onStrokeBegin: { state.beginStrokeSnapshot() },
-                onStrokeEnd: { commitStrokeAndSave() },
-                onStrokeCancel: { state.cancelStroke() },
-                onTap: { x, y in
-                    state.beginStrokeSnapshot()
-                    applyDrawPoint(x: x, y: y)
-                    commitStrokeAndSave()
-                }
+                onStrokeBegin: { handleStrokeBegin() },
+                onStrokeEnd: { handleStrokeEnd() },
+                onStrokeCancel: { handleStrokeCancel() },
+                onTap: { x, y in handleTap(x: x, y: y) }
             )
             Divider().overlay(Color.white.opacity(0.08))
             bottomBar
@@ -64,6 +60,12 @@ struct EditorView: View {
             let repo = PieceRepository(context: modelContext)
             if let settings = try? repo.appSettings() {
                 recentHex = settings.recentColors
+            }
+        }
+        .onDisappear {
+            if state.selection != nil {
+                state.commitMarquee()
+                saveCurrentGrid()
             }
         }
     }
@@ -136,15 +138,91 @@ struct EditorView: View {
             if let picked = Eyedropper.pick(from: state.grid, at: (x, y)) {
                 state.color = picked
             }
+        case .marquee:
+            applyMarqueePoint(x: x, y: y)
         }
     }
 
+    private func applyMarqueePoint(x: Int, y: Int) {
+        if state.isMarqueeDefining {
+            state.updateMarqueeDefine(to: (x, y))
+            return
+        }
+        if state.isMarqueeDragging {
+            state.updateMarqueeDrag(to: (x, y))
+            return
+        }
+        // First point of a marquee stroke: tap inside floating selection drags it; tap
+        // anywhere else commits any existing selection and starts defining a new one.
+        if let sel = state.selection, sel.displayBounds.contains(x: x, y: y) {
+            state.beginMarqueeDrag(at: (x, y))
+        } else {
+            if state.selection != nil {
+                state.commitMarquee()
+                saveCurrentGrid()
+            }
+            state.beginMarqueeDefine(at: (x, y))
+        }
+    }
+
+    private func handleStrokeBegin() {
+        // For marquee, the snapshot is taken inside beginMarqueeDefine on the first point.
+        if state.tool != .marquee {
+            state.beginStrokeSnapshot()
+        }
+    }
+
+    private func handleStrokeEnd() {
+        if state.tool == .marquee {
+            if state.isMarqueeDefining {
+                state.endMarqueeDefine()
+            } else if state.isMarqueeDragging {
+                state.endMarqueeDrag()
+            }
+            // No save while floating — commit happens on tap-outside / tool-switch / dismiss.
+        } else {
+            commitStrokeAndSave()
+        }
+    }
+
+    private func handleStrokeCancel() {
+        if state.tool == .marquee {
+            // Cancel the in-progress define; keep any pre-existing floating selection alone.
+            if state.isMarqueeDefining {
+                state.cancelMarquee()
+            } else {
+                state.endMarqueeDrag()
+            }
+        } else {
+            state.cancelStroke()
+        }
+    }
+
+    private func handleTap(x: Int, y: Int) {
+        if state.tool == .marquee {
+            if let sel = state.selection, !sel.displayBounds.contains(x: x, y: y) {
+                state.commitMarquee()
+                saveCurrentGrid()
+            }
+            // Tap inside floating selection or with no selection: no-op.
+            return
+        }
+        state.beginStrokeSnapshot()
+        applyDrawPoint(x: x, y: y)
+        commitStrokeAndSave()
+    }
+
+    private func saveCurrentGrid() {
+        let repo = PieceRepository(context: modelContext)
+        try? repo.save(piece: piece, pixels: state.grid.data)
+    }
+
     private func clearCanvas() {
+        if state.selection != nil { state.cancelMarquee() }
         state.beginStrokeSnapshot()
         state.grid = PixelGrid(size: piece.size)
         state.commitStroke()
-        let repo = PieceRepository(context: modelContext)
-        try? repo.save(piece: piece, pixels: state.grid.data)
+        saveCurrentGrid()
     }
 
     private func commitStrokeAndSave() {

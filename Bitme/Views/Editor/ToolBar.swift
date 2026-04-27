@@ -8,7 +8,7 @@ struct ToolBar: View {
         HStack(spacing: 22) {
             ForEach(Tool.allCases, id: \.self) { tool in
                 Button {
-                    state.tool = tool
+                    state.setTool(tool)
                 } label: {
                     iconLabel(systemImage: tool.sfSymbol, title: tool.displayName)
                         .foregroundStyle(state.tool == tool ? Color.white : Color.white.opacity(0.55))
