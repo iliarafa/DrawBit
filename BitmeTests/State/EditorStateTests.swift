@@ -7,7 +7,7 @@ final class EditorStateTests: XCTestCase {
         let state = EditorState(piece: piece)
         XCTAssertEqual(state.grid.size, .s32)
         XCTAssertEqual(state.tool, .pencil)
-        XCTAssertEqual(state.color, RGBA(r: 0, g: 0, b: 0, a: 255))
+        XCTAssertEqual(state.color, RGBA(r: 255, g: 255, b: 255, a: 255))
         XCTAssertFalse(state.canUndo)
         XCTAssertFalse(state.canRedo)
     }

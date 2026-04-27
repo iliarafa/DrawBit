@@ -10,12 +10,15 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(s.recentColors, ["#FF0000", "#00FF00"])
     }
 
-    func testCapAt16() {
+    func testCapAtLimitDropsOldest() {
         let s = AppSettings()
-        for i in 0..<20 {
+        // limit defaults to 23; insert 30 distinct colors and verify the oldest are dropped.
+        for i in 0..<30 {
             s.addRecentColor(String(format: "#%06X", i))
         }
-        XCTAssertEqual(s.recentColors.count, 16)
-        XCTAssertEqual(s.recentColors.first, "#000013")
+        XCTAssertEqual(s.recentColors.count, 23)
+        // Newest is at index 0 (prepended), oldest retained is the 8th-from-last (#000007).
+        XCTAssertEqual(s.recentColors.first, "#00001D")
+        XCTAssertEqual(s.recentColors.last, "#000007")
     }
 }
