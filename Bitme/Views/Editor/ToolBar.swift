@@ -47,7 +47,7 @@ struct ToolBar: View {
     }
 
     private func iconLabel(systemImage: String, title: String) -> some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 8) {
             Image(systemName: systemImage)
                 .font(.system(size: 20, weight: .regular))
             Text(title.uppercased())

@@ -33,6 +33,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
         UIAppFonts:
           - PressStart2P-Regular.ttf
+        NSPhotoLibraryAddUsageDescription: Bitme needs permission to save your exported PNG to Photos.
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"

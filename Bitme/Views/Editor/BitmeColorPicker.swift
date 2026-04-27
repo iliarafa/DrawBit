@@ -178,8 +178,8 @@ struct BitmeColorPicker: View {
             GeometryReader { geo in
                 ZStack(alignment: .topLeading) {
                     Canvas { ctx, size in
-                        let tilesX = 180
-                        let tilesY = 120
+                        let tilesX = 48
+                        let tilesY = 32
                         let tw = size.width / CGFloat(tilesX)
                         let th = size.height / CGFloat(tilesY)
                         for i in 0..<tilesX {

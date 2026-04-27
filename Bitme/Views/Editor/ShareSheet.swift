@@ -18,10 +18,11 @@ struct ShareSheet: View {
             ZStack {
                 Color(white: 0.10).ignoresSafeArea()
                 VStack(alignment: .leading, spacing: 16) {
+                    Spacer(minLength: 0)
+
                     Text("SCALE")
                         .font(.pixel(11))
                         .foregroundStyle(.white.opacity(0.55))
-                        .padding(.top, 8)
 
                     VStack(spacing: 8) {
                         ForEach(scales, id: \.self) { s in
@@ -42,7 +43,8 @@ struct ShareSheet: View {
                             .background(Capsule().fill(Color.white.opacity(0.12)))
                             .overlay(Capsule().stroke(Color.white.opacity(0.4), lineWidth: 1))
                     }
-                    .padding(.bottom, 4)
+
+                    Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -118,8 +120,22 @@ struct ShareSheet: View {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         try? data.write(to: url)
         let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        UIApplication.shared.activeWindow?.rootViewController?.present(vc, animated: true)
-        dismiss()
+        vc.excludedActivityTypes = [
+            UIActivity.ActivityType("com.apple.reminders.RemindersEditorExtension"),
+            UIActivity.ActivityType("com.apple.reminders.sharingextension"),
+        ]
+        guard let presenter = UIApplication.shared.topmostViewController else { return }
+        if let popover = vc.popoverPresentationController {
+            popover.sourceView = presenter.view
+            popover.sourceRect = CGRect(x: presenter.view.bounds.midX,
+                                        y: presenter.view.bounds.maxY - 60,
+                                        width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        vc.completionWithItemsHandler = { _, _, _, _ in
+            dismiss()
+        }
+        presenter.present(vc, animated: true)
     }
 }
 
@@ -129,5 +145,13 @@ private extension UIApplication {
             .compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }
             .first(where: { $0.isKeyWindow })
+    }
+
+    var topmostViewController: UIViewController? {
+        var top = activeWindow?.rootViewController
+        while let presented = top?.presentedViewController {
+            top = presented
+        }
+        return top
     }
 }

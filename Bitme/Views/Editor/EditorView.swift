@@ -57,7 +57,7 @@ struct EditorView: View {
         }
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(piece: piece)
-                .presentationDetents([.medium])
+                .presentationDetents([.height(460)])
                 .presentationCornerRadius(0)
         }
         .onAppear {
