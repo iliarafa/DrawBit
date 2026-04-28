@@ -11,6 +11,10 @@ build/
 *.xccheckout
 *.xcscmblueprint
 DrawBit.xcodeproj/
+Bitme.xcodeproj/
+
+# Claude Code machine-local settings
+.claude/
 
 # Swift Package Manager
 .build/
