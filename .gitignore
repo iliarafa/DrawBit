@@ -10,7 +10,7 @@ build/
 *.moved-aside
 *.xccheckout
 *.xcscmblueprint
-Bitme.xcodeproj/
+DrawBit.xcodeproj/
 
 # Swift Package Manager
 .build/

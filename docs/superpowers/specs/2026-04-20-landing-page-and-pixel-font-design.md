@@ -39,7 +39,7 @@ enum Screen { case landing, gallery }
 
 ## Landing page (`LandingView`)
 
-New file `Bitme/Views/Landing/LandingView.swift`.
+New file `DrawBit/Views/Landing/LandingView.swift`.
 
 - Full-screen black background (`Color.black.ignoresSafeArea()`).
 - Status bar hidden.
@@ -50,13 +50,13 @@ New file `Bitme/Views/Landing/LandingView.swift`.
 
 ## Font infrastructure
 
-- Add `Bitme/Resources/Fonts/PressStart2P-Regular.ttf` (Google Fonts, SIL Open Font License 1.1 — redistributable).
+- Add `DrawBit/Resources/Fonts/PressStart2P-Regular.ttf` (Google Fonts, SIL Open Font License 1.1 — redistributable).
 - Register in the generated Info.plist by adding to `project.yml`:
   ```yaml
   INFOPLIST_KEY_UIAppFonts: "PressStart2P-Regular.ttf"
   ```
   xcodegen forwards this into the generated plist as a `UIAppFonts` array.
-- New file `Bitme/Views/Support/PixelFont.swift`:
+- New file `DrawBit/Views/Support/PixelFont.swift`:
   ```swift
   extension Font {
       static func pixel(_ size: CGFloat) -> Font {
@@ -87,37 +87,37 @@ New file `Bitme/Views/Landing/LandingView.swift`.
 
 ### UI
 
-New file `BitmeUITests/LandingScreenTests.swift`:
+New file `DrawBitUITests/LandingScreenTests.swift`:
 
 - `testStartTapEntersGallery`: launch → tap `LandingStart` → assert `NewButton` exists.
 - `testHomeIconReturnsToLanding`: launch → tap `LandingStart` → tap `HomeButton` → assert `LandingStart` exists again.
 
 ### Existing tests
 
-- Existing `testCreateDrawReopen` (and other UI tests that assume the app starts on the gallery) must not regress. Add a launch argument `-UITest-skipLanding` recognized in `BitmeApp` (or `RootView`) that sets the initial `screen` to `.gallery`. Existing tests pass this argument; the two new landing tests do not. This keeps existing tests focused on what they actually test.
+- Existing `testCreateDrawReopen` (and other UI tests that assume the app starts on the gallery) must not regress. Add a launch argument `-UITest-skipLanding` recognized in `DrawBitApp` (or `RootView`) that sets the initial `screen` to `.gallery`. Existing tests pass this argument; the two new landing tests do not. This keeps existing tests focused on what they actually test.
 
 ## Files touched
 
 New:
 
-- `Bitme/Views/Landing/LandingView.swift`
-- `Bitme/Views/Support/PixelFont.swift`
-- `Bitme/Views/Support/RootView.swift` (wraps landing/gallery switch)
-- `Bitme/Resources/Fonts/PressStart2P-Regular.ttf`
-- `BitmeTests/Views/PixelFontTests.swift`
-- `BitmeUITests/LandingScreenTests.swift`
+- `DrawBit/Views/Landing/LandingView.swift`
+- `DrawBit/Views/Support/PixelFont.swift`
+- `DrawBit/Views/Support/RootView.swift` (wraps landing/gallery switch)
+- `DrawBit/Resources/Fonts/PressStart2P-Regular.ttf`
+- `DrawBitTests/Views/PixelFontTests.swift`
+- `DrawBitUITests/LandingScreenTests.swift`
 
 Modified:
 
-- `Bitme/BitmeApp.swift` — root becomes `RootView()`; reads `-UITest-skipLanding` arg alongside existing `-UITest-reset`.
-- `Bitme/Views/Gallery/GalleryView.swift` — custom nav title, leading home button, replaced empty-state view, pixel-font on thumbnail name.
-- `Bitme/Views/Gallery/NewPieceSheet.swift` — pixel font on labels.
-- `Bitme/Views/Gallery/PieceThumbnailView.swift` — pixel font on name label.
-- `Bitme/Views/Editor/ToolBar.swift` — pixel font on visible text (if any).
-- `Bitme/Views/Editor/EditorView.swift` — pixel font on title/zoom/size readouts.
+- `DrawBit/DrawBitApp.swift` — root becomes `RootView()`; reads `-UITest-skipLanding` arg alongside existing `-UITest-reset`.
+- `DrawBit/Views/Gallery/GalleryView.swift` — custom nav title, leading home button, replaced empty-state view, pixel-font on thumbnail name.
+- `DrawBit/Views/Gallery/NewPieceSheet.swift` — pixel font on labels.
+- `DrawBit/Views/Gallery/PieceThumbnailView.swift` — pixel font on name label.
+- `DrawBit/Views/Editor/ToolBar.swift` — pixel font on visible text (if any).
+- `DrawBit/Views/Editor/EditorView.swift` — pixel font on title/zoom/size readouts.
 - Export sheet view — pixel font on headers/labels.
 - `project.yml` — add `INFOPLIST_KEY_UIAppFonts`.
-- `BitmeUITests/*Tests.swift` (existing) — launch with `-UITest-skipLanding`.
+- `DrawBitUITests/*Tests.swift` (existing) — launch with `-UITest-skipLanding`.
 
 ## Invariants preserved
 

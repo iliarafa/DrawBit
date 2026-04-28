@@ -22,7 +22,7 @@ guard let outputArg = args.first else { usage() }
 let dark = args.contains("--dark")
 let outputURL = URL(fileURLWithPath: outputArg)
 
-let fontURL = URL(fileURLWithPath: "Bitme/Resources/Fonts/PressStart2P-Regular.ttf")
+let fontURL = URL(fileURLWithPath: "DrawBit/Resources/Fonts/PressStart2P-Regular.ttf")
 guard let fontData = try? Data(contentsOf: fontURL) else {
     FileHandle.standardError.write("error: cannot read \(fontURL.path)\n".data(using: .utf8)!)
     exit(1)

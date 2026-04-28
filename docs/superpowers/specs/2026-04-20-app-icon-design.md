@@ -30,7 +30,7 @@ The app currently has no custom icon — iOS shows the generic placeholder. The 
 
 A single Swift script `scripts/generate_app_icon.swift` renders both PNGs. The script is a repo-level build tool — not compiled into the app target.
 
-- Loads `Bitme/Resources/Fonts/PressStart2P-Regular.ttf` via `CTFontManagerCreateFontDescriptorFromData`.
+- Loads `DrawBit/Resources/Fonts/PressStart2P-Regular.ttf` via `CTFontManagerCreateFontDescriptorFromData`.
 - Creates a 1024×1024 `CGContext` (sRGB, `.premultipliedLast`).
 - Computes the font size so the typeset run for "BITME" at that size measures ~80% of 1024 wide (binary search or direct ratio — Press Start 2P is monospace, so `advance × 5` scales linearly with font size; closed-form is fine).
 - Fills the background, draws the text centered vertically and horizontally, no anti-aliasing (`setShouldAntialias(false)`, `setAllowsAntialiasing(false)`, `setShouldSubpixelQuantizeFonts(false)`) to preserve the crisp pixel look.
@@ -41,10 +41,10 @@ Script stays in the repo so the wordmark can be regenerated if text, size, or ma
 
 ## Asset catalog and build wiring
 
-New asset catalog `Bitme/Assets.xcassets/`:
+New asset catalog `DrawBit/Assets.xcassets/`:
 
 ```
-Bitme/Assets.xcassets/
+DrawBit/Assets.xcassets/
 ├── Contents.json              # catalog root, default
 └── AppIcon.appiconset/
     ├── Contents.json          # icon set manifest
@@ -77,15 +77,15 @@ Bitme/Assets.xcassets/
 }
 ```
 
-`project.yml` changes (Bitme target):
+`project.yml` changes (DrawBit target):
 
 - `settings.base` gains `ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon` so asset compilation wires the icon properly.
 - `info.properties` gains `CFBundleIconName: AppIcon` — iOS uses this to locate the compiled icon.
-- Asset catalog is picked up automatically because `sources: [path: Bitme]` globs it.
+- Asset catalog is picked up automatically because `sources: [path: DrawBit]` globs it.
 
 ## Testing
 
-- **Unit** `BitmeTests/Views/AppIconTests.swift`:
+- **Unit** `DrawBitTests/Views/AppIconTests.swift`:
   - `testAppIconCatalogHasLightVariant`: `UIImage(named: "AppIcon")` resolves non-nil in a `UITraitCollection(userInterfaceStyle: .light)` context.
   - `testAppIconCatalogHasDarkVariant`: same, `.dark`.
 - **No UI test** — the icon renders in Springboard, outside any XCUI-addressable surface.
@@ -96,11 +96,11 @@ Bitme/Assets.xcassets/
 New:
 
 - `scripts/generate_app_icon.swift`
-- `Bitme/Assets.xcassets/Contents.json`
-- `Bitme/Assets.xcassets/AppIcon.appiconset/Contents.json`
-- `Bitme/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png`
-- `Bitme/Assets.xcassets/AppIcon.appiconset/AppIcon-Dark.png`
-- `BitmeTests/Views/AppIconTests.swift`
+- `DrawBit/Assets.xcassets/Contents.json`
+- `DrawBit/Assets.xcassets/AppIcon.appiconset/Contents.json`
+- `DrawBit/Assets.xcassets/AppIcon.appiconset/AppIcon-Light.png`
+- `DrawBit/Assets.xcassets/AppIcon.appiconset/AppIcon-Dark.png`
+- `DrawBitTests/Views/AppIconTests.swift`
 
 Modified:
 

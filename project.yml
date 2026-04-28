@@ -1,4 +1,4 @@
-name: Bitme
+name: DrawBit
 options:
   bundleIdPrefix: com.iamilias
   deploymentTarget:
@@ -10,15 +10,15 @@ settings:
     DEVELOPMENT_TEAM: ""
     ENABLE_USER_SCRIPT_SANDBOXING: "NO"
 targets:
-  Bitme:
+  DrawBit:
     type: application
     platform: iOS
     sources:
-      - path: Bitme
+      - path: DrawBit
     info:
-      path: Bitme/Info.plist
+      path: DrawBit/Info.plist
       properties:
-        CFBundleDisplayName: Bitme
+        CFBundleDisplayName: DrawBit
         CFBundleIconName: AppIcon
         UIRequiresFullScreen: false
         UILaunchScreen:
@@ -33,34 +33,34 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
         UIAppFonts:
           - PressStart2P-Regular.ttf
-        NSPhotoLibraryAddUsageDescription: Bitme needs permission to save your exported PNG to Photos.
+        NSPhotoLibraryAddUsageDescription: DrawBit needs permission to save your exported PNG to Photos.
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        PRODUCT_BUNDLE_IDENTIFIER: com.iamilias.bitme
-  BitmeTests:
+        PRODUCT_BUNDLE_IDENTIFIER: com.iamilias.drawbit
+  DrawBitTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: BitmeTests
+      - path: DrawBitTests
     dependencies:
-      - target: Bitme
+      - target: DrawBit
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
         GENERATE_INFOPLIST_FILE: "YES"
         BUNDLE_LOADER: "$(TEST_HOST)"
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Bitme.app/Bitme"
-  BitmeUITests:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/DrawBit.app/DrawBit"
+  DrawBitUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: BitmeUITests
+      - path: DrawBitUITests
     dependencies:
-      - target: Bitme
+      - target: DrawBit
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
         GENERATE_INFOPLIST_FILE: "YES"
-        TEST_TARGET_NAME: Bitme
+        TEST_TARGET_NAME: DrawBit

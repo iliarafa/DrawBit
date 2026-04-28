@@ -11,7 +11,7 @@
 **Spec:** [docs/superpowers/specs/2026-04-20-landing-page-and-pixel-font-design.md](../specs/2026-04-20-landing-page-and-pixel-font-design.md)
 
 **Global conventions** (repeat per task — engineer may read out of order):
-- Project file is generated. After creating/renaming/moving any `.swift` or resource file, regenerate with: `rm -rf Bitme.xcodeproj && xcodegen generate`
+- Project file is generated. After creating/renaming/moving any `.swift` or resource file, regenerate with: `rm -rf DrawBit.xcodeproj && xcodegen generate`
 - Build/test target device: `'platform=iOS Simulator,name=iPad Pro 13-inch (M5)'`. Substitute another iPad from `xcrun simctl list devices available | grep -i iPad` if that simulator is not installed.
 
 ---
@@ -19,10 +19,10 @@
 ## Task 1: Bundle Press Start 2P font and verify it registers
 
 **Files:**
-- Create: `Bitme/Resources/Fonts/PressStart2P-Regular.ttf`
-- Create: `Bitme/Resources/Fonts/OFL.txt`
+- Create: `DrawBit/Resources/Fonts/PressStart2P-Regular.ttf`
+- Create: `DrawBit/Resources/Fonts/OFL.txt`
 - Modify: `project.yml`
-- Create: `BitmeTests/Views/PixelFontTests.swift`
+- Create: `DrawBitTests/Views/PixelFontTests.swift`
 
 The font is Google Fonts' Press Start 2P under SIL OFL 1.1. The `.ttf` file is bundled into the app, and the OFL license text travels alongside it (OFL redistribution requirement).
 
@@ -31,7 +31,7 @@ The font is Google Fonts' Press Start 2P under SIL OFL 1.1. The `.ttf` file is b
 Run:
 
 ```bash
-mkdir -p Bitme/Resources/Fonts
+mkdir -p DrawBit/Resources/Fonts
 ```
 
 - [ ] **Step 2: Download the font and license**
@@ -39,40 +39,40 @@ mkdir -p Bitme/Resources/Fonts
 Run:
 
 ```bash
-curl -fL -o Bitme/Resources/Fonts/PressStart2P-Regular.ttf \
+curl -fL -o DrawBit/Resources/Fonts/PressStart2P-Regular.ttf \
   https://github.com/google/fonts/raw/main/ofl/pressstart2p/PressStart2P-Regular.ttf
-curl -fL -o Bitme/Resources/Fonts/OFL.txt \
+curl -fL -o DrawBit/Resources/Fonts/OFL.txt \
   https://github.com/google/fonts/raw/main/ofl/pressstart2p/OFL.txt
 ```
 
 Expected: two files created. Verify:
 
 ```bash
-ls -la Bitme/Resources/Fonts/
+ls -la DrawBit/Resources/Fonts/
 ```
 
 The `.ttf` should be ~26 KB; `OFL.txt` ~4–5 KB.
 
 - [ ] **Step 3: Register the font in `project.yml`**
 
-Edit `project.yml` and add `INFOPLIST_KEY_UIAppFonts: "PressStart2P-Regular.ttf"` to the `Bitme` target's `settings.base` block, directly under the existing `INFOPLIST_KEY_CFBundleDisplayName: Bitme` line. The block should look like this afterwards:
+Edit `project.yml` and add `INFOPLIST_KEY_UIAppFonts: "PressStart2P-Regular.ttf"` to the `DrawBit` target's `settings.base` block, directly under the existing `INFOPLIST_KEY_CFBundleDisplayName: DrawBit` line. The block should look like this afterwards:
 
 ```yaml
-  Bitme:
+  DrawBit:
     type: application
     platform: iOS
     sources:
-      - path: Bitme
+      - path: DrawBit
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
-        PRODUCT_BUNDLE_IDENTIFIER: com.iamilias.bitme
+        PRODUCT_BUNDLE_IDENTIFIER: com.iamilias.drawbit
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortraitUpsideDown"
         INFOPLIST_KEY_UIRequiresFullScreen: "NO"
-        INFOPLIST_KEY_CFBundleDisplayName: Bitme
+        INFOPLIST_KEY_CFBundleDisplayName: DrawBit
         INFOPLIST_KEY_UIAppFonts: "PressStart2P-Regular.ttf"
 ```
 
@@ -81,25 +81,25 @@ Edit `project.yml` and add `INFOPLIST_KEY_UIAppFonts: "PressStart2P-Regular.ttf"
 Run:
 
 ```bash
-rm -rf Bitme.xcodeproj && xcodegen generate
+rm -rf DrawBit.xcodeproj && xcodegen generate
 ```
 
-Expected: output ending with `✅ Created project at /Users/iliasrafailidis/bitme/Bitme.xcodeproj`.
+Expected: output ending with `✅ Created project at /Users/iliasrafailidis/drawbit/DrawBit.xcodeproj`.
 
 - [ ] **Step 5: Write the failing font-registration test**
 
-Create `BitmeTests/Views/PixelFontTests.swift` with:
+Create `DrawBitTests/Views/PixelFontTests.swift` with:
 
 ```swift
 import XCTest
 import UIKit
-@testable import Bitme
+@testable import DrawBit
 
 final class PixelFontTests: XCTestCase {
     func testPressStart2PIsRegistered() {
         XCTAssertNotNil(
             UIFont(name: "PressStart2P-Regular", size: 12),
-            "PressStart2P-Regular must be registered via Info.plist's UIAppFonts. Check project.yml INFOPLIST_KEY_UIAppFonts and that Bitme/Resources/Fonts/PressStart2P-Regular.ttf exists."
+            "PressStart2P-Regular must be registered via Info.plist's UIAppFonts. Check project.yml INFOPLIST_KEY_UIAppFonts and that DrawBit/Resources/Fonts/PressStart2P-Regular.ttf exists."
         )
     }
 }
@@ -110,18 +110,18 @@ final class PixelFontTests: XCTestCase {
 Run:
 
 ```bash
-rm -rf Bitme.xcodeproj && xcodegen generate
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+rm -rf DrawBit.xcodeproj && xcodegen generate
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' \
-  test -only-testing:BitmeTests/PixelFontTests/testPressStart2PIsRegistered
+  test -only-testing:DrawBitTests/PixelFontTests/testPressStart2PIsRegistered
 ```
 
-Expected: `Test Suite 'PixelFontTests' passed`. If it fails: the `.ttf` is missing, the `UIAppFonts` key is not wired, or the PostScript name differs (confirm with `fc-query Bitme/Resources/Fonts/PressStart2P-Regular.ttf | grep postscriptname`; should be `PressStart2P-Regular`).
+Expected: `Test Suite 'PixelFontTests' passed`. If it fails: the `.ttf` is missing, the `UIAppFonts` key is not wired, or the PostScript name differs (confirm with `fc-query DrawBit/Resources/Fonts/PressStart2P-Regular.ttf | grep postscriptname`; should be `PressStart2P-Regular`).
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add Bitme/Resources/Fonts/ project.yml BitmeTests/Views/PixelFontTests.swift
+git add DrawBit/Resources/Fonts/ project.yml DrawBitTests/Views/PixelFontTests.swift
 git commit -m "feat(chrome): bundle Press Start 2P font
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -132,11 +132,11 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 2: Add `Font.pixel(_:)` helper
 
 **Files:**
-- Create: `Bitme/Views/Support/PixelFont.swift`
+- Create: `DrawBit/Views/Support/PixelFont.swift`
 
 - [ ] **Step 1: Create the helper**
 
-Create `Bitme/Views/Support/PixelFont.swift` with:
+Create `DrawBit/Views/Support/PixelFont.swift` with:
 
 ```swift
 import SwiftUI
@@ -155,8 +155,8 @@ extension Font {
 Run:
 
 ```bash
-rm -rf Bitme.xcodeproj && xcodegen generate
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+rm -rf DrawBit.xcodeproj && xcodegen generate
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' build
 ```
 
@@ -165,7 +165,7 @@ Expected: `** BUILD SUCCEEDED **`.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add Bitme/Views/Support/PixelFont.swift
+git add DrawBit/Views/Support/PixelFont.swift
 git commit -m "feat(chrome): add Font.pixel helper
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -176,11 +176,11 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 3: Create `LandingView`
 
 **Files:**
-- Create: `Bitme/Views/Landing/LandingView.swift`
+- Create: `DrawBit/Views/Landing/LandingView.swift`
 
 - [ ] **Step 1: Write the view**
 
-Create `Bitme/Views/Landing/LandingView.swift` with:
+Create `DrawBit/Views/Landing/LandingView.swift` with:
 
 ```swift
 import SwiftUI
@@ -227,8 +227,8 @@ Note: `pressStartVisible` starts `true`, toggles to `false` on appear, and `.ani
 Run:
 
 ```bash
-rm -rf Bitme.xcodeproj && xcodegen generate
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+rm -rf DrawBit.xcodeproj && xcodegen generate
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' build
 ```
 
@@ -237,7 +237,7 @@ Expected: `** BUILD SUCCEEDED **`.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add Bitme/Views/Landing/LandingView.swift
+git add DrawBit/Views/Landing/LandingView.swift
 git commit -m "feat(landing): add arcade-style landing view
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -248,15 +248,15 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 4: Add `RootView` and switch app root; preserve existing UI test
 
 **Files:**
-- Create: `Bitme/Views/Support/RootView.swift`
-- Modify: `Bitme/BitmeApp.swift`
-- Modify: `BitmeUITests/HappyPathTests/DrawAndSaveTest.swift`
+- Create: `DrawBit/Views/Support/RootView.swift`
+- Modify: `DrawBit/DrawBitApp.swift`
+- Modify: `DrawBitUITests/HappyPathTests/DrawAndSaveTest.swift`
 
 `RootView` owns the landing/gallery switch and passes an `onHome` closure down to `GalleryView` (wiring for that closure comes in Task 5). A launch argument `-UITest-skipLanding` starts on the gallery so existing UI tests don't need to tap past landing.
 
 - [ ] **Step 1: Create `RootView`**
 
-Create `Bitme/Views/Support/RootView.swift` with:
+Create `DrawBit/Views/Support/RootView.swift` with:
 
 ```swift
 import SwiftUI
@@ -282,16 +282,16 @@ struct RootView: View {
 }
 ```
 
-- [ ] **Step 2: Update `BitmeApp` to use `RootView`**
+- [ ] **Step 2: Update `DrawBitApp` to use `RootView`**
 
-Edit `Bitme/BitmeApp.swift`. Replace `GalleryView()` with `RootView()`. The file should end up as:
+Edit `DrawBit/DrawBitApp.swift`. Replace `GalleryView()` with `RootView()`. The file should end up as:
 
 ```swift
 import SwiftUI
 import SwiftData
 
 @main
-struct BitmeApp: App {
+struct DrawBitApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -306,7 +306,7 @@ struct BitmeApp: App {
 
 - [ ] **Step 3: Temporarily give `GalleryView` an `onHome` parameter**
 
-Edit `Bitme/Views/Gallery/GalleryView.swift`. Add a stored property at the top of the struct (above the `@Environment` line):
+Edit `DrawBit/Views/Gallery/GalleryView.swift`. Add a stored property at the top of the struct (above the `@Environment` line):
 
 ```swift
 struct GalleryView: View {
@@ -318,7 +318,7 @@ A default value of `{}` keeps the project compiling before Task 5 wires the home
 
 - [ ] **Step 4: Update the existing UI test to skip landing**
 
-Edit `BitmeUITests/HappyPathTests/DrawAndSaveTest.swift`. Change:
+Edit `DrawBitUITests/HappyPathTests/DrawAndSaveTest.swift`. Change:
 
 ```swift
 app.launchArguments = ["-UITest-reset"]
@@ -335,8 +335,8 @@ app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
 Run:
 
 ```bash
-rm -rf Bitme.xcodeproj && xcodegen generate
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+rm -rf DrawBit.xcodeproj && xcodegen generate
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' test
 ```
 
@@ -345,9 +345,9 @@ Expected: all existing unit and UI tests pass, including `DrawAndSaveTest.testCr
 - [ ] **Step 6: Commit**
 
 ```bash
-git add Bitme/Views/Support/RootView.swift Bitme/BitmeApp.swift \
-        Bitme/Views/Gallery/GalleryView.swift \
-        BitmeUITests/HappyPathTests/DrawAndSaveTest.swift
+git add DrawBit/Views/Support/RootView.swift DrawBit/DrawBitApp.swift \
+        DrawBit/Views/Gallery/GalleryView.swift \
+        DrawBitUITests/HappyPathTests/DrawAndSaveTest.swift
 git commit -m "feat(app): root-level landing/gallery switch
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -358,13 +358,13 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 5: Gallery — home button, BITME title, pixel-font empty state
 
 **Files:**
-- Modify: `Bitme/Views/Gallery/GalleryView.swift`
+- Modify: `DrawBit/Views/Gallery/GalleryView.swift`
 
 Replace the navigation title "Pieces" with an inline custom "BITME" in pixel font, add a leading home toolbar button, and replace `ContentUnavailableView` with a hand-rolled empty state so fonts can be overridden. Remove the default value from `onHome` now that `RootView` always supplies one.
 
 - [ ] **Step 1: Drop the default from `onHome`**
 
-In `Bitme/Views/Gallery/GalleryView.swift`, change:
+In `DrawBit/Views/Gallery/GalleryView.swift`, change:
 
 ```swift
 var onHome: () -> Void = {}
@@ -504,8 +504,8 @@ Note: `.navigationTitle("Pieces")` is deleted — a `ToolbarItem(placement: .pri
 Run:
 
 ```bash
-rm -rf Bitme.xcodeproj && xcodegen generate
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+rm -rf DrawBit.xcodeproj && xcodegen generate
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' build
 ```
 
@@ -516,9 +516,9 @@ Expected: `** BUILD SUCCEEDED **`.
 Run:
 
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' \
-  test -only-testing:BitmeUITests/DrawAndSaveTest
+  test -only-testing:DrawBitUITests/DrawAndSaveTest
 ```
 
 Expected: PASS. The test still launches with `-UITest-skipLanding`, so it lands on the gallery with the new toolbar. `NewButton` is still trailing; `HomeButton` is leading and unused by this test.
@@ -526,7 +526,7 @@ Expected: PASS. The test still launches with `-UITest-skipLanding`, so it lands 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add Bitme/Views/Gallery/GalleryView.swift
+git add DrawBit/Views/Gallery/GalleryView.swift
 git commit -m "feat(gallery): BITME title, home button, pixel-font empty state
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -537,11 +537,11 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 6: UI tests — landing → gallery → landing
 
 **Files:**
-- Create: `BitmeUITests/LandingScreenTests.swift`
+- Create: `DrawBitUITests/LandingScreenTests.swift`
 
 - [ ] **Step 1: Write the tests**
 
-Create `BitmeUITests/LandingScreenTests.swift` with:
+Create `DrawBitUITests/LandingScreenTests.swift` with:
 
 ```swift
 import XCTest
@@ -587,10 +587,10 @@ Note: we query `LandingStart` via `descendants(matching: .any)` because `.access
 Run:
 
 ```bash
-rm -rf Bitme.xcodeproj && xcodegen generate
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+rm -rf DrawBit.xcodeproj && xcodegen generate
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' \
-  test -only-testing:BitmeUITests/LandingScreenTests
+  test -only-testing:DrawBitUITests/LandingScreenTests
 ```
 
 Expected: both tests PASS.
@@ -598,7 +598,7 @@ Expected: both tests PASS.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add BitmeUITests/LandingScreenTests.swift
+git add DrawBitUITests/LandingScreenTests.swift
 git commit -m "test(ui): landing start + home-icon round trip
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -609,7 +609,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 7: Pixel font in `NewPieceSheet`
 
 **Files:**
-- Modify: `Bitme/Views/Gallery/NewPieceSheet.swift`
+- Modify: `DrawBit/Views/Gallery/NewPieceSheet.swift`
 
 - [ ] **Step 1: Apply the pixel font to size name and pixel count**
 
@@ -656,7 +656,7 @@ Note: `.navigationTitle("New piece")` stays as the VoiceOver label but is visual
 Run:
 
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' build
 ```
 
@@ -665,7 +665,7 @@ Expected: `** BUILD SUCCEEDED **`.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add Bitme/Views/Gallery/NewPieceSheet.swift
+git add DrawBit/Views/Gallery/NewPieceSheet.swift
 git commit -m "feat(chrome): pixel font on NewPieceSheet
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -676,7 +676,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 8: Pixel font in `EditorView` top bar
 
 **Files:**
-- Modify: `Bitme/Views/Editor/EditorView.swift`
+- Modify: `DrawBit/Views/Editor/EditorView.swift`
 
 - [ ] **Step 1: Apply the pixel font to top-bar chrome text**
 
@@ -718,9 +718,9 @@ Edit `EditorView.swift`. Replace the `topBar` property:
 Run:
 
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' \
-  test -only-testing:BitmeUITests/DrawAndSaveTest
+  test -only-testing:DrawBitUITests/DrawAndSaveTest
 ```
 
 Expected: PASS. The test looks up `app.buttons["Gallery"]` by accessibility identifier, which is still set.
@@ -728,7 +728,7 @@ Expected: PASS. The test looks up `app.buttons["Gallery"]` by accessibility iden
 - [ ] **Step 3: Commit**
 
 ```bash
-git add Bitme/Views/Editor/EditorView.swift
+git add DrawBit/Views/Editor/EditorView.swift
 git commit -m "feat(chrome): pixel font on editor top bar
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -739,7 +739,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 9: Pixel font in `ToolBar`
 
 **Files:**
-- Modify: `Bitme/Views/Editor/ToolBar.swift`
+- Modify: `DrawBit/Views/Editor/ToolBar.swift`
 
 - [ ] **Step 1: Apply the pixel font to tool name labels**
 
@@ -764,7 +764,7 @@ Note: 8pt Press Start 2P is very small but still readable; the toolbar is vertic
 Run:
 
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' build
 ```
 
@@ -773,7 +773,7 @@ Expected: `** BUILD SUCCEEDED **`.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add Bitme/Views/Editor/ToolBar.swift
+git add DrawBit/Views/Editor/ToolBar.swift
 git commit -m "feat(chrome): pixel font on editor toolbar
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -784,7 +784,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ## Task 10: Pixel font in `ShareSheet`
 
 **Files:**
-- Modify: `Bitme/Views/Editor/ShareSheet.swift`
+- Modify: `DrawBit/Views/Editor/ShareSheet.swift`
 
 - [ ] **Step 1: Apply the pixel font to form labels**
 
@@ -840,7 +840,7 @@ Note: `.navigationTitle("Export")` is retained for accessibility — the princip
 Run:
 
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' build
 ```
 
@@ -849,7 +849,7 @@ Expected: `** BUILD SUCCEEDED **`.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add Bitme/Views/Editor/ShareSheet.swift
+git add DrawBit/Views/Editor/ShareSheet.swift
 git commit -m "feat(chrome): pixel font on share sheet
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
@@ -866,7 +866,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 Run:
 
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme \
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit \
   -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)' test
 ```
 
@@ -877,7 +877,7 @@ Expected: all unit tests and all UI tests (`DrawAndSaveTest`, `LandingScreenTest
 Run:
 
 ```bash
-xcodebuild -project Bitme.xcodeproj -scheme Bitme -configuration Release \
+xcodebuild -project DrawBit.xcodeproj -scheme DrawBit -configuration Release \
   -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
