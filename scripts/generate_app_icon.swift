@@ -8,7 +8,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 // Usage: swift scripts/generate_app_icon.swift <output.png> [--dark]
-// Renders a 1024x1024 "BITME" wordmark using Press Start 2P.
+// Renders a 1024x1024 "DRAWBIT" wordmark using Press Start 2P.
 
 func usage() -> Never {
     FileHandle.standardError.write(
@@ -34,7 +34,7 @@ guard let provider = CGDataProvider(data: fontData as CFData),
 }
 
 let canvas: CGFloat = 1024
-let text = "BITME" as NSString
+let text = "DRAWBIT" as NSString
 let targetWidthRatio: CGFloat = 0.80
 
 let probeSize: CGFloat = 100

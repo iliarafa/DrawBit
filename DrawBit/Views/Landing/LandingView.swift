@@ -9,7 +9,7 @@ struct LandingView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             VStack(spacing: 48) {
-                Text("BITME")
+                Text("DRAWBIT")
                     .font(.pixel(72))
                     .foregroundStyle(.white)
                 Text("PRESS START")

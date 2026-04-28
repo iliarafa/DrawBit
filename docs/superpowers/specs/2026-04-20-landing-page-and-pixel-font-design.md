@@ -9,7 +9,7 @@ Add an arcade-style landing page as the app's root screen, and apply Press Start
 
 ## Motivation
 
-The app currently opens directly into the piece gallery, with no moment of product identity. A landing page with the "BITME" wordmark establishes character on cold launch and gives returning users a familiar "home" they can get back to from the gallery. The pixel font reinforces the app's domain (pixel art) in the chrome itself.
+The app currently opens directly into the piece gallery, with no moment of product identity. A landing page with the "DRAWBIT" wordmark establishes character on cold launch and gives returning users a familiar "home" they can get back to from the gallery. The pixel font reinforces the app's domain (pixel art) in the chrome itself.
 
 ## Non-goals
 
@@ -43,7 +43,7 @@ New file `DrawBit/Views/Landing/LandingView.swift`.
 
 - Full-screen black background (`Color.black.ignoresSafeArea()`).
 - Status bar hidden.
-- "BITME" wordmark, centered, `Font.pixel(72)`, white.
+- "DRAWBIT" wordmark, centered, `Font.pixel(72)`, white.
 - Below the title, "PRESS START" at `Font.pixel(18)`, white, blinking: opacity alternates 1.0 ↔ 0.0 with `withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true))`.
 - Whole screen is a tap target (`.contentShape(Rectangle()).onTapGesture`) — no visible button chrome. Classic "insert coin" pattern.
 - `accessibilityIdentifier("LandingStart")` and `accessibilityLabel("Start")` on the tap target for VoiceOver and UI tests.
@@ -69,9 +69,9 @@ New file `DrawBit/Views/Landing/LandingView.swift`.
 
 ## Font-application scope
 
-- **LandingView**: "BITME" at 72pt, "PRESS START" at 18pt.
+- **LandingView**: "DRAWBIT" at 72pt, "PRESS START" at 18pt.
 - **GalleryView**:
-  - Replace `.navigationTitle("Pieces")` with a custom inline title "BITME" at `Font.pixel(20)`.
+  - Replace `.navigationTitle("Pieces")` with a custom inline title "DRAWBIT" at `Font.pixel(20)`.
   - Leading toolbar item: `Button { screen = .landing }` with SF Symbol `house.fill`, `accessibilityIdentifier("HomeButton")`.
   - `ContentUnavailableView` replaced by a hand-rolled empty state: "NO PIECES YET" at 16pt + "Tap + New to create your first canvas." at 11pt. (`ContentUnavailableView` doesn't expose its internal `Text`s for font overrides.)
   - `PieceThumbnailView` name label at `Font.pixel(10)`.

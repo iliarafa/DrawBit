@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an arcade-style landing screen (black bg, "BITME" title, blinking "PRESS START") as the app's root, plus apply Press Start 2P across chrome text (titles, buttons, labels). Alerts and text-field input stay in the system font.
+**Goal:** Add an arcade-style landing screen (black bg, "DRAWBIT" title, blinking "PRESS START") as the app's root, plus apply Press Start 2P across chrome text (titles, buttons, labels). Alerts and text-field input stay in the system font.
 
 **Architecture:** A new `RootView` holds `@State var screen: Screen` and switches between `LandingView` and `GalleryView`. The gallery's `NavigationStack` (and its Editor pushes / sheets / alerts) stays intact. Press Start 2P is bundled as a `.ttf`, registered via generated Info.plist (`INFOPLIST_KEY_UIAppFonts` in `project.yml`), and consumed through a `Font.pixel(_:)` helper applied at each call site. No global appearance swizzling.
 
@@ -194,7 +194,7 @@ struct LandingView: View {
         ZStack {
             Color.black.ignoresSafeArea()
             VStack(spacing: 48) {
-                Text("BITME")
+                Text("DRAWBIT")
                     .font(.pixel(72))
                     .foregroundStyle(.white)
                 Text("PRESS START")
@@ -355,12 +355,12 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Task 5: Gallery — home button, BITME title, pixel-font empty state
+## Task 5: Gallery — home button, DRAWBIT title, pixel-font empty state
 
 **Files:**
 - Modify: `DrawBit/Views/Gallery/GalleryView.swift`
 
-Replace the navigation title "Pieces" with an inline custom "BITME" in pixel font, add a leading home toolbar button, and replace `ContentUnavailableView` with a hand-rolled empty state so fonts can be overridden. Remove the default value from `onHome` now that `RootView` always supplies one.
+Replace the navigation title "Pieces" with an inline custom "DRAWBIT" in pixel font, add a leading home toolbar button, and replace `ContentUnavailableView` with a hand-rolled empty state so fonts can be overridden. Remove the default value from `onHome` now that `RootView` always supplies one.
 
 - [ ] **Step 1: Drop the default from `onHome`**
 
@@ -421,7 +421,7 @@ Edit the `body` to match this structure (only the changed pieces are shown; the 
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("BITME")
+                    Text("DRAWBIT")
                         .font(.pixel(20))
                         .foregroundStyle(.primary)
                 }
@@ -527,7 +527,7 @@ Expected: PASS. The test still launches with `-UITest-skipLanding`, so it lands 
 
 ```bash
 git add DrawBit/Views/Gallery/GalleryView.swift
-git commit -m "feat(gallery): BITME title, home button, pixel-font empty state
+git commit -m "feat(gallery): DRAWBIT title, home button, pixel-font empty state
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 ```
