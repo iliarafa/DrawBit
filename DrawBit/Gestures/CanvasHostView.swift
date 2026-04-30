@@ -226,6 +226,16 @@ final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
     private var tracked: [UITouch] = []
     private var previous: (CGPoint, CGPoint)?
 
+    override init(target: Any?, action: Selector?) {
+        super.init(target: target, action: action)
+        // Single-touch draws must reach the view immediately. Without this, the view's
+        // touchesEnded is held back while we sit in .possible, so onStrokeEnd never fires
+        // and the undo button stays disabled. cancelsTouchesInView (default true) still
+        // cancels the stroke when we recognize a 2-finger gesture.
+        delaysTouchesBegan = false
+        delaysTouchesEnded = false
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
         super.touchesBegan(touches, with: event)
         for t in touches where tracked.count < 2 { tracked.append(t) }
@@ -272,7 +282,11 @@ final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
         for t in touches { tracked.removeAll { $0 === t } }
         if tracked.count < 2 {
             previous = nil
-            if state == .began || state == .changed { state = .ended }
+            switch state {
+            case .began, .changed: state = .ended
+            case .possible:        state = .failed
+            default:               break
+            }
         }
     }
 
@@ -281,7 +295,11 @@ final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
         for t in touches { tracked.removeAll { $0 === t } }
         if tracked.count < 2 {
             previous = nil
-            if state == .began || state == .changed { state = .cancelled }
+            switch state {
+            case .began, .changed: state = .cancelled
+            case .possible:        state = .failed
+            default:               break
+            }
         }
     }
 
