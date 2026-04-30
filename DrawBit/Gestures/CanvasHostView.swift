@@ -141,19 +141,38 @@ final class CanvasInputView: UIView {
 
     // MARK: - Two-finger transform gestures
 
+    private var gestureStartTranslation: CGSize?
+    private var gestureStartScale: CGFloat?
+    private var gestureStartRotation: CGFloat?
+
     @objc private func handleTransform(_ g: TwoFingerTransformGestureRecognizer) {
         guard let state else { return }
-        if g.state == .began { cancelStrokeIfAny() }
-        let dt = g.translationDelta
-        state.translation = CGSize(
-            width: state.translation.width + dt.x,
-            height: state.translation.height + dt.y
-        )
-        state.scale = max(0.25, min(40, state.scale * g.scaleDelta))
-        var next = state.rotation + g.rotationDelta
-        // Snap to 0 within ~4° to make straightening back up easy.
-        if abs(next) < 0.0698 { next = 0 }
-        state.rotation = next
+        switch g.state {
+        case .began:
+            cancelStrokeIfAny()
+            gestureStartTranslation = state.translation
+            gestureStartScale = state.scale
+            gestureStartRotation = state.rotation
+        case .changed:
+            guard let t0 = gestureStartTranslation,
+                  let s0 = gestureStartScale,
+                  let r0 = gestureStartRotation else { return }
+            state.translation = CGSize(
+                width: t0.width + g.cumulativeTranslation.x,
+                height: t0.height + g.cumulativeTranslation.y
+            )
+            state.scale = max(0.25, min(40, s0 * g.cumulativeScale))
+            var next = r0 + g.cumulativeRotation
+            // Snap to 0 within ~4° to make straightening back up easy.
+            if abs(next) < 0.0698 { next = 0 }
+            state.rotation = next
+        case .ended, .cancelled, .failed:
+            gestureStartTranslation = nil
+            gestureStartScale = nil
+            gestureStartRotation = nil
+        default:
+            break
+        }
     }
 
     @objc private func handleReset(_ g: UITapGestureRecognizer) {
@@ -215,16 +234,25 @@ extension CanvasInputView: UIGestureRecognizerDelegate {
 /// Custom two-finger transform recognizer. Replaces the trio of UIPanGestureRecognizer +
 /// UIPinchGestureRecognizer + UIRotationGestureRecognizer because each of those has its own
 /// internal activation threshold and they race for the touches, producing inconsistent
-/// "sometimes responds, sometimes doesn't" behavior. This recognizer enters `.began` the moment
-/// the second finger lands and exposes per-frame deltas — pan, pinch, and rotate are always in
-/// lockstep with the fingers. Same approach Procreate uses.
+/// "sometimes responds, sometimes doesn't" behavior. This recognizer enters `.began` the
+/// moment the second finger lands so all three transforms respond from frame one.
+///
+/// Exposes cumulative values *relative to the gesture's start*, not per-frame deltas. That's
+/// what kills the zoom-leaking-into-rotation drift: hand wobble can't compound across frames
+/// when each frame is computed against a fixed baseline.
 final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
-    private(set) var translationDelta: CGPoint = .zero
-    private(set) var scaleDelta: CGFloat = 1.0
-    private(set) var rotationDelta: CGFloat = 0.0
+    /// Distance ratio relative to baseline finger spacing. 1.0 means no zoom from start.
+    private(set) var cumulativeScale: CGFloat = 1.0
+    /// Angle in radians relative to baseline finger angle. Normalized to (-π, π].
+    private(set) var cumulativeRotation: CGFloat = 0.0
+    /// Midpoint shift in view points relative to baseline finger midpoint.
+    private(set) var cumulativeTranslation: CGPoint = .zero
 
     private var tracked: [UITouch] = []
-    private var previous: (CGPoint, CGPoint)?
+    private var baselineDistance: CGFloat = 1
+    private var baselineAngle: CGFloat = 0
+    private var baselineMidpoint: CGPoint = .zero
+    private var hasBaseline = false
 
     override init(target: Any?, action: Selector?) {
         super.init(target: target, action: action)
@@ -239,41 +267,40 @@ final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
         super.touchesBegan(touches, with: event)
         for t in touches where tracked.count < 2 { tracked.append(t) }
-        if tracked.count == 2, previous == nil, let v = view {
-            previous = (tracked[0].location(in: v), tracked[1].location(in: v))
-            translationDelta = .zero
-            scaleDelta = 1.0
-            rotationDelta = 0.0
+        if tracked.count == 2, !hasBaseline, let v = view {
+            let p0 = tracked[0].location(in: v)
+            let p1 = tracked[1].location(in: v)
+            baselineDistance = max(hypot(p1.x - p0.x, p1.y - p0.y), 1)
+            baselineAngle = atan2(p1.y - p0.y, p1.x - p0.x)
+            baselineMidpoint = CGPoint(x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2)
+            hasBaseline = true
+            cumulativeScale = 1.0
+            cumulativeRotation = 0.0
+            cumulativeTranslation = .zero
             state = .began
         }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
         super.touchesMoved(touches, with: event)
-        guard tracked.count == 2, let prev = previous, let v = view else { return }
-        let cur0 = tracked[0].location(in: v)
-        let cur1 = tracked[1].location(in: v)
+        guard tracked.count == 2, hasBaseline, let v = view else { return }
+        let p0 = tracked[0].location(in: v)
+        let p1 = tracked[1].location(in: v)
 
-        let prevMid = CGPoint(x: (prev.0.x + prev.1.x) / 2, y: (prev.0.y + prev.1.y) / 2)
-        let curMid  = CGPoint(x: (cur0.x + cur1.x) / 2, y: (cur0.y + cur1.y) / 2)
+        let curDist = hypot(p1.x - p0.x, p1.y - p0.y)
+        cumulativeScale = curDist / baselineDistance
 
-        let prevDx = prev.1.x - prev.0.x
-        let prevDy = prev.1.y - prev.0.y
-        let curDx  = cur1.x - cur0.x
-        let curDy  = cur1.y - cur0.y
-
-        let prevDist = hypot(prevDx, prevDy)
-        let curDist  = hypot(curDx, curDy)
-
-        translationDelta = CGPoint(x: curMid.x - prevMid.x, y: curMid.y - prevMid.y)
-        scaleDelta = prevDist > 0 ? curDist / prevDist : 1.0
-
-        var dAngle = atan2(curDy, curDx) - atan2(prevDy, prevDx)
+        var dAngle = atan2(p1.y - p0.y, p1.x - p0.x) - baselineAngle
         if dAngle >  .pi { dAngle -= 2 * .pi }
         if dAngle <= -.pi { dAngle += 2 * .pi }
-        rotationDelta = dAngle
+        cumulativeRotation = dAngle
 
-        previous = (cur0, cur1)
+        let curMid = CGPoint(x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2)
+        cumulativeTranslation = CGPoint(
+            x: curMid.x - baselineMidpoint.x,
+            y: curMid.y - baselineMidpoint.y
+        )
+
         state = .changed
     }
 
@@ -281,7 +308,6 @@ final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
         super.touchesEnded(touches, with: event)
         for t in touches { tracked.removeAll { $0 === t } }
         if tracked.count < 2 {
-            previous = nil
             switch state {
             case .began, .changed: state = .ended
             case .possible:        state = .failed
@@ -294,7 +320,6 @@ final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
         super.touchesCancelled(touches, with: event)
         for t in touches { tracked.removeAll { $0 === t } }
         if tracked.count < 2 {
-            previous = nil
             switch state {
             case .began, .changed: state = .cancelled
             case .possible:        state = .failed
@@ -306,9 +331,9 @@ final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
     override func reset() {
         super.reset()
         tracked.removeAll()
-        previous = nil
-        translationDelta = .zero
-        scaleDelta = 1.0
-        rotationDelta = 0.0
+        hasBaseline = false
+        cumulativeScale = 1.0
+        cumulativeRotation = 0.0
+        cumulativeTranslation = .zero
     }
 }
