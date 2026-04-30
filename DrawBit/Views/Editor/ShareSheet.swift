@@ -5,6 +5,7 @@ struct ShareSheet: View {
     let piece: Piece
     @Environment(\.dismiss) private var dismiss
     @State private var selectedScale: Int
+    @State private var isExporting = false
 
     init(piece: Piece) {
         self.piece = piece
@@ -33,16 +34,24 @@ struct ShareSheet: View {
                     Spacer(minLength: 0)
 
                     Button {
-                        share()
+                        Task { await share() }
                     } label: {
-                        Text("SHARE")
-                            .font(.pixel(14))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Capsule().fill(Color.white.opacity(0.12)))
-                            .overlay(Capsule().stroke(Color.white.opacity(0.4), lineWidth: 1))
+                        HStack(spacing: 8) {
+                            if isExporting {
+                                ProgressView().tint(.white)
+                                Text("EXPORTING…").font(.pixel(14))
+                            } else {
+                                Text("SHARE").font(.pixel(14))
+                            }
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Capsule().fill(Color.white.opacity(0.12)))
+                        .overlay(Capsule().stroke(Color.white.opacity(0.4), lineWidth: 1))
+                        .opacity(isExporting ? 0.6 : 1)
                     }
+                    .disabled(isExporting)
 
                     Spacer(minLength: 0)
                 }
@@ -113,13 +122,29 @@ struct ShareSheet: View {
         }
     }
 
-    private func share() {
+    private func share() async {
+        guard !isExporting else { return }
+        isExporting = true
+        defer { isExporting = false }
+
         let grid = PixelGrid(data: piece.pixels, size: piece.size)
-        guard let data = PNGExporter.export(grid: grid, scale: selectedScale) else { return }
-        let filename = "\(piece.effectiveName)-\(selectedScale)x.png".replacingOccurrences(of: "/", with: "-")
+        let scale = selectedScale
+        let filename = "\(piece.effectiveName)-\(scale)x.png".replacingOccurrences(of: "/", with: "-")
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-        try? data.write(to: url)
-        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+
+        let writtenURL: URL? = await Task.detached(priority: .userInitiated) {
+            guard let data = PNGExporter.export(grid: grid, scale: scale) else { return nil }
+            do {
+                try data.write(to: url)
+                return url
+            } catch {
+                return nil
+            }
+        }.value
+
+        guard let writtenURL else { return }
+
+        let vc = UIActivityViewController(activityItems: [writtenURL], applicationActivities: nil)
         vc.excludedActivityTypes = [
             UIActivity.ActivityType("com.apple.reminders.RemindersEditorExtension"),
             UIActivity.ActivityType("com.apple.reminders.sharingextension"),
