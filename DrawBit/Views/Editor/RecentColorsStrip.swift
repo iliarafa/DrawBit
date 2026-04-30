@@ -26,7 +26,11 @@ struct RecentColorsStrip: View {
                     hex: hex,
                     isSelected: RGBA(hex: hex) == selectedColor,
                     action: {
-                        if let c = RGBA(hex: hex) { selectedColor = c }
+                        if RGBA(hex: hex) == selectedColor {
+                            onRequestColorPicker()
+                        } else if let c = RGBA(hex: hex) {
+                            selectedColor = c
+                        }
                     }
                 )
             }
