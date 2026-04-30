@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UIKit.UIGestureRecognizerSubclass
 
 struct CanvasHostView: UIViewRepresentable {
     @Bindable var state: EditorState
@@ -52,19 +53,13 @@ final class CanvasInputView: UIView {
 
     private func installRecognizersIfNeeded() {
         guard gestureRecognizers?.isEmpty ?? true else { return }
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
-        pan.minimumNumberOfTouches = 2
-        pan.maximumNumberOfTouches = 2
-        addGestureRecognizer(pan)
-        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
-        addGestureRecognizer(pinch)
-        let rot = UIRotationGestureRecognizer(target: self, action: #selector(handleRotation(_:)))
-        addGestureRecognizer(rot)
+        let xform = TwoFingerTransformGestureRecognizer(target: self, action: #selector(handleTransform(_:)))
+        xform.delegate = self
+        addGestureRecognizer(xform)
         let reset = UITapGestureRecognizer(target: self, action: #selector(handleReset(_:)))
         reset.numberOfTapsRequired = 2
         reset.numberOfTouchesRequired = 2
         addGestureRecognizer(reset)
-        [pan, pinch, rot].forEach { $0.delegate = self }
     }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -146,32 +141,19 @@ final class CanvasInputView: UIView {
 
     // MARK: - Two-finger transform gestures
 
-    @objc private func handlePan(_ g: UIPanGestureRecognizer) {
+    @objc private func handleTransform(_ g: TwoFingerTransformGestureRecognizer) {
         guard let state else { return }
         if g.state == .began { cancelStrokeIfAny() }
-        let t = g.translation(in: self)
+        let dt = g.translationDelta
         state.translation = CGSize(
-            width: state.translation.width + t.x,
-            height: state.translation.height + t.y
+            width: state.translation.width + dt.x,
+            height: state.translation.height + dt.y
         )
-        g.setTranslation(.zero, in: self)
-    }
-
-    @objc private func handlePinch(_ g: UIPinchGestureRecognizer) {
-        guard let state else { return }
-        if g.state == .began { cancelStrokeIfAny() }
-        state.scale = max(0.25, min(40, state.scale * g.scale))
-        g.scale = 1
-    }
-
-    @objc private func handleRotation(_ g: UIRotationGestureRecognizer) {
-        guard let state else { return }
-        if g.state == .began { cancelStrokeIfAny() }
-        var next = state.rotation + g.rotation
+        state.scale = max(0.25, min(40, state.scale * g.scaleDelta))
+        var next = state.rotation + g.rotationDelta
         // Snap to 0 within ~4° to make straightening back up easy.
         if abs(next) < 0.0698 { next = 0 }
         state.rotation = next
-        g.rotation = 0
     }
 
     @objc private func handleReset(_ g: UITapGestureRecognizer) {
@@ -227,5 +209,88 @@ extension CanvasInputView: UIGestureRecognizerDelegate {
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
                            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         true
+    }
+}
+
+/// Custom two-finger transform recognizer. Replaces the trio of UIPanGestureRecognizer +
+/// UIPinchGestureRecognizer + UIRotationGestureRecognizer because each of those has its own
+/// internal activation threshold and they race for the touches, producing inconsistent
+/// "sometimes responds, sometimes doesn't" behavior. This recognizer enters `.began` the moment
+/// the second finger lands and exposes per-frame deltas — pan, pinch, and rotate are always in
+/// lockstep with the fingers. Same approach Procreate uses.
+final class TwoFingerTransformGestureRecognizer: UIGestureRecognizer {
+    private(set) var translationDelta: CGPoint = .zero
+    private(set) var scaleDelta: CGFloat = 1.0
+    private(set) var rotationDelta: CGFloat = 0.0
+
+    private var tracked: [UITouch] = []
+    private var previous: (CGPoint, CGPoint)?
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesBegan(touches, with: event)
+        for t in touches where tracked.count < 2 { tracked.append(t) }
+        if tracked.count == 2, previous == nil, let v = view {
+            previous = (tracked[0].location(in: v), tracked[1].location(in: v))
+            translationDelta = .zero
+            scaleDelta = 1.0
+            rotationDelta = 0.0
+            state = .began
+        }
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesMoved(touches, with: event)
+        guard tracked.count == 2, let prev = previous, let v = view else { return }
+        let cur0 = tracked[0].location(in: v)
+        let cur1 = tracked[1].location(in: v)
+
+        let prevMid = CGPoint(x: (prev.0.x + prev.1.x) / 2, y: (prev.0.y + prev.1.y) / 2)
+        let curMid  = CGPoint(x: (cur0.x + cur1.x) / 2, y: (cur0.y + cur1.y) / 2)
+
+        let prevDx = prev.1.x - prev.0.x
+        let prevDy = prev.1.y - prev.0.y
+        let curDx  = cur1.x - cur0.x
+        let curDy  = cur1.y - cur0.y
+
+        let prevDist = hypot(prevDx, prevDy)
+        let curDist  = hypot(curDx, curDy)
+
+        translationDelta = CGPoint(x: curMid.x - prevMid.x, y: curMid.y - prevMid.y)
+        scaleDelta = prevDist > 0 ? curDist / prevDist : 1.0
+
+        var dAngle = atan2(curDy, curDx) - atan2(prevDy, prevDx)
+        if dAngle >  .pi { dAngle -= 2 * .pi }
+        if dAngle <= -.pi { dAngle += 2 * .pi }
+        rotationDelta = dAngle
+
+        previous = (cur0, cur1)
+        state = .changed
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesEnded(touches, with: event)
+        for t in touches { tracked.removeAll { $0 === t } }
+        if tracked.count < 2 {
+            previous = nil
+            if state == .began || state == .changed { state = .ended }
+        }
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesCancelled(touches, with: event)
+        for t in touches { tracked.removeAll { $0 === t } }
+        if tracked.count < 2 {
+            previous = nil
+            if state == .began || state == .changed { state = .cancelled }
+        }
+    }
+
+    override func reset() {
+        super.reset()
+        tracked.removeAll()
+        previous = nil
+        translationDelta = .zero
+        scaleDelta = 1.0
+        rotationDelta = 0.0
     }
 }
