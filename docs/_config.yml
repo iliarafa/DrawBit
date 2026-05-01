@@ -1,0 +1,4 @@
+exclude:
+  - superpowers
+  - privacy.md
+  - support.md

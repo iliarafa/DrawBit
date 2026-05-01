@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DrawBit — Pixel art for iPad</title>
+  <meta name="description" content="A pixel-art app for iPad. Fixed grids, hard pixel edges, no cloud. One-time purchase.">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: #000;
+      color: #ccc;
+      font-family: "Press Start 2P", monospace;
+      font-size: 10px;
+      line-height: 2.2;
+      min-height: 100vh;
+    }
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      text-align: center;
+    }
+    h1 {
+      color: #fff;
+      font-size: 48px;
+      letter-spacing: 4px;
+      margin-bottom: 24px;
+      line-height: 1.2;
+    }
+    .tagline {
+      color: #888;
+      font-size: 10px;
+      margin-bottom: 64px;
+    }
+    .blink {
+      color: #fff;
+      font-size: 14px;
+      text-decoration: none;
+      animation: blink 1.2s steps(2, start) infinite;
+    }
+    .blink:hover { animation: none; }
+    @keyframes blink {
+      to { visibility: hidden; }
+    }
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+    h2 {
+      color: #fff;
+      font-size: 12px;
+      margin: 48px 0 16px;
+      border-bottom: 1px dashed #333;
+      padding-bottom: 8px;
+    }
+    h2:first-child { margin-top: 0; }
+    p { margin-bottom: 16px; }
+    ul {
+      margin: 0 0 16px 20px;
+      list-style: none;
+    }
+    ul li {
+      margin-bottom: 12px;
+    }
+    ul li::before {
+      content: "▪ ";
+      color: #555;
+    }
+    a { color: #888; }
+    a:hover { color: #fff; }
+    footer {
+      text-align: center;
+      padding: 40px 24px 64px;
+      color: #555;
+      font-size: 8px;
+    }
+    footer a { color: #888; text-decoration: none; }
+    @media (max-width: 480px) {
+      h1 { font-size: 32px; letter-spacing: 2px; }
+      .blink { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<section class="hero">
+  <h1>DRAWBIT</h1>
+  <p class="tagline">PIXEL ART FOR IPAD</p>
+  <a href="#about" class="blink">PRESS START</a>
+</section>
+
+<main id="about">
+  <h2>WHAT IT IS</h2>
+  <p>DrawBit is a focused pixel-art app for iPad. Pick a fixed grid, draw on it with the Apple Pencil or your finger, and export a sharp PNG.</p>
+
+  <h2>HOW IT FEELS</h2>
+  <ul>
+    <li>Hard pixel edges at any zoom — nearest-neighbor everywhere</li>
+    <li>Two-finger pan, zoom, and rotate the canvas</li>
+    <li>Pencil, eraser, fill, eyedropper, and a swatch palette</li>
+    <li>Undo and redo as far back as the session goes</li>
+    <li>Export PNGs at 1×, 2×, 4×, 8×, or 16× scale</li>
+  </ul>
+
+  <h2>YOUR DATA</h2>
+  <ul>
+    <li>Everything saves locally on your iPad</li>
+    <li>No accounts, no cloud, no analytics, no ads</li>
+    <li>One-time purchase. No subscriptions, no in-app purchases</li>
+  </ul>
+
+  <h2>STATUS</h2>
+  <p>Coming to the App Store.</p>
+</main>
+
+<footer>
+  <a href="privacy.html">Privacy</a> · <a href="support.html">Support</a> · <a href="https://github.com/iliarafa/DrawBit">GitHub</a>
+</footer>
+
+</body>
+</html>
