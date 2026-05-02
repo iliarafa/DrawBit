@@ -1,13 +1,13 @@
 import CoreGraphics
 import Foundation
 
-/// Wraps a PixelGrid's raw RGBA bytes in a CGImage. Uses sRGB explicitly (NEVER deviceRGB) so
+/// Wraps a CompositedBuffer's raw RGBA bytes in a CGImage. Uses sRGB explicitly (NEVER deviceRGB) so
 /// rendering and export are consistent across iPad models including P3 displays.
-func pixelsToCGImage(_ grid: PixelGrid) -> CGImage? {
-    let dim = grid.dimension
+func bufferToCGImage(_ buffer: CompositedBuffer) -> CGImage? {
+    let dim = buffer.size.dimension
     let bytesPerRow = dim * 4
 
-    guard let provider = CGDataProvider(data: grid.data as CFData) else { return nil }
+    guard let provider = CGDataProvider(data: buffer.data as CFData) else { return nil }
     guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
     let bitmapInfo: CGBitmapInfo = [
         CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
