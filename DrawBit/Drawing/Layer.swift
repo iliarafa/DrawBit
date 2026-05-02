@@ -10,7 +10,7 @@ struct Layer: Equatable {
     init(id: UUID = UUID(), name: String, pixels: Data, isVisible: Bool = true, isLocked: Bool = false) {
         self.id = id
         self.name = name
-        self.pixels = pixels
+        self.pixels = Data(pixels)
         self.isVisible = isVisible
         self.isLocked = isLocked
     }

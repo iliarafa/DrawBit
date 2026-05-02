@@ -20,4 +20,13 @@ final class LayerTests: XCTestCase {
         XCTAssertNotEqual(a, Layer(id: id, name: "Layer 1", pixels: pixels, isVisible: false, isLocked: false))
         XCTAssertNotEqual(a, Layer(id: id, name: "Layer 1", pixels: pixels, isVisible: true, isLocked: true))
     }
+
+    func testSlicedPixelsDataIsNormalized() {
+        let raw = Data(repeating: 0xFF, count: CanvasSize.s32.byteCount + 4)
+        let sliced = raw[4...] // startIndex is 4, not 0
+        let layer = Layer(name: "L", pixels: sliced)
+        XCTAssertEqual(layer.pixels.startIndex, 0)
+        XCTAssertEqual(layer.pixels.count, CanvasSize.s32.byteCount)
+        XCTAssertEqual(layer.pixels.first, 0xFF)
+    }
 }
