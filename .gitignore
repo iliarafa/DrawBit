@@ -1,6 +1,9 @@
 # Superpowers brainstorming artifacts
 .superpowers/
 
+# Git worktrees (isolated branch checkouts)
+.worktrees/
+
 # Xcode
 *.xcuserstate
 *.xcuserdatad/
