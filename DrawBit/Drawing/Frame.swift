@@ -8,6 +8,8 @@ struct Frame: Equatable {
         precondition(!layers.isEmpty, "Frame must have at least one layer")
         precondition(layers.contains(where: { $0.id == activeLayerID }),
                      "activeLayerID must reference one of the layers")
+        precondition(layers.dropFirst().allSatisfy { $0.pixels.count == layers[0].pixels.count },
+                     "All layers must have equal pixel byte count")
         self.layers = layers
         self.activeLayerID = activeLayerID
     }

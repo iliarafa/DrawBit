@@ -84,4 +84,20 @@ final class FrameTests: XCTestCase {
         XCTAssertEqual(frame.layers[0].pixels[0], 0x00, "L1 untouched")
         XCTAssertEqual(frame.layers[1].pixels[0], 0xFF, "L2 mutated")
     }
+
+    func testDuplicateActiveLayerCopiesAttributesAndSetsActive() {
+        var l1 = Layer(name: "Art", pixels: Data(count: CanvasSize.s32.byteCount), isVisible: false, isLocked: true)
+        l1.pixels[0] = 0xAB
+        var frame = Frame(layers: [l1], activeLayerID: l1.id)
+        let dup = frame.duplicateActiveLayer()
+
+        XCTAssertEqual(frame.layers.count, 2)
+        XCTAssertEqual(dup.name, "Art copy")
+        XCTAssertEqual(dup.isVisible, false, "duplicate inherits visibility flag")
+        XCTAssertEqual(dup.isLocked, true, "duplicate inherits lock flag")
+        XCTAssertEqual(dup.pixels[0], 0xAB, "duplicate copies pixel bytes")
+        XCTAssertEqual(frame.activeLayerID, dup.id, "duplicate becomes the active layer")
+        XCTAssertEqual(frame.layers[1].id, dup.id, "duplicate is inserted above the original")
+        XCTAssertNotEqual(dup.id, l1.id, "duplicate has its own UUID")
+    }
 }
