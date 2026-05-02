@@ -128,6 +128,10 @@ enum FrameCodec {
         guard layers.contains(where: { $0.id == activeID }) else {
             throw DecodeError.malformed("activeID does not match any layer")
         }
+        let expectedByteCount = layers[0].pixels.count
+        guard layers.dropFirst().allSatisfy({ $0.pixels.count == expectedByteCount }) else {
+            throw DecodeError.malformed("inconsistent pixel byte counts across layers")
+        }
         return Frame(layers: layers, activeLayerID: activeID)
     }
 
