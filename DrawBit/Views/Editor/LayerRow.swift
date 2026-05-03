@@ -1,0 +1,75 @@
+import SwiftUI
+
+struct LayerRow: View {
+    let layer: Layer
+    let size: CanvasSize
+    let isActive: Bool
+    let onTap: () -> Void
+    let onRename: (String) -> Void
+
+    @State private var isEditingName = false
+    @State private var draftName = ""
+
+    var body: some View {
+        HStack(spacing: 10) {
+            thumbnail
+            if isEditingName {
+                TextField("", text: $draftName)
+                    .font(.pixel(11))
+                    .foregroundStyle(.white)
+                    .onSubmit {
+                        onRename(String(draftName.prefix(32)))
+                        isEditingName = false
+                    }
+            } else {
+                Text(layer.name)
+                    .font(.pixel(11))
+                    .foregroundStyle(.white)
+                    .onLongPressGesture {
+                        draftName = layer.name
+                        isEditingName = true
+                    }
+            }
+            Spacer()
+            Image(systemName: layer.isVisible ? "eye" : "eye.slash")
+                .foregroundStyle(.white.opacity(0.55))
+            Image(systemName: layer.isLocked  ? "lock.fill" : "lock.open")
+                .foregroundStyle(.white.opacity(0.55))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(isActive ? Color.blue.opacity(0.30) : Color.clear)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap() }
+    }
+
+    private var thumbnail: some View {
+        Group {
+            if let png = LayerThumbnailRenderer.render(layer: layer, size: size, targetEdge: 64),
+               let img = UIImage(data: png)?.cgImage {
+                Image(decorative: img, scale: 1.0, orientation: .up)
+                    .resizable()
+                    .interpolation(.none)
+                    .antialiased(false)
+                    .frame(width: 32, height: 32)
+                    .background(checkerboard)
+            } else {
+                Rectangle().fill(.gray).frame(width: 32, height: 32)
+            }
+        }
+    }
+
+    private var checkerboard: some View {
+        Canvas { ctx, sz in
+            let s: CGFloat = 4
+            for y in stride(from: 0, to: sz.height, by: s) {
+                for x in stride(from: 0, to: sz.width, by: s) {
+                    let isDark = (Int(x / s) + Int(y / s)) % 2 == 0
+                    ctx.fill(Path(CGRect(x: x, y: y, width: s, height: s)),
+                             with: .color(isDark ? .gray.opacity(0.4) : .gray.opacity(0.2)))
+                }
+            }
+        }
+        .frame(width: 32, height: 32)
+    }
+}
