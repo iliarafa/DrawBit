@@ -4,12 +4,13 @@ import ImageIO
 import UniformTypeIdentifiers
 
 enum PNGExporter {
-    static func export(grid: PixelGrid, scale: Int) -> Data? {
+    static func export(frame: Frame, size: CanvasSize, scale: Int) -> Data? {
         guard scale >= 1 else { return nil }
-        guard let source = pixelsToCGImage(grid) else { return nil }
+        let buffer = Compositor.composite(frame, size: size)
+        guard let source = bufferToCGImage(buffer) else { return nil }
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
 
-        let outEdge = grid.dimension * scale
+        let outEdge = size.dimension * scale
         guard let ctx = CGContext(
             data: nil,
             width: outEdge,
