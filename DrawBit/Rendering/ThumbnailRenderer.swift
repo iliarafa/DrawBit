@@ -4,8 +4,9 @@ import ImageIO
 import UniformTypeIdentifiers
 
 enum ThumbnailRenderer {
-    static func render(grid: PixelGrid, targetEdge: Int) -> Data? {
-        guard let source = pixelsToCGImage(grid) else { return nil }
+    static func render(frame: Frame, size: CanvasSize, targetEdge: Int) -> Data? {
+        let buffer = Compositor.composite(frame, size: size)
+        guard let source = bufferToCGImage(buffer) else { return nil }
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
 
         guard let ctx = CGContext(
