@@ -3,9 +3,14 @@ import ImageIO
 @testable import DrawBit
 
 final class PNGExporterTests: XCTestCase {
+
+    private func frame(for grid: PixelGrid) -> Frame {
+        FrameCodec.wrapV1Data(grid.data, defaultName: "Layer 1")
+    }
+
     func testExportAt1x() throws {
         let grid = PixelGrid(size: .s16)
-        let data = try XCTUnwrap(PNGExporter.export(grid: grid, scale: 1))
+        let data = try XCTUnwrap(PNGExporter.export(frame: frame(for: grid), size: .s16, scale: 1))
         let src = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
         let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
         XCTAssertEqual(image.width, 16)
@@ -14,7 +19,7 @@ final class PNGExporterTests: XCTestCase {
 
     func testExportAt16xProducesIntegerScaledOutput() throws {
         let grid = PixelGrid(size: .s16)
-        let data = try XCTUnwrap(PNGExporter.export(grid: grid, scale: 16))
+        let data = try XCTUnwrap(PNGExporter.export(frame: frame(for: grid), size: .s16, scale: 16))
         let src = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
         let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
         XCTAssertEqual(image.width, 256)
@@ -23,15 +28,15 @@ final class PNGExporterTests: XCTestCase {
 
     func testExportRejectsZeroOrNegativeScale() {
         let grid = PixelGrid(size: .s16)
-        XCTAssertNil(PNGExporter.export(grid: grid, scale: 0))
-        XCTAssertNil(PNGExporter.export(grid: grid, scale: -1))
+        XCTAssertNil(PNGExporter.export(frame: frame(for: grid), size: .s16, scale: 0))
+        XCTAssertNil(PNGExporter.export(frame: frame(for: grid), size: .s16, scale: -1))
     }
 
     func testExportPreservesExactPixelsAtIntegerScale() throws {
         var grid = PixelGrid(size: .s16)
         let red = RGBA(r: 200, g: 50, b: 10, a: 255)
         grid.setPixel(x: 0, y: 0, color: red)
-        let data = try XCTUnwrap(PNGExporter.export(grid: grid, scale: 4))
+        let data = try XCTUnwrap(PNGExporter.export(frame: frame(for: grid), size: .s16, scale: 4))
         let src = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
         let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
         XCTAssertEqual(image.width, 64)

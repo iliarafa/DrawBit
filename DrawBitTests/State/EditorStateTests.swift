@@ -2,10 +2,16 @@ import XCTest
 @testable import DrawBit
 
 final class EditorStateTests: XCTestCase {
+
+    private func makeState(size: CanvasSize = .s16) -> EditorState {
+        let piece = Piece(size: size)
+        let frame = FrameCodec.wrapV1Data(Data(count: size.byteCount), defaultName: "Layer 1")
+        return EditorState(piece: piece, frame: frame)
+    }
+
     func testInitialStateFromPiece() {
-        let piece = Piece(size: .s32)
-        let state = EditorState(piece: piece)
-        XCTAssertEqual(state.grid.size, .s32)
+        let state = makeState(size: .s32)
+        XCTAssertEqual(state.activeLayerPixelGrid.size, .s32)
         XCTAssertEqual(state.tool, .pencil)
         XCTAssertEqual(state.color, RGBA(r: 255, g: 255, b: 255, a: 255))
         XCTAssertFalse(state.canUndo)
@@ -13,51 +19,72 @@ final class EditorStateTests: XCTestCase {
     }
 
     func testCommitStrokePushesUndo() {
-        let state = EditorState(piece: Piece(size: .s16))
+        let state = makeState()
         state.beginStrokeSnapshot()
-        state.grid.setPixel(x: 1, y: 1, color: RGBA(r: 255, g: 0, b: 0, a: 255))
+        state.mutateActiveLayerPixels { data in
+            let offset = (1 * 16 + 1) * 4
+            data[offset]     = 255
+            data[offset + 1] = 0
+            data[offset + 2] = 0
+            data[offset + 3] = 255
+        }
         state.commitStroke()
         XCTAssertTrue(state.canUndo)
         XCTAssertFalse(state.canRedo)
     }
 
     func testUndoRestoresPrevious() {
-        let state = EditorState(piece: Piece(size: .s16))
+        let state = makeState()
         state.beginStrokeSnapshot()
-        state.grid.setPixel(x: 1, y: 1, color: RGBA(r: 255, g: 0, b: 0, a: 255))
+        state.mutateActiveLayerPixels { data in
+            let offset = (1 * 16 + 1) * 4
+            data[offset] = 255; data[offset+1] = 0; data[offset+2] = 0; data[offset+3] = 255
+        }
         state.commitStroke()
         state.undo()
-        XCTAssertEqual(state.grid.pixel(x: 1, y: 1), .transparent)
+        XCTAssertEqual(state.activeLayerPixelGrid.pixel(x: 1, y: 1), .transparent)
         XCTAssertTrue(state.canRedo)
     }
 
     func testRedoReapplies() {
-        let state = EditorState(piece: Piece(size: .s16))
+        let state = makeState()
         state.beginStrokeSnapshot()
-        state.grid.setPixel(x: 1, y: 1, color: RGBA(r: 255, g: 0, b: 0, a: 255))
+        state.mutateActiveLayerPixels { data in
+            let offset = (1 * 16 + 1) * 4
+            data[offset] = 255; data[offset+1] = 0; data[offset+2] = 0; data[offset+3] = 255
+        }
         state.commitStroke()
         state.undo()
         state.redo()
-        XCTAssertEqual(state.grid.pixel(x: 1, y: 1), RGBA(r: 255, g: 0, b: 0, a: 255))
+        XCTAssertEqual(state.activeLayerPixelGrid.pixel(x: 1, y: 1), RGBA(r: 255, g: 0, b: 0, a: 255))
     }
 
     func testNewStrokeAfterUndoClearsRedoStack() {
-        let state = EditorState(piece: Piece(size: .s16))
+        let state = makeState()
         state.beginStrokeSnapshot()
-        state.grid.setPixel(x: 1, y: 1, color: RGBA(r: 255, g: 0, b: 0, a: 255))
+        state.mutateActiveLayerPixels { data in
+            let offset = (1 * 16 + 1) * 4
+            data[offset] = 255; data[offset+1] = 0; data[offset+2] = 0; data[offset+3] = 255
+        }
         state.commitStroke()
         state.undo()
         state.beginStrokeSnapshot()
-        state.grid.setPixel(x: 5, y: 5, color: RGBA(r: 0, g: 255, b: 0, a: 255))
+        state.mutateActiveLayerPixels { data in
+            let offset = (5 * 16 + 5) * 4
+            data[offset] = 0; data[offset+1] = 255; data[offset+2] = 0; data[offset+3] = 255
+        }
         state.commitStroke()
         XCTAssertFalse(state.canRedo)
     }
 
     func testUndoStackCappedAt50() {
-        let state = EditorState(piece: Piece(size: .s16))
+        let state = makeState()
         for i in 0..<60 {
             state.beginStrokeSnapshot()
-            state.grid.setPixel(x: i % 16, y: 0, color: RGBA(r: 1, g: 1, b: 1, a: 255))
+            state.mutateActiveLayerPixels { data in
+                let offset = (i % 16) * 4
+                data[offset] = 1; data[offset+1] = 1; data[offset+2] = 1; data[offset+3] = 255
+            }
             state.commitStroke()
         }
         for _ in 0..<50 { state.undo() }
@@ -65,11 +92,14 @@ final class EditorStateTests: XCTestCase {
     }
 
     func testCancelInProgressStrokeDiscardsChanges() {
-        let state = EditorState(piece: Piece(size: .s16))
+        let state = makeState()
         state.beginStrokeSnapshot()
-        state.grid.setPixel(x: 1, y: 1, color: RGBA(r: 255, g: 0, b: 0, a: 255))
+        state.mutateActiveLayerPixels { data in
+            let offset = (1 * 16 + 1) * 4
+            data[offset] = 255; data[offset+1] = 0; data[offset+2] = 0; data[offset+3] = 255
+        }
         state.cancelStroke()
-        XCTAssertEqual(state.grid.pixel(x: 1, y: 1), .transparent)
+        XCTAssertEqual(state.activeLayerPixelGrid.pixel(x: 1, y: 1), .transparent)
         XCTAssertFalse(state.canUndo)
     }
 }

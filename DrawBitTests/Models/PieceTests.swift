@@ -3,10 +3,12 @@ import SwiftData
 @testable import DrawBit
 
 final class PieceTests: XCTestCase {
-    func testNewPieceIsAllTransparent() {
+    func testNewPieceIsAllTransparent() throws {
         let piece = Piece(size: .s16)
-        XCTAssertEqual(piece.pixels.count, CanvasSize.s16.byteCount)
-        XCTAssertTrue(piece.pixels.allSatisfy { $0 == 0 })
+        let frame = try FrameCodec.decode(piece.frameData)
+        XCTAssertEqual(frame.layers.count, 1)
+        XCTAssertEqual(frame.layers[0].pixels.count, CanvasSize.s16.byteCount)
+        XCTAssertTrue(frame.layers[0].pixels.allSatisfy { $0 == 0 })
     }
 
     func testDefaultNameFallsBackToGenerated() {
