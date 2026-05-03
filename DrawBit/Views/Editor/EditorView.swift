@@ -54,6 +54,7 @@ struct EditorView: View {
                     state.commitStructuralChange()
                     saveCurrentFrame()
                 },
+                onStructuralChange: { saveCurrentFrame() },
                 onDismiss: { showingLayersPanel = false }
             )
         }

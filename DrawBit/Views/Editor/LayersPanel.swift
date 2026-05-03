@@ -4,7 +4,10 @@ struct LayersPanel: View {
     @Bindable var state: EditorState
     let isPresented: Bool
     let onRenameLayer: (UUID, String) -> Void
+    let onStructuralChange: () -> Void
     let onDismiss: () -> Void
+
+    @State private var confirmDeleteLayerID: UUID?
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -37,7 +40,10 @@ struct LayersPanel: View {
                                 layer: layer,
                                 size: state.size,
                                 isActive: layer.id == state.frame.activeLayerID,
-                                onTap: { state.frame.setActive(id: layer.id) },
+                                onTap: {
+                                    state.frame.setActive(id: layer.id)
+                                    onStructuralChange()
+                                },
                                 onRename: { newName in
                                     onRenameLayer(layer.id, newName)
                                 }
@@ -49,16 +55,67 @@ struct LayersPanel: View {
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
 
-                    // Action bar — disabled placeholders for stage 2.
+                    // Action bar — wired in stage 3.
                     HStack(spacing: 12) {
-                        Image(systemName: "plus").opacity(0.3)
-                        Image(systemName: "doc.on.doc").opacity(0.3)
-                        Image(systemName: "trash").opacity(0.3)
+                        Button {
+                            state.beginStructuralSnapshot()
+                            state.frame.addLayer(name: "Layer \(state.frame.layers.count + 1)")
+                            state.commitStructuralChange()
+                            onStructuralChange()
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .disabled(state.frame.layers.count >= 16)
+
+                        Button {
+                            state.beginStructuralSnapshot()
+                            state.frame.duplicateActiveLayer()
+                            state.commitStructuralChange()
+                            onStructuralChange()
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                        }
+                        .disabled(state.frame.layers.count >= 16)
+
+                        Button {
+                            let active = state.frame.activeLayer
+                            let isEmpty = active.pixels.allSatisfy { $0 == 0 }
+                            if isEmpty {
+                                state.beginStructuralSnapshot()
+                                state.frame.removeLayer(id: active.id)
+                                state.commitStructuralChange()
+                                onStructuralChange()
+                            } else {
+                                confirmDeleteLayerID = active.id
+                            }
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .disabled(state.frame.layers.count <= 1)
+
                         Spacer()
                     }
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
+                    .confirmationDialog(
+                        "Delete this layer?",
+                        isPresented: Binding(
+                            get: { confirmDeleteLayerID != nil },
+                            set: { if !$0 { confirmDeleteLayerID = nil } }
+                        )
+                    ) {
+                        Button("Delete", role: .destructive) {
+                            if let id = confirmDeleteLayerID {
+                                state.beginStructuralSnapshot()
+                                state.frame.removeLayer(id: id)
+                                state.commitStructuralChange()
+                                onStructuralChange()
+                            }
+                            confirmDeleteLayerID = nil
+                        }
+                        Button("Cancel", role: .cancel) { confirmDeleteLayerID = nil }
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .frame(width: 360)
