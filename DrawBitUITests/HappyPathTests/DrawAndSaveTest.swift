@@ -23,7 +23,7 @@ final class DrawAndSaveTest: XCTestCase {
         app.buttons["Gallery"].tap()
 
         // 4. The thumbnail for our piece should be present.
-        XCTAssertTrue(app.otherElements["PieceThumbnail"].waitForExistence(timeout: 3)
-                      || app.images["PieceThumbnail"].waitForExistence(timeout: 1))
+        // PieceThumbnailView has the .isButton trait so XCTest reports it as a button element.
+        XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 3))
     }
 }

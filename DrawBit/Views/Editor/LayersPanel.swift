@@ -3,6 +3,7 @@ import SwiftUI
 struct LayersPanel: View {
     @Bindable var state: EditorState
     let isPresented: Bool
+    let onRenameLayer: (UUID, String) -> Void
     let onDismiss: () -> Void
 
     var body: some View {
@@ -12,6 +13,7 @@ struct LayersPanel: View {
                     .ignoresSafeArea()
                     .contentShape(Rectangle())
                     .onTapGesture { onDismiss() }
+                    .transition(.opacity)
 
                 VStack(spacing: 0) {
                     HStack {
@@ -37,9 +39,7 @@ struct LayersPanel: View {
                                 isActive: layer.id == state.frame.activeLayerID,
                                 onTap: { state.frame.setActive(id: layer.id) },
                                 onRename: { newName in
-                                    state.beginStructuralSnapshot()
-                                    state.frame.setName(id: layer.id, to: newName)
-                                    state.commitStructuralChange()
+                                    onRenameLayer(layer.id, newName)
                                 }
                             )
                             .listRowInsets(EdgeInsets())

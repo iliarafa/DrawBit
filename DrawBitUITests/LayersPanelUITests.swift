@@ -37,5 +37,31 @@ final class LayersPanelUITests: XCTestCase {
         app.keyboards.buttons["Return"].tap()
 
         XCTAssertTrue(app.staticTexts["Sketch"].waitForExistence(timeout: 2))
+
+        // Dismiss the layers panel by tapping the backdrop, then navigate back.
+        // Tap a coordinate that hits the backdrop (left side of screen, away from the panel).
+        let backdrop = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
+        backdrop.tap()
+
+        // Wait for panel to animate out (0.18s), then tap Gallery.
+        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 3))
+        app.buttons["Gallery"].tap()
+
+        // Wait for the gallery root view (NewButton is always visible in the gallery).
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 10))
+
+        // Reopen the same piece. PieceThumbnail now has the .isButton trait so XCTest can
+        // find and tap it even when the piece has no thumbnail image yet.
+        // Exactly one piece exists in this fresh-store run, so firstMatch is unambiguous.
+        XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 5))
+        app.buttons["PieceThumbnail"].firstMatch.tap()
+
+        // Reopen the layers panel in the editor.
+        XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 3))
+        app.buttons["LAYERS"].tap()
+
+        // The rename must have been persisted — "Sketch" should still appear.
+        XCTAssertTrue(app.staticTexts["Sketch"].waitForExistence(timeout: 2),
+                      "Layer rename was not persisted across editor sessions")
     }
 }

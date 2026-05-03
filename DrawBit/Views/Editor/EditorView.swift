@@ -45,9 +45,17 @@ struct EditorView: View {
                 Divider().overlay(Color.white.opacity(0.08))
                 bottomBar
             }
-            LayersPanel(state: state, isPresented: showingLayersPanel) {
-                showingLayersPanel = false
-            }
+            LayersPanel(
+                state: state,
+                isPresented: showingLayersPanel,
+                onRenameLayer: { layerID, newName in
+                    state.beginStructuralSnapshot()
+                    state.frame.setName(id: layerID, to: newName)
+                    state.commitStructuralChange()
+                    saveCurrentFrame()
+                },
+                onDismiss: { showingLayersPanel = false }
+            )
         }
         .background(Color(white: 0.10).ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)

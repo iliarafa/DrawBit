@@ -18,7 +18,10 @@ struct LayerRow: View {
                     .font(.pixel(11))
                     .foregroundStyle(.white)
                     .onSubmit {
-                        onRename(String(draftName.prefix(32)))
+                        let trimmed = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !trimmed.isEmpty && trimmed != layer.name {
+                            onRename(String(trimmed.prefix(32)))
+                        }
                         isEditingName = false
                     }
             } else {
