@@ -1,0 +1,62 @@
+import XCTest
+import SwiftData
+@testable import DrawBit
+
+@MainActor
+final class MigrationTests: XCTestCase {
+    private func makeContainer() throws -> ModelContainer {
+        let schema = Schema([Piece.self, AppSettings.self])
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        return try ModelContainer(for: schema, configurations: [config])
+    }
+
+    func testV1RawBlobMigratesToSingleLayerFrameOnLoad() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let piece = Piece(size: .s32)
+        // Force the piece into v1 shape: overwrite frameData with raw RGBA bytes (no DBFR magic).
+        let v1 = Data(repeating: 0xAA, count: CanvasSize.s32.byteCount)
+        piece.frameData = v1
+        ctx.insert(piece)
+        try ctx.save()
+
+        let repo = PieceRepository(context: ctx)
+        let frame = try repo.loadFrame(piece: piece)
+        XCTAssertEqual(frame.layers.count, 1)
+        XCTAssertEqual(frame.layers[0].pixels, v1)
+        XCTAssertTrue(FrameCodec.hasV1MagicPrefix(piece.frameData),
+                      "loadFrame must persist the migrated v2 blob back to disk")
+    }
+
+    func testEagerMigrationConvertsAllPieces() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let p1 = Piece(size: .s16)
+        let p2 = Piece(size: .s32)
+        p1.frameData = Data(repeating: 0x11, count: CanvasSize.s16.byteCount)
+        p2.frameData = Data(repeating: 0x22, count: CanvasSize.s32.byteCount)
+        ctx.insert(p1); ctx.insert(p2)
+        try ctx.save()
+
+        let repo = PieceRepository(context: ctx)
+        try repo.migrateLegacyPiecesIfNeeded()
+
+        XCTAssertTrue(FrameCodec.hasV1MagicPrefix(p1.frameData))
+        XCTAssertTrue(FrameCodec.hasV1MagicPrefix(p2.frameData))
+    }
+
+    func testEagerMigrationIsIdempotent() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+        let piece = Piece(size: .s32)
+        ctx.insert(piece)
+        try ctx.save()
+        let initialBlob = piece.frameData
+
+        let repo = PieceRepository(context: ctx)
+        try repo.migrateLegacyPiecesIfNeeded()
+        try repo.migrateLegacyPiecesIfNeeded()
+
+        XCTAssertEqual(piece.frameData, initialBlob, "second run must be a no-op")
+    }
+}
