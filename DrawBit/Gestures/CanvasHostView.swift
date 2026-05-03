@@ -196,7 +196,7 @@ final class CanvasInputView: UIView {
     /// current editor transform (translation, scale, rotation). Returns nil if out of canvas.
     private func pixelCoord(for touch: UITouch) -> (Int, Int)? {
         guard let state else { return nil }
-        let dim = CGFloat(state.grid.dimension)
+        let dim = CGFloat(state.size.dimension)
         let size = bounds.size
         guard baseEdge > 0, dim > 0, state.scale > 0 else { return nil }
 

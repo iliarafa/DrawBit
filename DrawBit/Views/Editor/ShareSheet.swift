@@ -4,6 +4,7 @@ import UIKit
 struct ShareSheet: View {
     let piece: Piece
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @State private var selectedScale: Int
     @State private var isExporting = false
 
@@ -127,13 +128,15 @@ struct ShareSheet: View {
         isExporting = true
         defer { isExporting = false }
 
-        let grid = PixelGrid(data: piece.pixels, size: piece.size)
+        let frame = (try? PieceRepository(context: modelContext).loadFrame(piece: piece))
+            ?? FrameCodec.wrapV1Data(Data(count: piece.size.byteCount), defaultName: "Layer 1")
+        let size = piece.size
         let scale = selectedScale
         let filename = "\(piece.effectiveName)-\(scale)x.png".replacingOccurrences(of: "/", with: "-")
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
 
         let writtenURL: URL? = await Task.detached(priority: .userInitiated) {
-            guard let data = PNGExporter.export(grid: grid, scale: scale) else { return nil }
+            guard let data = PNGExporter.export(frame: frame, size: size, scale: scale) else { return nil }
             do {
                 try data.write(to: url)
                 return url

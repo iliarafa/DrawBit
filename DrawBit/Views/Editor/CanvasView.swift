@@ -31,7 +31,7 @@ struct CanvasView: View {
                         .offset(state.translation)
                 }
                 Canvas { ctx, size in
-                    let dim = state.grid.dimension
+                    let dim = state.size.dimension
                     let cell = size.width / CGFloat(dim)
                     var path = Path()
                     for i in 0...dim {
@@ -79,7 +79,7 @@ struct CanvasView: View {
     /// pixel maps to an integer number of screen points for crisp 1× presentation.
     private func baseEdge(in geo: GeometryProxy) -> CGFloat {
         let m = Swift.min(geo.size.width, geo.size.height) * 0.85
-        let dim = CGFloat(state.grid.dimension)
+        let dim = CGFloat(state.size.dimension)
         let perPixel = floor(m / dim)
         return max(perPixel, 1) * dim
     }
@@ -87,19 +87,21 @@ struct CanvasView: View {
     /// Raw pixel data wrapped as a UIImage at canvas native resolution. Transparent where
     /// pixels are unset; grid outlines are drawn separately in SwiftUI at display resolution.
     private func pixelImage() -> UIImage? {
-        guard let cg = pixelsToCGImage(state.grid) else { return nil }
+        let buffer = Compositor.composite(state.frame, size: state.size)
+        guard let cg = bufferToCGImage(buffer) else { return nil }
         return UIImage(cgImage: cg)
     }
 
     private func selectionImage(_ sel: MarqueeSelection) -> UIImage? {
-        guard let cg = pixelsToCGImage(sel.extracted.pixels) else { return nil }
+        let buffer = CompositedBuffer(data: sel.extracted.pixels.data, size: sel.extracted.pixels.size)
+        guard let cg = bufferToCGImage(buffer) else { return nil }
         return UIImage(cgImage: cg)
     }
 
     @ViewBuilder
     private func floatingSelectionLayer(selection sel: MarqueeSelection, edge: CGFloat) -> some View {
         if let image = selectionImage(sel) {
-            let perPixel = edge / CGFloat(state.grid.dimension)
+            let perPixel = edge / CGFloat(state.size.dimension)
             Image(uiImage: image)
                 .resizable()
                 .interpolation(.none)
@@ -116,7 +118,7 @@ struct CanvasView: View {
 
     private func pendingRectOverlay(rect: PixelRect, edge: CGFloat) -> some View {
         Canvas { ctx, size in
-            let perPixel = size.width / CGFloat(state.grid.dimension)
+            let perPixel = size.width / CGFloat(state.size.dimension)
             let r = CGRect(
                 x: CGFloat(rect.x) * perPixel,
                 y: CGFloat(rect.y) * perPixel,
@@ -135,7 +137,7 @@ struct CanvasView: View {
     private func marchingAnts(bounds: PixelRect, edge: CGFloat) -> some View {
         TimelineView(.animation) { timeline in
             Canvas { ctx, size in
-                let perPixel = size.width / CGFloat(state.grid.dimension)
+                let perPixel = size.width / CGFloat(state.size.dimension)
                 let r = CGRect(
                     x: CGFloat(bounds.x) * perPixel,
                     y: CGFloat(bounds.y) * perPixel,

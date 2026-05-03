@@ -1,15 +1,6 @@
 import CoreGraphics
 import Foundation
 
-/// Compatibility shim: wraps a PixelGrid directly as a single-layer CGImage.
-/// CanvasView still uses this name; Task 1.14 will migrate CanvasView to Compositor.
-func pixelsToCGImage(_ grid: PixelGrid) -> CGImage? {
-    let layer = Layer(name: "Layer 1", pixels: grid.data)
-    let frame = Frame(layers: [layer], activeLayerID: layer.id)
-    let buffer = Compositor.composite(frame, size: grid.size)
-    return bufferToCGImage(buffer)
-}
-
 /// Wraps a CompositedBuffer's raw RGBA bytes in a CGImage. Uses sRGB explicitly (NEVER deviceRGB) so
 /// rendering and export are consistent across iPad models including P3 displays.
 func bufferToCGImage(_ buffer: CompositedBuffer) -> CGImage? {
