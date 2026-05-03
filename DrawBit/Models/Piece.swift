@@ -6,7 +6,11 @@ final class Piece {
     @Attribute(.unique) var id: UUID
     var name: String?
     var sizeRaw: Int
-    var pixels: Data
+
+    /// Versioned blob holding the entire Frame (layers + active layer id).
+    /// External storage keeps the row light when the blob grows with multiple layers.
+    @Attribute(.externalStorage) var frameData: Data
+
     var thumbnail: Data
     var createdAt: Date
     var updatedAt: Date
@@ -28,7 +32,10 @@ final class Piece {
         self.id = UUID()
         self.name = nil
         self.sizeRaw = size.rawValue
-        self.pixels = Data(count: size.byteCount)
+        // New pieces start as a single empty layer wrapped in a Frame and encoded.
+        let layer = Layer(name: "Layer 1", pixels: Data(count: size.byteCount))
+        let frame = Frame(layers: [layer], activeLayerID: layer.id)
+        self.frameData = FrameCodec.encode(frame)
         self.thumbnail = Data()
         self.createdAt = now
         self.updatedAt = now
