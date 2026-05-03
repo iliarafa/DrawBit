@@ -98,7 +98,7 @@ struct EditorView: View {
     // MARK: - Chrome
 
     private var topBar: some View {
-        HStack {
+        HStack(spacing: 16) {
             Button {
                 dismiss()
             } label: {
