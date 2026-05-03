@@ -10,6 +10,7 @@ struct EditorView: View {
     @State private var recentHex: [String] = []
     @State private var showingSystemColorPicker = false
     @State private var showingShareSheet = false
+    @State private var showingLayersPanel = false
 
     init(piece: Piece) {
         self.piece = piece
@@ -28,20 +29,25 @@ struct EditorView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            Divider().overlay(Color.white.opacity(0.08))
-            CanvasView(
-                state: state,
-                pencilAvailability: pencilAvailability,
-                onStrokePoint: { x, y in applyDrawPoint(x: x, y: y) },
-                onStrokeBegin: { handleStrokeBegin() },
-                onStrokeEnd: { handleStrokeEnd() },
-                onStrokeCancel: { handleStrokeCancel() },
-                onTap: { x, y in handleTap(x: x, y: y) }
-            )
-            Divider().overlay(Color.white.opacity(0.08))
-            bottomBar
+        ZStack(alignment: .trailing) {
+            VStack(spacing: 0) {
+                topBar
+                Divider().overlay(Color.white.opacity(0.08))
+                CanvasView(
+                    state: state,
+                    pencilAvailability: pencilAvailability,
+                    onStrokePoint: { x, y in applyDrawPoint(x: x, y: y) },
+                    onStrokeBegin: { handleStrokeBegin() },
+                    onStrokeEnd: { handleStrokeEnd() },
+                    onStrokeCancel: { handleStrokeCancel() },
+                    onTap: { x, y in handleTap(x: x, y: y) }
+                )
+                Divider().overlay(Color.white.opacity(0.08))
+                bottomBar
+            }
+            LayersPanel(state: state, isPresented: showingLayersPanel) {
+                showingLayersPanel = false
+            }
         }
         .background(Color(white: 0.10).ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
@@ -100,6 +106,12 @@ struct EditorView: View {
                 .font(.pixel(12))
                 .foregroundStyle(.white.opacity(0.85))
             Spacer()
+            Button {
+                showingLayersPanel.toggle()
+            } label: {
+                Text("LAYERS").font(.pixel(11))
+            }
+            .foregroundStyle(showingLayersPanel ? .blue : .white)
             Button {
                 showingShareSheet = true
             } label: {
