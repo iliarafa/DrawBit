@@ -4,25 +4,34 @@ import Observation
 @Observable
 final class EditorState {
     let pieceID: UUID
-    var grid: PixelGrid
+    let size: CanvasSize
+
+    /// Source of truth: the editable Frame. Tools mutate the active layer's pixels through this.
+    var frame: Frame
+
     var tool: Tool = .pencil
     var color: RGBA = RGBA(r: 255, g: 255, b: 255, a: 255)
 
-    // View transform (rotation in radians). Rotation is view-only, not persisted.
     var translation: CGSize = .zero
     var scale: CGFloat = 1.0
     var rotation: CGFloat = 0.0
 
-    // Marquee selection state. All transient — never persisted.
     var selection: MarqueeSelection?
     var pendingMarqueeRect: PixelRect?
 
     private var selectionAnchor: (Int, Int)?
     private var dragAnchor: (Int, Int)?
 
-    private var undoStack: [Data] = []
-    private var redoStack: [Data] = []
+    enum UndoEntry {
+        case layerPixels(layerID: UUID, before: Data)
+        case frameStructure(before: Frame)
+    }
+
+    private var undoStack: [UndoEntry] = []
+    private var redoStack: [UndoEntry] = []
     private var preStrokeSnapshot: Data?
+    private var preStrokeLayerID: UUID?
+    private var preStructuralSnapshot: Frame?
 
     private let undoLimit = 50
 
@@ -32,60 +41,131 @@ final class EditorState {
     var isMarqueeDefining: Bool { selectionAnchor != nil }
     var isMarqueeDragging: Bool { dragAnchor != nil }
 
-    init(piece: Piece) {
-        self.pieceID = piece.id
-        self.grid = PixelGrid(data: piece.pixels, size: piece.size)
+    /// PixelGrid view of the active layer's pixels. Read-only — to mutate, use `mutateActiveLayerPixels`.
+    var activeLayerPixelGrid: PixelGrid {
+        PixelGrid(data: frame.activeLayer.pixels, size: size)
     }
 
-    // MARK: - Stroke primitives
+    var activeLayerIsLocked: Bool { frame.activeLayer.isLocked }
+
+    init(pieceID: UUID, size: CanvasSize, frame: Frame) {
+        self.pieceID = pieceID
+        self.size = size
+        self.frame = frame
+    }
+
+    /// Convenience initializer mirroring v1's `init(piece:)`. Used by EditorView when a Frame is loaded.
+    convenience init(piece: Piece, frame: Frame) {
+        self.init(pieceID: piece.id, size: piece.size, frame: frame)
+    }
+
+    // MARK: - Active-layer pixel mutation
+
+    func mutateActiveLayerPixels(_ body: (inout Data) -> Void) {
+        frame.withActiveLayerPixels(body)
+    }
+
+    func setActiveLayerPixels(_ data: Data) {
+        frame.withActiveLayerPixels { $0 = data }
+    }
+
+    // MARK: - Drawing-stroke undo
 
     func beginStrokeSnapshot() {
-        preStrokeSnapshot = grid.data
+        preStrokeSnapshot = frame.activeLayer.pixels
+        preStrokeLayerID = frame.activeLayerID
     }
 
     func commitStroke() {
-        guard let snap = preStrokeSnapshot else { return }
-        undoStack.append(snap)
-        if undoStack.count > undoLimit { undoStack.removeFirst(undoStack.count - undoLimit) }
-        redoStack.removeAll()
+        guard let snap = preStrokeSnapshot, let layerID = preStrokeLayerID else { return }
+        push(.layerPixels(layerID: layerID, before: snap))
         preStrokeSnapshot = nil
+        preStrokeLayerID = nil
     }
 
     func cancelStroke() {
-        if let snap = preStrokeSnapshot {
-            grid = PixelGrid(data: snap, size: grid.size)
+        if let snap = preStrokeSnapshot, let layerID = preStrokeLayerID,
+           let idx = frame.layers.firstIndex(where: { $0.id == layerID }) {
+            // Restore by rebuilding the frame with the snapshot at idx.
+            var layers = frame.layers
+            layers[idx].pixels = snap
+            frame = Frame(layers: layers, activeLayerID: frame.activeLayerID)
         }
         preStrokeSnapshot = nil
+        preStrokeLayerID = nil
+    }
+
+    // MARK: - Structural-change undo
+
+    func beginStructuralSnapshot() {
+        preStructuralSnapshot = frame
+    }
+
+    func commitStructuralChange() {
+        guard let snap = preStructuralSnapshot else { return }
+        push(.frameStructure(before: snap))
+        preStructuralSnapshot = nil
+    }
+
+    func cancelStructuralChange() {
+        if let snap = preStructuralSnapshot {
+            frame = snap
+        }
+        preStructuralSnapshot = nil
+    }
+
+    private func push(_ entry: UndoEntry) {
+        undoStack.append(entry)
+        if undoStack.count > undoLimit {
+            undoStack.removeFirst(undoStack.count - undoLimit)
+        }
+        redoStack.removeAll()
     }
 
     func undo() {
         if selection != nil { commitMarquee() }
-        guard let previous = undoStack.popLast() else { return }
-        redoStack.append(grid.data)
-        grid = PixelGrid(data: previous, size: grid.size)
+        guard let entry = undoStack.popLast() else { return }
+        switch entry {
+        case .layerPixels(let layerID, let before):
+            guard let idx = frame.layers.firstIndex(where: { $0.id == layerID }) else { return }
+            let after = frame.layers[idx].pixels
+            redoStack.append(.layerPixels(layerID: layerID, before: after))
+            var layers = frame.layers
+            layers[idx].pixels = before
+            frame = Frame(layers: layers, activeLayerID: frame.activeLayerID)
+        case .frameStructure(let before):
+            redoStack.append(.frameStructure(before: frame))
+            frame = before
+        }
     }
 
     func redo() {
         if selection != nil { commitMarquee() }
-        guard let next = redoStack.popLast() else { return }
-        undoStack.append(grid.data)
-        grid = PixelGrid(data: next, size: grid.size)
+        guard let entry = redoStack.popLast() else { return }
+        switch entry {
+        case .layerPixels(let layerID, let before):
+            guard let idx = frame.layers.firstIndex(where: { $0.id == layerID }) else { return }
+            let after = frame.layers[idx].pixels
+            undoStack.append(.layerPixels(layerID: layerID, before: after))
+            var layers = frame.layers
+            layers[idx].pixels = before
+            frame = Frame(layers: layers, activeLayerID: frame.activeLayerID)
+        case .frameStructure(let before):
+            undoStack.append(.frameStructure(before: frame))
+            frame = before
+        }
     }
 
     // MARK: - Tool selection
 
-    /// Sets the active tool. If a marquee selection is floating, it is committed first
-    /// so that switching tools never silently drops the floating pixels.
     func setTool(_ next: Tool) {
         if selection != nil { commitMarquee() }
         if pendingMarqueeRect != nil { cancelMarquee() }
         tool = next
     }
 
-    // MARK: - Marquee lifecycle
+    // MARK: - Marquee lifecycle (operates on active layer only)
 
-    /// Start defining a new selection rectangle from the given anchor pixel. Snapshots the
-    /// pre-selection grid so that the entire define→drag→commit operation is one undo step.
     func beginMarqueeDefine(at point: (Int, Int)) {
         if selection != nil { commitMarquee() }
         beginStrokeSnapshot()
@@ -93,27 +173,24 @@ final class EditorState {
         pendingMarqueeRect = PixelRect.from(point, point)
     }
 
-    /// Update the second corner of the in-progress selection rectangle.
     func updateMarqueeDefine(to point: (Int, Int)) {
         guard let anchor = selectionAnchor else { return }
         pendingMarqueeRect = PixelRect.from(anchor, point)
     }
 
-    /// Finish defining the rect: extract opaque pixels into a floating selection. If the
-    /// region had no opaque pixels, roll back the snapshot — there's nothing to drag.
     func endMarqueeDefine() {
         guard let rect = pendingMarqueeRect else { return }
         selectionAnchor = nil
         pendingMarqueeRect = nil
+        var grid = activeLayerPixelGrid
         if let extracted = Marquee.extractAndCut(grid: &grid, rect: rect) {
+            setActiveLayerPixels(grid.data)
             selection = MarqueeSelection(extracted: extracted, dragOffset: (0, 0))
         } else {
             cancelStroke()
         }
     }
 
-    /// Start dragging the floating selection. The anchor is stored relative to the current
-    /// drag offset, so subsequent updates set `dragOffset = currentPixel - relativeAnchor`.
     func beginMarqueeDrag(at point: (Int, Int)) {
         guard let sel = selection else { return }
         dragAnchor = (point.0 - sel.dragOffset.dx, point.1 - sel.dragOffset.dy)
@@ -129,17 +206,16 @@ final class EditorState {
         dragAnchor = nil
     }
 
-    /// Commit the floating selection at its current offset and push the operation onto the
-    /// undo stack as a single step (the snapshot was taken at `beginMarqueeDefine`).
     func commitMarquee() {
         guard let sel = selection else { return }
+        var grid = activeLayerPixelGrid
         Marquee.commit(into: &grid, selection: sel.extracted, offset: sel.dragOffset)
+        setActiveLayerPixels(grid.data)
         selection = nil
         dragAnchor = nil
         commitStroke()
     }
 
-    /// Discard the floating selection and restore the pre-selection grid.
     func cancelMarquee() {
         selection = nil
         pendingMarqueeRect = nil
