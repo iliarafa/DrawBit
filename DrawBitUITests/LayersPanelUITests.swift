@@ -81,19 +81,18 @@ final class LayersPanelUITests: XCTestCase {
         XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 3))
         app.buttons["LAYERS"].tap()
 
-        // Add a second layer via the action bar.
-        // Use doc.on.doc (duplicate) because it is unambiguous — unlike "plus" (which also
-        // appears in RecentColorsStrip) and "trash" (which would need special handling too),
-        // "doc.on.doc" only exists in the LayersPanel action bar.
-        // The duplicate creates a layer named "Layer 1 copy"; we assert on that name.
-        XCTAssertTrue(app.buttons["doc.on.doc"].firstMatch.waitForExistence(timeout: 2))
-        app.buttons["doc.on.doc"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Layer 1 copy"].waitForExistence(timeout: 2))
+        // Add a second layer via the action bar's + button (LayersPanel-plus).
+        // We use the explicit accessibility identifier to avoid ambiguity with the
+        // "plus" SF symbol that also appears in the RecentColorsStrip.
+        // addLayer names the new layer by count, so the result is "Layer 2".
+        XCTAssertTrue(app.buttons["LayersPanel-plus"].waitForExistence(timeout: 2))
+        app.buttons["LayersPanel-plus"].tap()
+        XCTAssertTrue(app.staticTexts["Layer 2"].waitForExistence(timeout: 2))
 
         // Dismiss the panel by tapping the LAYERS button again (toggles closed).
         app.buttons["LAYERS"].tap()
 
-        // Tap the canvas to draw on the active layer (the duplicate).
+        // Tap the canvas to draw on the active layer (Layer 2).
         let canvas = app.otherElements["Canvas"].firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 2))
         canvas.tap()
@@ -102,7 +101,7 @@ final class LayersPanelUITests: XCTestCase {
         XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 3))
         app.buttons["LAYERS"].tap()
 
-        // Delete the duplicate layer. The tap above made it non-empty, so a confirmation
+        // Delete Layer 2. The tap above made it non-empty, so a confirmation
         // dialog should appear.
         XCTAssertTrue(app.buttons["trash"].firstMatch.waitForExistence(timeout: 2))
         app.buttons["trash"].firstMatch.tap()
@@ -113,8 +112,9 @@ final class LayersPanelUITests: XCTestCase {
             app.buttons["Delete"].tap()
         }
 
-        // The duplicate row should be gone.
-        XCTAssertFalse(app.staticTexts["Layer 1 copy"].waitForExistence(timeout: 1))
+        // Layer 2 row should be gone; Layer 1 should remain.
+        XCTAssertFalse(app.staticTexts["Layer 2"].waitForExistence(timeout: 1))
+        XCTAssertTrue(app.staticTexts["Layer 1"].exists)
     }
 
     func testAddDrawDeletePersistsAcrossSessionBoundary() {
@@ -133,11 +133,10 @@ final class LayersPanelUITests: XCTestCase {
         app.buttons["LAYERS"].tap()
         XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 2))
 
-        // Add a second layer via the action bar.
-        // Use doc.on.doc (duplicate) because it is unambiguous — "plus" also appears in
-        // RecentColorsStrip and firstMatch can land on the wrong button. The duplicate
-        // creates a layer named "Layer 1 copy"; the key property being tested is that the
-        // second layer appears, can be drawn on, deleted, and that deletion persists.
+        // Add a second layer via doc.on.doc (duplicateActiveLayer). This test covers
+        // the duplicate code path and the persistence round-trip; testAddDrawDeleteFlow
+        // covers the addLayer (LayersPanel-plus) code path separately.
+        // The duplicate creates a layer named "Layer 1 copy".
         XCTAssertTrue(app.buttons["doc.on.doc"].firstMatch.waitForExistence(timeout: 2))
         app.buttons["doc.on.doc"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["Layer 1 copy"].waitForExistence(timeout: 2))
@@ -152,6 +151,7 @@ final class LayersPanelUITests: XCTestCase {
         // confirmation dialog should appear; if for any reason it doesn't,
         // the empty-fast-path will have deleted it without confirmation).
         app.buttons["LAYERS"].tap()
+        XCTAssertTrue(app.buttons["trash"].firstMatch.waitForExistence(timeout: 2))
         app.buttons["trash"].firstMatch.tap()
         if app.buttons["Delete"].waitForExistence(timeout: 1) {
             app.buttons["Delete"].tap()
@@ -165,7 +165,6 @@ final class LayersPanelUITests: XCTestCase {
         // First dismiss the panel (tap the dim backdrop on the left side, well
         // away from the panel's 360pt right column).
         let window = app.windows.firstMatch
-        let bounds = window.frame
         let backdropPoint = window.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5))
         backdropPoint.tap()
 
@@ -175,8 +174,5 @@ final class LayersPanelUITests: XCTestCase {
         app.buttons["LAYERS"].tap()
         XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 2))
         XCTAssertFalse(app.staticTexts["Layer 1 copy"].exists)
-
-        // Avoid an unused-variable warning if XCTest's analyzer flags `bounds`.
-        _ = bounds
     }
 }

@@ -57,6 +57,7 @@ struct LayersPanel: View {
                         } label: {
                             Image(systemName: "plus")
                         }
+                        .accessibilityIdentifier("LayersPanel-plus")
                         .disabled(state.frame.layers.count >= 16)
 
                         Button {
