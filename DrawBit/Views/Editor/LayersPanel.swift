@@ -45,8 +45,6 @@ struct LayersPanel: View {
 
                     // Top of list = top of stack (layers stored bottom-up; reverse for display).
                     layerList
-                        .listStyle(.plain)
-                        .scrollContentBackground(.hidden)
 
                     // Action bar — wired in stage 3.
                     HStack(spacing: 12) {
@@ -117,58 +115,51 @@ struct LayersPanel: View {
             }
         }
         .animation(.easeInOut(duration: 0.18), value: isPresented)
+        .onChange(of: isPresented) { _, nowPresented in
+            if !nowPresented {
+                editMode = .inactive
+            }
+        }
     }
 
     // MARK: - Layer list
 
-    /// Builds the row content for the layer list.
-    private func layerRows(reorderable: Bool) -> some View {
-        let forEach = ForEach(state.frame.layers.reversed(), id: \.id) { layer in
-            LayerRow(
-                layer: layer,
-                size: state.size,
-                isActive: layer.id == state.frame.activeLayerID,
-                onTap: {
-                    state.frame.setActive(id: layer.id)
-                    onStructuralChange()
-                },
-                onRename: { newName in
-                    onRenameLayer(layer.id, newName)
-                }
-            )
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
+    private var layerList: some View {
+        List {
+            ForEach(state.frame.layers.reversed(), id: \.id) { layer in
+                LayerRow(
+                    layer: layer,
+                    size: state.size,
+                    isActive: layer.id == state.frame.activeLayerID,
+                    onTap: {
+                        state.frame.setActive(id: layer.id)
+                        onStructuralChange()
+                    },
+                    onRename: { newName in
+                        onRenameLayer(layer.id, newName)
+                    }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
+            .onMove(perform: editMode == .active ? performMove : nil)
         }
-        if reorderable {
-            return AnyView(forEach.onMove { indices, newOffset in
-                // The displayed list is reversed; convert displayed indices back to model indices.
-                guard let from = indices.first else { return }
-                let count = state.frame.layers.count
-                let displayedFrom = from
-                let displayedTo = newOffset > count ? count : newOffset
-                let modelFrom = count - 1 - displayedFrom
-                let modelTo   = count - 1 - max(0, min(count - 1, displayedTo - (displayedTo > displayedFrom ? 1 : 0)))
-                let id = state.frame.layers[modelFrom].id
-
-                state.beginStructuralSnapshot()
-                state.frame.move(id: id, toIndex: modelTo)
-                state.commitStructuralChange()
-                onStructuralChange()
-            })
-        } else {
-            return AnyView(forEach)
-        }
+        .environment(\.editMode, editMode == .active ? .constant(.active) : .constant(.inactive))
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 
-    /// In inactive mode the editMode environment and .onMove gesture recognizer are both
-    /// omitted entirely, preserving the UITableView gesture setup that existed before
-    /// Task 3.2 and allowing long-press rename in LayerRow to fire without conflict.
-    @ViewBuilder private var layerList: some View {
-        if editMode == .active {
-            List { layerRows(reorderable: true) }
-                .environment(\.editMode, .constant(.active))
-        } else {
-            List { layerRows(reorderable: false) }
-        }
+    private func performMove(indices: IndexSet, newOffset: Int) {
+        guard let displayedFrom = indices.first else { return }
+        let count = state.frame.layers.count
+        let modelFrom = count - 1 - displayedFrom
+        let modelTo = max(0, min(count - 1, (count - 1) - newOffset))
+        guard modelFrom != modelTo else { return }
+        let id = state.frame.layers[modelFrom].id
+
+        state.beginStructuralSnapshot()
+        state.frame.move(id: id, toIndex: modelTo)
+        state.commitStructuralChange()
+        onStructuralChange()
     }
 }
