@@ -49,6 +49,7 @@ struct LayersPanel: View {
                     // Action bar — wired in stage 3.
                     HStack(spacing: 12) {
                         Button {
+                            state.commitFloatingSelectionIfAny()
                             state.beginStructuralSnapshot()
                             state.frame.addLayer(name: "Layer \(state.frame.layers.count + 1)")
                             state.commitStructuralChange()
@@ -59,6 +60,7 @@ struct LayersPanel: View {
                         .disabled(state.frame.layers.count >= 16)
 
                         Button {
+                            state.commitFloatingSelectionIfAny()
                             state.beginStructuralSnapshot()
                             state.frame.duplicateActiveLayer()
                             state.commitStructuralChange()
@@ -72,6 +74,7 @@ struct LayersPanel: View {
                             let active = state.frame.activeLayer
                             let isEmpty = active.pixels.allSatisfy { $0 == 0 }
                             if isEmpty {
+                                state.commitFloatingSelectionIfAny()
                                 state.beginStructuralSnapshot()
                                 state.frame.removeLayer(id: active.id)
                                 state.commitStructuralChange()
@@ -98,6 +101,7 @@ struct LayersPanel: View {
                     ) {
                         Button("Delete", role: .destructive) {
                             if let id = confirmDeleteLayerID {
+                                state.commitFloatingSelectionIfAny()
                                 state.beginStructuralSnapshot()
                                 state.frame.removeLayer(id: id)
                                 state.commitStructuralChange()
@@ -132,6 +136,7 @@ struct LayersPanel: View {
                     size: state.size,
                     isActive: layer.id == state.frame.activeLayerID,
                     onTap: {
+                        state.commitFloatingSelectionIfAny()
                         state.frame.setActive(id: layer.id)
                         onStructuralChange()
                     },
@@ -157,6 +162,7 @@ struct LayersPanel: View {
         guard modelFrom != modelTo else { return }
         let id = state.frame.layers[modelFrom].id
 
+        state.commitFloatingSelectionIfAny()
         state.beginStructuralSnapshot()
         state.frame.move(id: id, toIndex: modelTo)
         state.commitStructuralChange()

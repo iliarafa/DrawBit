@@ -49,6 +49,7 @@ struct EditorView: View {
                 state: state,
                 isPresented: showingLayersPanel,
                 onRenameLayer: { layerID, newName in
+                    state.commitFloatingSelectionIfAny()
                     state.beginStructuralSnapshot()
                     state.frame.setName(id: layerID, to: newName)
                     state.commitStructuralChange()
