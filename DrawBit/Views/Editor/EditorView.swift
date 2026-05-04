@@ -138,7 +138,18 @@ struct EditorView: View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
             HStack(spacing: 20) {
-                ToolBar(state: state, onClear: clearCanvas)
+                ToolBar(
+                    state: state,
+                    onUndo: {
+                        state.undo()
+                        saveCurrentFrame()
+                    },
+                    onRedo: {
+                        state.redo()
+                        saveCurrentFrame()
+                    },
+                    onClear: clearCanvas
+                )
                 Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
                 RecentColorsStrip(
                     selectedColor: Binding(

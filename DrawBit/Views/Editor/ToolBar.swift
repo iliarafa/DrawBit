@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ToolBar: View {
     @Bindable var state: EditorState
+    var onUndo: () -> Void
+    var onRedo: () -> Void
     var onClear: () -> Void
 
     var body: some View {
@@ -17,7 +19,7 @@ struct ToolBar: View {
             }
             Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
             Button {
-                state.undo()
+                onUndo()
             } label: {
                 iconLabel(systemImage: "arrow.uturn.backward", title: "Undo")
                     .foregroundStyle(state.canUndo ? Color.white.opacity(0.85) : Color.white.opacity(0.25))
@@ -26,7 +28,7 @@ struct ToolBar: View {
             .disabled(!state.canUndo)
             .accessibilityIdentifier("Undo")
             Button {
-                state.redo()
+                onRedo()
             } label: {
                 iconLabel(systemImage: "arrow.uturn.forward", title: "Redo")
                     .foregroundStyle(state.canRedo ? Color.white.opacity(0.85) : Color.white.opacity(0.25))
