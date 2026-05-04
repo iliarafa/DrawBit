@@ -51,7 +51,23 @@ struct LayersPanel: View {
                             .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
                         }
+                        .onMove { indices, newOffset in
+                            // The displayed list is reversed; convert displayed indices back to model indices.
+                            guard let from = indices.first else { return }
+                            let count = state.frame.layers.count
+                            let displayedFrom = from
+                            let displayedTo = newOffset > count ? count : newOffset
+                            let modelFrom = count - 1 - displayedFrom
+                            let modelTo   = count - 1 - max(0, min(count - 1, displayedTo - (displayedTo > displayedFrom ? 1 : 0)))
+                            let id = state.frame.layers[modelFrom].id
+
+                            state.beginStructuralSnapshot()
+                            state.frame.move(id: id, toIndex: modelTo)
+                            state.commitStructuralChange()
+                            onStructuralChange()
+                        }
                     }
+                    .environment(\.editMode, .constant(.active))
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
 
