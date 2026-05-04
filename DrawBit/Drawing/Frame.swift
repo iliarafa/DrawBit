@@ -77,6 +77,26 @@ struct Frame: Equatable {
         activeLayerID = id
     }
 
+    // MARK: - Reorder math
+
+    /// Convert a SwiftUI `.onMove` `(displayedFrom, newOffset)` into the
+    /// model-space index `Frame.move(id:toIndex:)` expects.
+    ///
+    /// `newOffset` is a *pre-removal* insertion point in the displayed
+    /// (reversed) array, per Apple's `Array.move(fromOffsets:toOffset:)`
+    /// contract. The displayed array is the model layers reversed
+    /// (display[0] is model.last, display[count-1] is model.first).
+    ///
+    /// Returns `nil` if the reorder is a no-op (`modelFrom == modelTo`) so
+    /// the caller can short-circuit without touching the snapshot stack.
+    static func modelTargetIndex(displayedFrom: Int, newOffset: Int, count: Int) -> Int? {
+        let displayedTo = newOffset > count ? count : newOffset
+        let modelFrom = count - 1 - displayedFrom
+        let correctedDisplayedTo = max(0, min(count - 1, displayedTo - (displayedTo > displayedFrom ? 1 : 0)))
+        let modelTo = count - 1 - correctedDisplayedTo
+        return modelFrom == modelTo ? nil : modelTo
+    }
+
     mutating func setName(id: UUID, to name: String) {
         guard let idx = layers.firstIndex(where: { $0.id == id }) else { return }
         layers[idx].name = name

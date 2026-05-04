@@ -92,8 +92,8 @@ struct EditorView: View {
         .onDisappear {
             if state.selection != nil {
                 state.commitMarquee()
-                saveCurrentFrame()
             }
+            saveCurrentFrame()
         }
     }
 

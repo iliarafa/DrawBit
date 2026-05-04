@@ -164,9 +164,8 @@ struct LayersPanel: View {
     private func performMove(indices: IndexSet, newOffset: Int) {
         guard let displayedFrom = indices.first else { return }
         let count = state.frame.layers.count
+        guard let modelTo = Frame.modelTargetIndex(displayedFrom: displayedFrom, newOffset: newOffset, count: count) else { return }
         let modelFrom = count - 1 - displayedFrom
-        let modelTo = max(0, min(count - 1, (count - 1) - newOffset))
-        guard modelFrom != modelTo else { return }
         let id = state.frame.layers[modelFrom].id
 
         state.commitFloatingSelectionIfAny()
