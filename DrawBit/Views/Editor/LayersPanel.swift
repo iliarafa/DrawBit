@@ -71,10 +71,16 @@ struct LayersPanel: View {
                         .disabled(state.frame.layers.count >= 16)
 
                         Button {
+                            // Commit any floating marquee FIRST so the isEmpty check sees
+                            // the post-commit layer pixels — without this reorder, a
+                            // layer whose content has been entirely lifted into a marquee
+                            // selection reads as empty (because extractAndCut zeroes the
+                            // stored buffer) and would be silently deleted along with the
+                            // selection it just received back.
+                            state.commitFloatingSelectionIfAny()
                             let active = state.frame.activeLayer
                             let isEmpty = active.pixels.allSatisfy { $0 == 0 }
                             if isEmpty {
-                                state.commitFloatingSelectionIfAny()
                                 state.beginStructuralSnapshot()
                                 state.frame.removeLayer(id: active.id)
                                 state.commitStructuralChange()
