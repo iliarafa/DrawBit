@@ -64,4 +64,119 @@ final class LayersPanelUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Sketch"].waitForExistence(timeout: 2),
                       "Layer rename was not persisted across editor sessions")
     }
+
+    func testAddDrawDeleteFlow() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        // Create a fresh 32x32 piece from the gallery.
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        app.buttons["NewButton"].tap()
+
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        app.buttons["NewPiece-32"].tap()
+
+        // Open the layers panel.
+        XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 3))
+        app.buttons["LAYERS"].tap()
+
+        // Add a second layer via the action bar.
+        // Use doc.on.doc (duplicate) because it is unambiguous — unlike "plus" (which also
+        // appears in RecentColorsStrip) and "trash" (which would need special handling too),
+        // "doc.on.doc" only exists in the LayersPanel action bar.
+        // The duplicate creates a layer named "Layer 1 copy"; we assert on that name.
+        XCTAssertTrue(app.buttons["doc.on.doc"].firstMatch.waitForExistence(timeout: 2))
+        app.buttons["doc.on.doc"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Layer 1 copy"].waitForExistence(timeout: 2))
+
+        // Dismiss the panel by tapping the LAYERS button again (toggles closed).
+        app.buttons["LAYERS"].tap()
+
+        // Tap the canvas to draw on the active layer (the duplicate).
+        let canvas = app.otherElements["Canvas"].firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 2))
+        canvas.tap()
+
+        // Reopen the panel.
+        XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 3))
+        app.buttons["LAYERS"].tap()
+
+        // Delete the duplicate layer. The tap above made it non-empty, so a confirmation
+        // dialog should appear.
+        XCTAssertTrue(app.buttons["trash"].firstMatch.waitForExistence(timeout: 2))
+        app.buttons["trash"].firstMatch.tap()
+
+        // Confirm the delete if the dialog appeared (tap should have made the layer non-empty,
+        // but tolerate either path in case CanvasView's tap mapping fell on a transparent pixel).
+        if app.buttons["Delete"].waitForExistence(timeout: 1) {
+            app.buttons["Delete"].tap()
+        }
+
+        // The duplicate row should be gone.
+        XCTAssertFalse(app.staticTexts["Layer 1 copy"].waitForExistence(timeout: 1))
+    }
+
+    func testAddDrawDeletePersistsAcrossSessionBoundary() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        // Create a fresh 32x32 piece from the gallery.
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        app.buttons["NewPiece-32"].tap()
+
+        // Open layers panel.
+        XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 3))
+        app.buttons["LAYERS"].tap()
+        XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 2))
+
+        // Add a second layer via the action bar.
+        // Use doc.on.doc (duplicate) because it is unambiguous — "plus" also appears in
+        // RecentColorsStrip and firstMatch can land on the wrong button. The duplicate
+        // creates a layer named "Layer 1 copy"; the key property being tested is that the
+        // second layer appears, can be drawn on, deleted, and that deletion persists.
+        XCTAssertTrue(app.buttons["doc.on.doc"].firstMatch.waitForExistence(timeout: 2))
+        app.buttons["doc.on.doc"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Layer 1 copy"].waitForExistence(timeout: 2))
+
+        // Dismiss panel by tapping LAYERS again, then tap canvas to draw on the new layer.
+        app.buttons["LAYERS"].tap()
+        let canvas = app.otherElements["Canvas"].firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 2))
+        canvas.tap()
+
+        // Reopen the panel and delete the duplicate layer (it now has a pixel, so the
+        // confirmation dialog should appear; if for any reason it doesn't,
+        // the empty-fast-path will have deleted it without confirmation).
+        app.buttons["LAYERS"].tap()
+        app.buttons["trash"].firstMatch.tap()
+        if app.buttons["Delete"].waitForExistence(timeout: 1) {
+            app.buttons["Delete"].tap()
+        }
+        // The duplicate is gone. Layer 1 remains.
+        XCTAssertFalse(app.staticTexts["Layer 1 copy"].exists)
+        XCTAssertTrue(app.staticTexts["Layer 1"].exists)
+
+        // Persistence check: navigate back to gallery and reopen the piece.
+        // "Layer 1 copy" should still be gone after the round-trip through SwiftData.
+        // First dismiss the panel (tap the dim backdrop on the left side, well
+        // away from the panel's 360pt right column).
+        let window = app.windows.firstMatch
+        let bounds = window.frame
+        let backdropPoint = window.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5))
+        backdropPoint.tap()
+
+        app.buttons["Gallery"].tap()
+        XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 3))
+        app.buttons["PieceThumbnail"].tap()
+        app.buttons["LAYERS"].tap()
+        XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 2))
+        XCTAssertFalse(app.staticTexts["Layer 1 copy"].exists)
+
+        // Avoid an unused-variable warning if XCTest's analyzer flags `bounds`.
+        _ = bounds
+    }
 }
