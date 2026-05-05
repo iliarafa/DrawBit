@@ -5,13 +5,15 @@ import SwiftData
 @MainActor
 final class PieceRepositoryTests: XCTestCase {
     var container: ModelContainer!
+    var modelContext: ModelContext!
     var repo: PieceRepository!
 
     override func setUpWithError() throws {
         let schema = Schema([Piece.self, AppSettings.self])
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         container = try ModelContainer(for: schema, configurations: config)
-        repo = PieceRepository(context: ModelContext(container))
+        modelContext = ModelContext(container)
+        repo = PieceRepository(context: modelContext)
     }
 
     func testCreatePieceReturnsAllTransparent() throws {
@@ -56,5 +58,38 @@ final class PieceRepositoryTests: XCTestCase {
         try repo.delete(piece: piece)
         let remaining = try repo.allPieces()
         XCTAssertFalse(remaining.contains(where: { $0.id == piece.id }))
+    }
+
+    func testLoadFramesReturnsSequenceWithDefaults() throws {
+        let piece = try repo.createPiece(size: .s32)
+        let result = try repo.loadFrames(piece: piece)
+        XCTAssertEqual(result.frames.count, 1)
+        XCTAssertEqual(result.activeFrameIndex, 0)
+        XCTAssertEqual(result.fps, 12)
+    }
+
+    func testSaveFramesRoundTrips() throws {
+        let piece = try repo.createPiece(size: .s32)
+        var (frames, _, _) = try repo.loadFrames(piece: piece)
+        frames[0].addLayer(name: "Layer 2")
+        try repo.saveFrames(piece: piece, frames: frames, activeFrameIndex: 0, fps: 24)
+
+        let reloaded = try repo.loadFrames(piece: piece)
+        XCTAssertEqual(reloaded.frames[0].layers.count, 2)
+        XCTAssertEqual(reloaded.fps, 24)
+    }
+
+    func testLoadFramesMigratesLegacyV1Blob() throws {
+        let piece = try repo.createPiece(size: .s32)
+        // Force-write a legacy V1 blob (single Frame format) directly:
+        let layer = Layer(name: "Layer 1", pixels: Data(count: CanvasSize.s32.byteCount))
+        let legacyFrame = Frame(layers: [layer], activeLayerID: layer.id)
+        piece.frameData = FrameCodec.encode(legacyFrame)
+        try modelContext.save()
+
+        let reloaded = try repo.loadFrames(piece: piece)
+        XCTAssertEqual(reloaded.frames.count, 1)
+        XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(piece.frameData),
+                      "Loading a V1 blob should re-save as a V2 sequence")
     }
 }

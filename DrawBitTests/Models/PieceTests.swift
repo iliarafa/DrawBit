@@ -5,7 +5,8 @@ import SwiftData
 final class PieceTests: XCTestCase {
     func testNewPieceIsAllTransparent() throws {
         let piece = Piece(size: .s16)
-        let frame = try FrameCodec.decode(piece.frameData)
+        let decoded = try FrameCodec.decodeSequence(piece.frameData)
+        let frame = decoded.frames[decoded.activeFrameIndex]
         XCTAssertEqual(frame.layers.count, 1)
         XCTAssertEqual(frame.layers[0].pixels.count, CanvasSize.s16.byteCount)
         XCTAssertTrue(frame.layers[0].pixels.allSatisfy { $0 == 0 })

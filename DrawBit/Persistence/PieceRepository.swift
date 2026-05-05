@@ -22,36 +22,92 @@ final class PieceRepository {
         return piece
     }
 
-    /// Loads a Frame for the given piece. If the piece is still in v1 raw-RGBA shape (no
-    /// "DBFR" magic prefix), migrates it in place and writes the result back. This is the
-    /// per-read defense-in-depth for the eager migration in `migrateLegacyPiecesIfNeeded`.
-    func loadFrame(piece: Piece) throws -> Frame {
-        if FrameCodec.hasV1MagicPrefix(piece.frameData) {
-            return try FrameCodec.decode(piece.frameData)
+    // MARK: - Sequence load/save (V2)
+
+    /// Loads the full frame sequence + active index + fps. If the piece is still in V1
+    /// (single-frame "DBFR" blob) or raw legacy bytes, migrates in place to V2 ("DBFS")
+    /// before returning.
+    func loadFrames(piece: Piece) throws
+        -> (frames: [Frame], activeFrameIndex: Int, fps: Int)
+    {
+        if FrameCodec.hasV2SequenceMagicPrefix(piece.frameData) {
+            return try FrameCodec.decodeSequence(piece.frameData)
         }
+        if FrameCodec.hasV1MagicPrefix(piece.frameData) {
+            let frame = try FrameCodec.decode(piece.frameData)
+            let result: (frames: [Frame], activeFrameIndex: Int, fps: Int) =
+                ([frame], 0, FrameCodec.defaultFPS)
+            piece.frameData = FrameCodec.encodeSequence(frames: result.frames,
+                                                        activeFrameIndex: result.activeFrameIndex,
+                                                        fps: result.fps)
+            piece.updatedAt = Date()
+            try context.save()
+            return result
+        }
+        // Pre-Layers-v2 raw bytes: wrap as one layer in one frame.
         let frame = FrameCodec.wrapV1Data(piece.frameData, defaultName: "Layer 1")
-        piece.frameData = FrameCodec.encode(frame)
+        let result: (frames: [Frame], activeFrameIndex: Int, fps: Int) =
+            ([frame], 0, FrameCodec.defaultFPS)
+        piece.frameData = FrameCodec.encodeSequence(frames: result.frames,
+                                                    activeFrameIndex: result.activeFrameIndex,
+                                                    fps: result.fps)
         piece.updatedAt = Date()
         try context.save()
-        return frame
+        return result
     }
 
-    /// Persists the given Frame to the piece, regenerates its thumbnail, bumps updatedAt, and saves.
+    /// Persists the full sequence and regenerates the gallery thumbnail from the FIRST frame.
+    func saveFrames(piece: Piece, frames: [Frame], activeFrameIndex: Int, fps: Int) throws {
+        piece.frameData = FrameCodec.encodeSequence(frames: frames,
+                                                    activeFrameIndex: activeFrameIndex,
+                                                    fps: fps)
+        if let firstThumb = ThumbnailRenderer.render(frame: frames[0],
+                                                     size: piece.size,
+                                                     targetEdge: 256) {
+            piece.thumbnail = firstThumb
+        }
+        piece.updatedAt = Date()
+        try context.save()
+    }
+
+    // MARK: - Single-frame shims (V1 API, delegates to sequence methods)
+
+    /// Loads a Frame for the given piece. Delegates to `loadFrames` which handles all
+    /// migration paths (V2 sequence, V1 single-frame, and raw legacy bytes).
+    func loadFrame(piece: Piece) throws -> Frame {
+        let result = try loadFrames(piece: piece)
+        return result.frames[result.activeFrameIndex]
+    }
+
+    /// Persists the given Frame to the piece. Delegates to `saveFrames`, preserving fps
+    /// if the piece already has a V2 sequence blob.
     func saveFrame(piece: Piece, _ frame: Frame) throws {
-        piece.frameData = FrameCodec.encode(frame)
-        piece.thumbnail = ThumbnailRenderer.render(frame: frame, size: piece.size, targetEdge: 256) ?? Data()
-        piece.updatedAt = Date()
-        try context.save()
+        let existing = try? loadFrames(piece: piece)
+        try saveFrames(piece: piece,
+                       frames: [frame],
+                       activeFrameIndex: 0,
+                       fps: existing?.fps ?? FrameCodec.defaultFPS)
     }
 
-    /// Walks every piece and migrates any that still hold raw v1 data.
+    // MARK: - Migration
+
+    /// Walks every piece and migrates any that are NOT already V2 sequence blobs.
     func migrateLegacyPiecesIfNeeded() throws {
         let descriptor = FetchDescriptor<Piece>()
         let pieces = try context.fetch(descriptor)
         var dirty = false
-        for piece in pieces where !FrameCodec.hasV1MagicPrefix(piece.frameData) {
-            let frame = FrameCodec.wrapV1Data(piece.frameData, defaultName: "Layer 1")
-            piece.frameData = FrameCodec.encode(frame)
+        for piece in pieces where !FrameCodec.hasV2SequenceMagicPrefix(piece.frameData) {
+            if FrameCodec.hasV1MagicPrefix(piece.frameData) {
+                let frame = try FrameCodec.decode(piece.frameData)
+                piece.frameData = FrameCodec.encodeSequence(frames: [frame],
+                                                            activeFrameIndex: 0,
+                                                            fps: FrameCodec.defaultFPS)
+            } else {
+                let frame = FrameCodec.wrapV1Data(piece.frameData, defaultName: "Layer 1")
+                piece.frameData = FrameCodec.encodeSequence(frames: [frame],
+                                                            activeFrameIndex: 0,
+                                                            fps: FrameCodec.defaultFPS)
+            }
             piece.updatedAt = Date()
             dirty = true
         }
@@ -64,19 +120,29 @@ final class PieceRepository {
         try context.save()
     }
 
-    /// Duplicates a piece by reading its Frame and rebuilding with fresh layer UUIDs so
-    /// the duplicate's layers don't share IDs with the source (important for undo entries
-    /// and any future animation work that references layers by id).
+    /// Duplicates a piece, rebuilding every frame with fresh layer UUIDs so the duplicate's
+    /// layers don't share IDs with the source. Preserves the full frame sequence.
     func duplicate(piece: Piece) throws -> Piece {
-        let sourceFrame = try loadFrame(piece: piece)
+        let source = try loadFrames(piece: piece)
         let copy = Piece(size: piece.size)
-        // Rebuild layers with fresh ids while preserving order and contents.
-        let freshLayers = sourceFrame.layers.map { Layer(name: $0.name, pixels: $0.pixels,
-                                                          isVisible: $0.isVisible, isLocked: $0.isLocked) }
-        // The active layer in source maps to the same array index in the copy.
-        let activeIdx = sourceFrame.layers.firstIndex(where: { $0.id == sourceFrame.activeLayerID }) ?? 0
-        let freshFrame = Frame(layers: freshLayers, activeLayerID: freshLayers[activeIdx].id)
-        copy.frameData = FrameCodec.encode(freshFrame)
+
+        // Rebuild every frame with fresh layer UUIDs (consistent across the sequence).
+        let firstFrame = source.frames[0]
+        let freshLayerIDs = firstFrame.layers.map { _ in UUID() }
+        let freshFrames: [Frame] = source.frames.map { sourceFrame in
+            let freshLayers = zip(sourceFrame.layers, freshLayerIDs).map { layer, newID in
+                Layer(id: newID, name: layer.name, pixels: layer.pixels,
+                      isVisible: layer.isVisible, isLocked: layer.isLocked)
+            }
+            let activeIdx = sourceFrame.layers.firstIndex(where: { $0.id == sourceFrame.activeLayerID }) ?? 0
+            return Frame(name: sourceFrame.name,
+                         layers: freshLayers,
+                         activeLayerID: freshLayers[activeIdx].id)
+        }
+
+        copy.frameData = FrameCodec.encodeSequence(frames: freshFrames,
+                                                   activeFrameIndex: source.activeFrameIndex,
+                                                   fps: source.fps)
         copy.thumbnail = piece.thumbnail
         if let original = piece.name, !original.isEmpty {
             copy.name = "\(original) copy"
