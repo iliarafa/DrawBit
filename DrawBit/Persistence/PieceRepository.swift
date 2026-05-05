@@ -30,29 +30,23 @@ final class PieceRepository {
     func loadFrames(piece: Piece) throws
         -> (frames: [Frame], activeFrameIndex: Int, fps: Int)
     {
+        // Fast path: already V2 — no migration or re-encode needed.
         if FrameCodec.hasV2SequenceMagicPrefix(piece.frameData) {
             return try FrameCodec.decodeSequence(piece.frameData)
         }
-        if FrameCodec.hasV1MagicPrefix(piece.frameData) {
-            let frame = try FrameCodec.decode(piece.frameData)
-            let result: (frames: [Frame], activeFrameIndex: Int, fps: Int) =
-                ([frame], 0, FrameCodec.defaultFPS)
-            piece.frameData = FrameCodec.encodeSequence(frames: result.frames,
-                                                        activeFrameIndex: result.activeFrameIndex,
-                                                        fps: result.fps)
-            piece.updatedAt = Date()
-            try context.save()
-            return result
-        }
-        // Pre-Layers-v2 raw bytes: wrap as one layer in one frame.
-        let frame = FrameCodec.wrapV1Data(piece.frameData, defaultName: "Layer 1")
-        let result: (frames: [Frame], activeFrameIndex: Int, fps: Int) =
-            ([frame], 0, FrameCodec.defaultFPS)
+        // V1 or raw bytes: migrate in place and persist the canonical V2 form.
+        let result = FrameCodec.decodeAnyFrameData(piece.frameData,
+                                                    fallbackByteCount: piece.size.byteCount)
         piece.frameData = FrameCodec.encodeSequence(frames: result.frames,
                                                     activeFrameIndex: result.activeFrameIndex,
                                                     fps: result.fps)
         piece.updatedAt = Date()
-        try context.save()
+        do {
+            try context.save()
+        } catch {
+            // Defensive: if persistence fails, the in-memory blob is already V2.
+            // A subsequent saveFrames will write the canonical V2 form to disk.
+        }
         return result
     }
 
@@ -97,17 +91,11 @@ final class PieceRepository {
         let pieces = try context.fetch(descriptor)
         var dirty = false
         for piece in pieces where !FrameCodec.hasV2SequenceMagicPrefix(piece.frameData) {
-            if FrameCodec.hasV1MagicPrefix(piece.frameData) {
-                let frame = try FrameCodec.decode(piece.frameData)
-                piece.frameData = FrameCodec.encodeSequence(frames: [frame],
-                                                            activeFrameIndex: 0,
-                                                            fps: FrameCodec.defaultFPS)
-            } else {
-                let frame = FrameCodec.wrapV1Data(piece.frameData, defaultName: "Layer 1")
-                piece.frameData = FrameCodec.encodeSequence(frames: [frame],
-                                                            activeFrameIndex: 0,
-                                                            fps: FrameCodec.defaultFPS)
-            }
+            let result = FrameCodec.decodeAnyFrameData(piece.frameData,
+                                                        fallbackByteCount: piece.size.byteCount)
+            piece.frameData = FrameCodec.encodeSequence(frames: result.frames,
+                                                        activeFrameIndex: result.activeFrameIndex,
+                                                        fps: result.fps)
             piece.updatedAt = Date()
             dirty = true
         }

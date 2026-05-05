@@ -15,20 +15,9 @@ struct EditorView: View {
     init(piece: Piece) {
         self.piece = piece
         // Synchronous load: frameData is already in-memory on the SwiftData object.
-        // Dispatch on blob format — V2 sequence, V1 single-frame, or raw legacy bytes.
-        let result: (frames: [Frame], activeFrameIndex: Int, fps: Int)
-        if FrameCodec.hasV2SequenceMagicPrefix(piece.frameData) {
-            result = (try? FrameCodec.decodeSequence(piece.frameData))
-                ?? ([FrameCodec.wrapV1Data(Data(count: piece.size.byteCount), defaultName: "Layer 1")],
-                    0, FrameCodec.defaultFPS)
-        } else if FrameCodec.hasV1MagicPrefix(piece.frameData) {
-            let f = (try? FrameCodec.decode(piece.frameData))
-                ?? FrameCodec.wrapV1Data(Data(count: piece.size.byteCount), defaultName: "Layer 1")
-            result = ([f], 0, FrameCodec.defaultFPS)
-        } else {
-            let f = FrameCodec.wrapV1Data(piece.frameData, defaultName: "Layer 1")
-            result = ([f], 0, FrameCodec.defaultFPS)
-        }
+        // decodeAnyFrameData handles V2 sequence, V1 single-frame, and raw legacy bytes.
+        let result = FrameCodec.decodeAnyFrameData(piece.frameData,
+                                                    fallbackByteCount: piece.size.byteCount)
         self._state = State(initialValue: EditorState(piece: piece,
                                                       frames: result.frames,
                                                       activeFrameIndex: result.activeFrameIndex,

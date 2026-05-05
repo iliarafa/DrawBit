@@ -64,4 +64,18 @@ final class FrameCodecSequenceTests: XCTestCase {
         XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(blob))
         XCTAssertFalse(FrameCodec.hasV2SequenceMagicPrefix(FrameCodec.encode(f)))
     }
+
+    func testDecodeSequenceClampsOutOfRangeFPS() throws {
+        // Construct a V2 blob with an absurd fps by encoding then patching the fps bytes.
+        let pixels = Data(count: CanvasSize.s32.byteCount)
+        let layer = Layer(name: "L", pixels: pixels)
+        let frame = Frame(name: "F", layers: [layer], activeLayerID: layer.id)
+        var blob = FrameCodec.encodeSequence(frames: [frame], activeFrameIndex: 0, fps: 12)
+        // FPS lives at offset 9: 4 magic + 1 version + 2 frame count + 2 active index = 9.
+        let bigFPS: UInt16 = 30000
+        blob[9] = UInt8(bigFPS >> 8)
+        blob[10] = UInt8(bigFPS & 0xFF)
+        let decoded = try FrameCodec.decodeSequence(blob)
+        XCTAssertEqual(decoded.fps, 120, "Out-of-range fps must clamp to 120 on decode")
+    }
 }

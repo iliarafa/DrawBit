@@ -277,6 +277,31 @@ extension FrameCodec {
         guard (0..<frames.count).contains(activeIndex) else {
             throw DecodeError.malformed("activeFrameIndex out of range")
         }
-        return (frames, activeIndex, Int(fps == 0 ? UInt16(defaultFPS) : fps))
+        let fpsRaw = Int(fps)
+        let fpsValidated = fpsRaw == 0 ? defaultFPS : max(1, min(120, fpsRaw))
+        return (frames, activeIndex, fpsValidated)
+    }
+
+    /// Decodes any persisted Piece blob into a frame sequence: V2 directly, V1 single-frame
+    /// wrapped as a one-frame sequence, or pre-Layers-v2 raw RGBA bytes wrapped as one
+    /// frame with one layer. The `fallbackByteCount` is used to construct an empty layer
+    /// if the blob is too short to be raw bytes (defensive: returns a one-pixel-empty frame).
+    static func decodeAnyFrameData(_ data: Data,
+                                    fallbackByteCount: Int)
+        -> (frames: [Frame], activeFrameIndex: Int, fps: Int)
+    {
+        if hasV2SequenceMagicPrefix(data),
+           let result = try? decodeSequence(data) {
+            return result
+        }
+        if hasV1MagicPrefix(data),
+           let frame = try? decode(data) {
+            return ([frame], 0, defaultFPS)
+        }
+        // Pre-Layers-v2 raw bytes path. If `data` doesn't match expected pixel byte count,
+        // fall back to an empty frame at the requested size.
+        let payload = data.count == fallbackByteCount ? data : Data(count: fallbackByteCount)
+        let frame = wrapV1Data(payload, defaultName: "Layer 1")
+        return ([frame], 0, defaultFPS)
     }
 }
