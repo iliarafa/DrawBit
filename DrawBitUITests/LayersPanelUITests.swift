@@ -175,4 +175,50 @@ final class LayersPanelUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 2))
         XCTAssertFalse(app.staticTexts["Layer 1 copy"].exists)
     }
+
+    func testVisibilityAndLockTogglesPersist() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        // Create a fresh 32×32 piece.
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        app.buttons["NewPiece-32"].tap()
+
+        // Open the layers panel.
+        XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 3))
+        app.buttons["LAYERS"].tap()
+        XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 2))
+
+        // Default state: layer is visible (eye) and unlocked (lock.open).
+        XCTAssertTrue(app.buttons["eye"].firstMatch.waitForExistence(timeout: 1))
+        XCTAssertTrue(app.buttons["lock.open"].firstMatch.exists)
+
+        // Toggle visibility: eye → eye.slash.
+        app.buttons["eye"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["eye.slash"].firstMatch.waitForExistence(timeout: 1))
+        XCTAssertFalse(app.buttons["eye"].firstMatch.exists)
+
+        // Toggle lock: lock.open → lock.fill.
+        app.buttons["lock.open"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["lock.fill"].firstMatch.waitForExistence(timeout: 1))
+        XCTAssertFalse(app.buttons["lock.open"].firstMatch.exists)
+
+        // Persistence round-trip: dismiss panel → Gallery → reopen piece → reopen panel.
+        // Both toggled states should still be in effect.
+        let window = app.windows.firstMatch
+        let backdropPoint = window.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5))
+        backdropPoint.tap()
+        app.buttons["Gallery"].tap()
+        XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 3))
+        app.buttons["PieceThumbnail"].tap()
+        app.buttons["LAYERS"].tap()
+        XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 2))
+
+        // Both toggles survived the SwiftData round-trip.
+        XCTAssertTrue(app.buttons["eye.slash"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["lock.fill"].firstMatch.exists)
+    }
 }

@@ -147,6 +147,21 @@ struct LayersPanel: View {
                         state.frame.setActive(id: layer.id)
                         onStructuralChange()
                     },
+                    onToggleVisible: {
+                        state.commitFloatingSelectionIfAny()
+                        state.beginStructuralSnapshot()
+                        state.frame.setVisible(id: layer.id, to: !layer.isVisible)
+                        state.commitStructuralChange()
+                        onStructuralChange()
+                    },
+                    onToggleLocked: {
+                        state.commitFloatingSelectionIfAny()
+                        state.beginStructuralSnapshot()
+                        state.frame.setLocked(id: layer.id, to: !layer.isLocked)
+                        state.commitStructuralChange()
+                        onStructuralChange()
+                    },
+                    isPulsing: state.lockPulseLayerID == layer.id,
                     onRename: { newName in
                         onRenameLayer(layer.id, newName)
                     }
