@@ -5,6 +5,7 @@ struct LayerRow: View {
     let size: CanvasSize
     let isActive: Bool
     let onTap: () -> Void
+    let onToggleVisible: () -> Void
     let onRename: (String) -> Void
 
     @State private var isEditingName = false
@@ -34,8 +35,11 @@ struct LayerRow: View {
                     }
             }
             Spacer()
-            Image(systemName: layer.isVisible ? "eye" : "eye.slash")
-                .foregroundStyle(.white.opacity(0.55))
+            Button { onToggleVisible() } label: {
+                Image(systemName: layer.isVisible ? "eye" : "eye.slash")
+                    .foregroundStyle(.white.opacity(layer.isVisible ? 0.85 : 0.45))
+            }
+            .buttonStyle(.plain)
             Image(systemName: layer.isLocked  ? "lock.fill" : "lock.open")
                 .foregroundStyle(.white.opacity(0.55))
         }

@@ -147,6 +147,13 @@ struct LayersPanel: View {
                         state.frame.setActive(id: layer.id)
                         onStructuralChange()
                     },
+                    onToggleVisible: {
+                        state.commitFloatingSelectionIfAny()
+                        state.beginStructuralSnapshot()
+                        state.frame.setVisible(id: layer.id, to: !layer.isVisible)
+                        state.commitStructuralChange()
+                        onStructuralChange()
+                    },
                     onRename: { newName in
                         onRenameLayer(layer.id, newName)
                     }
