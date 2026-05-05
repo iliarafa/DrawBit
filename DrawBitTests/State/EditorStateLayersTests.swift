@@ -5,7 +5,7 @@ final class EditorStateLayersTests: XCTestCase {
     private func newState() -> EditorState {
         let layer = Layer(name: "Layer 1", pixels: Data(count: CanvasSize.s32.byteCount))
         let frame = Frame(layers: [layer], activeLayerID: layer.id)
-        return EditorState(pieceID: UUID(), size: .s32, frame: frame)
+        return EditorState(pieceID: UUID(), size: .s32, frames: [frame], activeFrameIndex: 0, fps: 12)
     }
 
     func testActiveLayerPixelGridReflectsActiveLayer() {

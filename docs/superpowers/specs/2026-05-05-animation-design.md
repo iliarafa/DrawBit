@@ -206,9 +206,7 @@ enum FrameCodec {
 - `"DBFR"` → decode as a single V1 Frame, return `(frames: [oneFrame], activeFrameIndex: 0, fps: 12)`.
 - anything else → `DecodeError.badMagic`.
 
-**The first save after migration writes the V2 format.** No SwiftData schema change is required (`Piece.frameData: Data` field stays); only the blob content interpretation changes. Existing Pieces seamlessly become single-frame V2 sequences.
-
-This avoids a one-shot migration pass on app boot and keeps migration purely at the codec layer — same approach as the Layers v2 magic-prefix detection.
+**Two-tier migration: eager + lazy.** On app launch, `PieceRepository.migrateLegacyPiecesIfNeeded()` walks every `Piece` and rewrites V1 / raw blobs to V2 (matching the Layers v2 pattern). As defense in depth, `loadFrames(piece:)` also detects V1 / raw on read and migrates the offending Piece in place before returning. No SwiftData schema change is required (`Piece.frameData: Data` field stays); only the blob content interpretation changes. Existing Pieces seamlessly become single-frame V2 sequences whether the user opens the app cold (eager pass) or imports a Piece via duplicate / file-share later (lazy on-read).
 
 ### `Piece` schema (no change)
 

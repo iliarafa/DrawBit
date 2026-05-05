@@ -24,7 +24,7 @@ final class MigrationTests: XCTestCase {
         let frame = try repo.loadFrame(piece: piece)
         XCTAssertEqual(frame.layers.count, 1)
         XCTAssertEqual(frame.layers[0].pixels, v1)
-        XCTAssertTrue(FrameCodec.hasV1MagicPrefix(piece.frameData),
+        XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(piece.frameData),
                       "loadFrame must persist the migrated v2 blob back to disk")
     }
 
@@ -41,8 +41,8 @@ final class MigrationTests: XCTestCase {
         let repo = PieceRepository(context: ctx)
         try repo.migrateLegacyPiecesIfNeeded()
 
-        XCTAssertTrue(FrameCodec.hasV1MagicPrefix(p1.frameData))
-        XCTAssertTrue(FrameCodec.hasV1MagicPrefix(p2.frameData))
+        XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(p1.frameData))
+        XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(p2.frameData))
     }
 
     func testEagerMigrationIsIdempotent() throws {

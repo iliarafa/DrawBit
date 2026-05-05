@@ -151,3 +151,157 @@ enum FrameCodec {
         return UUID(uuid: t)
     }
 }
+
+// MARK: - V2 Sequence format
+
+extension FrameCodec {
+
+    static let sequenceMagic: [UInt8] = Array("DBFS".utf8)
+    static let sequenceCurrentVersion: UInt8 = 1
+    static let defaultFPS: Int = 12
+
+    static func hasV2SequenceMagicPrefix(_ data: Data) -> Bool {
+        guard data.count >= sequenceMagic.count else { return false }
+        return Array(data.prefix(sequenceMagic.count)) == sequenceMagic
+    }
+
+    static func encodeSequence(frames: [Frame], activeFrameIndex: Int, fps: Int) -> Data {
+        precondition(!frames.isEmpty, "Sequence must hold at least one frame")
+        precondition((0..<frames.count).contains(activeFrameIndex), "activeFrameIndex out of range")
+
+        var out = Data()
+        out.append(contentsOf: sequenceMagic)
+        out.append(sequenceCurrentVersion)
+
+        let count = UInt16(frames.count)
+        out.append(UInt8((count >> 8) & 0xFF))
+        out.append(UInt8(count & 0xFF))
+
+        let active = UInt16(activeFrameIndex)
+        out.append(UInt8((active >> 8) & 0xFF))
+        out.append(UInt8(active & 0xFF))
+
+        let fpsClamped = UInt16(max(1, min(120, fps)))
+        out.append(UInt8((fpsClamped >> 8) & 0xFF))
+        out.append(UInt8(fpsClamped & 0xFF))
+
+        for frame in frames {
+            appendUUID(frame.id, to: &out)
+
+            let nameBytes = Array(frame.name.utf8.prefix(255))
+            out.append(UInt8(nameBytes.count))
+            out.append(contentsOf: nameBytes)
+
+            let inner = FrameCodec.encode(frame)
+            let innerLen = UInt32(inner.count)
+            out.append(UInt8((innerLen >> 24) & 0xFF))
+            out.append(UInt8((innerLen >> 16) & 0xFF))
+            out.append(UInt8((innerLen >>  8) & 0xFF))
+            out.append(UInt8( innerLen        & 0xFF))
+            out.append(inner)
+        }
+        return out
+    }
+
+    static func decodeSequence(_ data: Data) throws
+        -> (frames: [Frame], activeFrameIndex: Int, fps: Int)
+    {
+        if hasV1MagicPrefix(data) {
+            // Legacy single-frame blob: decode via V1 and wrap.
+            let frame = try decode(data)
+            return ([frame], 0, defaultFPS)
+        }
+        guard hasV2SequenceMagicPrefix(data) else {
+            throw DecodeError.badMagic
+        }
+
+        var cursor = sequenceMagic.count
+        let bytes = [UInt8](data)
+
+        func need(_ n: Int) throws {
+            if cursor + n > bytes.count { throw DecodeError.truncated }
+        }
+
+        try need(1)
+        let version = bytes[cursor]; cursor += 1
+        guard version == sequenceCurrentVersion else {
+            throw DecodeError.unsupportedVersion(version)
+        }
+
+        try need(2)
+        let frameCount = (UInt16(bytes[cursor]) << 8) | UInt16(bytes[cursor + 1])
+        cursor += 2
+
+        try need(2)
+        let activeIdxRaw = (UInt16(bytes[cursor]) << 8) | UInt16(bytes[cursor + 1])
+        cursor += 2
+
+        try need(2)
+        let fps = (UInt16(bytes[cursor]) << 8) | UInt16(bytes[cursor + 1])
+        cursor += 2
+
+        var frames: [Frame] = []
+        frames.reserveCapacity(Int(frameCount))
+
+        for _ in 0..<Int(frameCount) {
+            try need(16)
+            let frameID = readUUID(bytes, at: cursor); cursor += 16
+
+            try need(1)
+            let nameLen = Int(bytes[cursor]); cursor += 1
+            try need(nameLen)
+            let name = String(bytes: bytes[cursor..<cursor + nameLen], encoding: .utf8) ?? "Frame"
+            cursor += nameLen
+
+            try need(4)
+            let innerLen =
+                (UInt32(bytes[cursor    ]) << 24) |
+                (UInt32(bytes[cursor + 1]) << 16) |
+                (UInt32(bytes[cursor + 2]) <<  8) |
+                 UInt32(bytes[cursor + 3])
+            cursor += 4
+            try need(Int(innerLen))
+            let innerData = Data(bytes[cursor..<cursor + Int(innerLen)])
+            cursor += Int(innerLen)
+
+            // Inner V1 blob is decoded; we then override id/name from the wrapper.
+            let inner = try decode(innerData)
+            frames.append(Frame(id: frameID,
+                                name: name,
+                                layers: inner.layers,
+                                activeLayerID: inner.activeLayerID))
+        }
+
+        guard !frames.isEmpty else { throw DecodeError.malformed("zero frames") }
+        let activeIndex = Int(activeIdxRaw)
+        guard (0..<frames.count).contains(activeIndex) else {
+            throw DecodeError.malformed("activeFrameIndex out of range")
+        }
+        let fpsRaw = Int(fps)
+        let fpsValidated = fpsRaw == 0 ? defaultFPS : max(1, min(120, fpsRaw))
+        return (frames, activeIndex, fpsValidated)
+    }
+
+    /// Decodes any persisted Piece blob into a frame sequence: V2 directly, V1 single-frame
+    /// wrapped as a one-frame sequence, or pre-Layers-v2 raw RGBA bytes wrapped as one
+    /// frame with one layer. The `fallbackByteCount` is used to construct an empty layer
+    /// if the blob is too short to be raw bytes (defensive: returns a one-pixel-empty frame).
+    static func decodeAnyFrameData(_ data: Data,
+                                    fallbackByteCount: Int)
+        -> (frames: [Frame], activeFrameIndex: Int, fps: Int)
+    {
+        if hasV2SequenceMagicPrefix(data),
+           let result = try? decodeSequence(data) {
+            return result
+        }
+        if hasV1MagicPrefix(data),
+           let frame = try? decode(data) {
+            return ([frame], 0, defaultFPS)
+        }
+        // Pre-Layers-v2 raw bytes path. If `data` doesn't match expected pixel byte count,
+        // fall back to an empty frame at the requested size.
+        let payload = data.count == fallbackByteCount ? data : Data(count: fallbackByteCount)
+        let frame = wrapV1Data(payload, defaultName: "Layer 1")
+        return ([frame], 0, defaultFPS)
+    }
+}

@@ -1,15 +1,22 @@
 import Foundation
 
 struct Frame: Equatable {
+    let id: UUID
+    var name: String
     private(set) var layers: [Layer]
     private(set) var activeLayerID: UUID
 
-    init(layers: [Layer], activeLayerID: UUID) {
+    init(id: UUID = UUID(),
+         name: String = "Frame 1",
+         layers: [Layer],
+         activeLayerID: UUID) {
         precondition(!layers.isEmpty, "Frame must have at least one layer")
         precondition(layers.contains(where: { $0.id == activeLayerID }),
                      "activeLayerID must reference one of the layers")
         precondition(layers.dropFirst().allSatisfy { $0.pixels.count == layers[0].pixels.count },
                      "All layers must have equal pixel byte count")
+        self.id = id
+        self.name = name
         self.layers = layers
         self.activeLayerID = activeLayerID
     }
