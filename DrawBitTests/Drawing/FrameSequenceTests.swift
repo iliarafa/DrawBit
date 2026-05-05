@@ -3,9 +3,12 @@ import XCTest
 
 final class FrameSequenceTests: XCTestCase {
 
+    /// Creates a frame sequence where all frames share the same layer UUID —
+    /// the cascade invariant that any real sequence must satisfy.
     private func makeFrames(_ names: [String], byteCount: Int = CanvasSize.s32.byteCount) -> [Frame] {
+        let sharedLayerID = UUID()
         return names.map { name in
-            let layer = Layer(name: "Layer 1", pixels: Data(count: byteCount))
+            let layer = Layer(id: sharedLayerID, name: "Layer 1", pixels: Data(count: byteCount))
             return Frame(name: name, layers: [layer], activeLayerID: layer.id)
         }
     }
@@ -74,5 +77,100 @@ final class FrameSequenceTests: XCTestCase {
         XCTAssertEqual(FrameSequence.modelTargetIndex(displayedFrom: 2, newOffset: 0, count: 3), 0)
         XCTAssertNil(FrameSequence.modelTargetIndex(displayedFrom: 1, newOffset: 1, count: 3))
         XCTAssertNil(FrameSequence.modelTargetIndex(displayedFrom: 1, newOffset: 2, count: 3))
+    }
+
+    // MARK: - Task 2.2: Layer cascade
+
+    func testAddLayerCascadesAcrossAllFrames() {
+        var frames = makeFrames(["F1", "F2", "F3"])
+        let newLayerID = FrameSequence.addLayer(name: "Layer 2", in: &frames)
+        XCTAssertNotNil(newLayerID)
+        for f in frames {
+            XCTAssertEqual(f.layers.count, 2)
+            XCTAssertTrue(f.layers.contains(where: { $0.id == newLayerID }))
+            // New layer is empty in every frame:
+            XCTAssertTrue(f.layers.last!.pixels.allSatisfy { $0 == 0 })
+        }
+    }
+
+    func testRemoveLayerCascadesAcrossAllFrames() {
+        var frames = makeFrames(["F1", "F2"])
+        _ = FrameSequence.addLayer(name: "Layer 2", in: &frames)
+        let toRemove = frames[0].layers[1].id
+        FrameSequence.removeLayer(toRemove, in: &frames)
+        for f in frames {
+            XCTAssertEqual(f.layers.count, 1)
+            XCTAssertFalse(f.layers.contains(where: { $0.id == toRemove }))
+        }
+    }
+
+    func testRemoveLayerNoOpsAtSingleLayer() {
+        var frames = makeFrames(["F1"])
+        let id = frames[0].layers[0].id
+        FrameSequence.removeLayer(id, in: &frames)
+        XCTAssertEqual(frames[0].layers.count, 1, "Cannot remove the last layer")
+    }
+
+    func testMoveLayerCascadesAcrossAllFrames() {
+        var frames = makeFrames(["F1", "F2"])
+        _ = FrameSequence.addLayer(name: "L2", in: &frames)
+        _ = FrameSequence.addLayer(name: "L3", in: &frames)
+        let l1 = frames[0].layers[0].id
+        FrameSequence.moveLayer(l1, toIndex: 2, in: &frames)
+        for f in frames {
+            XCTAssertEqual(f.layers.last!.id, l1, "Layer 1 should now be on top in every frame")
+        }
+    }
+
+    func testSetLayerNameCascadesAcrossAllFrames() {
+        var frames = makeFrames(["F1", "F2"])
+        let id = frames[0].layers[0].id
+        FrameSequence.setLayerName(id, to: "Background", in: &frames)
+        for f in frames {
+            XCTAssertEqual(f.layers[0].name, "Background")
+        }
+    }
+
+    func testSetLayerVisibleCascades() {
+        var frames = makeFrames(["F1", "F2"])
+        let id = frames[0].layers[0].id
+        FrameSequence.setLayerVisible(id, false, in: &frames)
+        for f in frames {
+            XCTAssertFalse(f.layers[0].isVisible)
+        }
+    }
+
+    func testSetLayerLockedCascades() {
+        var frames = makeFrames(["F1", "F2"])
+        let id = frames[0].layers[0].id
+        FrameSequence.setLayerLocked(id, true, in: &frames)
+        for f in frames {
+            XCTAssertTrue(f.layers[0].isLocked)
+        }
+    }
+
+    func testDuplicateLayerCascadesWithSameNewIDAcrossFrames() {
+        var frames = makeFrames(["F1", "F2"])
+        // Put different pixel data in F1 and F2 so we can verify per-frame copy semantics:
+        var f1 = frames[0]
+        var f2 = frames[1]
+        var f1Layers = f1.layers
+        var f2Layers = f2.layers
+        f1Layers[0].pixels[0] = 0xAA
+        f2Layers[0].pixels[0] = 0xBB
+        frames[0] = Frame(id: f1.id, name: f1.name, layers: f1Layers, activeLayerID: f1.activeLayerID)
+        frames[1] = Frame(id: f2.id, name: f2.name, layers: f2Layers, activeLayerID: f2.activeLayerID)
+
+        let sourceID = frames[0].layers[0].id
+        let newID = FrameSequence.duplicateLayer(sourceID, in: &frames)
+        XCTAssertNotNil(newID)
+        XCTAssertEqual(frames[0].layers.count, 2)
+        XCTAssertEqual(frames[1].layers.count, 2)
+        // Same UUID across frames:
+        XCTAssertEqual(frames[0].layers[1].id, newID)
+        XCTAssertEqual(frames[1].layers[1].id, newID)
+        // Per-frame pixel copy:
+        XCTAssertEqual(frames[0].layers[1].pixels[0], 0xAA)
+        XCTAssertEqual(frames[1].layers[1].pixels[0], 0xBB)
     }
 }
