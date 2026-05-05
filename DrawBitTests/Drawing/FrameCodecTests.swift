@@ -13,7 +13,11 @@ final class FrameCodecTests: XCTestCase {
         let original = sampleFrame()
         let data = FrameCodec.encode(original)
         let decoded = try FrameCodec.decode(data)
-        XCTAssertEqual(decoded, original)
+        // Frame.id is not part of the binary format (the codec encodes layer UUIDs and
+        // activeLayerID, not the frame's own identity). A decoded frame gets a fresh id,
+        // so we assert on the fields that are actually serialized.
+        XCTAssertEqual(decoded.layers, original.layers)
+        XCTAssertEqual(decoded.activeLayerID, original.activeLayerID)
     }
 
     func testEncodedDataStartsWithMagic() {

@@ -100,4 +100,28 @@ final class FrameTests: XCTestCase {
         XCTAssertEqual(frame.layers[1].id, dup.id, "duplicate is inserted above the original")
         XCTAssertNotEqual(dup.id, l1.id, "duplicate has its own UUID")
     }
+
+    func testFrameDefaultIDIsUnique() {
+        let pixels = Data(count: CanvasSize.s32.byteCount)
+        let layer = Layer(name: "Layer 1", pixels: pixels)
+        let a = Frame(layers: [layer], activeLayerID: layer.id)
+        let b = Frame(layers: [layer], activeLayerID: layer.id)
+        XCTAssertNotEqual(a.id, b.id)
+    }
+
+    func testFrameDefaultNameIsFrame1() {
+        let pixels = Data(count: CanvasSize.s32.byteCount)
+        let layer = Layer(name: "Layer 1", pixels: pixels)
+        let frame = Frame(layers: [layer], activeLayerID: layer.id)
+        XCTAssertEqual(frame.name, "Frame 1")
+    }
+
+    func testFrameExplicitIDAndNamePreserved() {
+        let pixels = Data(count: CanvasSize.s32.byteCount)
+        let layer = Layer(name: "Layer 1", pixels: pixels)
+        let id = UUID()
+        let frame = Frame(id: id, name: "Pose A", layers: [layer], activeLayerID: layer.id)
+        XCTAssertEqual(frame.id, id)
+        XCTAssertEqual(frame.name, "Pose A")
+    }
 }
