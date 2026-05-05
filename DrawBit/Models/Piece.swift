@@ -32,10 +32,11 @@ final class Piece {
         self.id = UUID()
         self.name = nil
         self.sizeRaw = size.rawValue
-        // New pieces start as a single empty layer wrapped in a Frame and encoded.
         let layer = Layer(name: "Layer 1", pixels: Data(count: size.byteCount))
-        let frame = Frame(layers: [layer], activeLayerID: layer.id)
-        self.frameData = FrameCodec.encode(frame)
+        let frame = Frame(name: "Frame 1", layers: [layer], activeLayerID: layer.id)
+        self.frameData = FrameCodec.encodeSequence(frames: [frame],
+                                                    activeFrameIndex: 0,
+                                                    fps: FrameCodec.defaultFPS)
         self.thumbnail = Data()
         self.createdAt = now
         self.updatedAt = now

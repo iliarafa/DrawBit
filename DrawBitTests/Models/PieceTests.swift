@@ -27,4 +27,15 @@ final class PieceTests: XCTestCase {
         let piece = Piece(size: .s128)
         XCTAssertEqual(piece.size, .s128)
     }
+
+    func testNewPieceFrameDataIsV2SequenceWithOneFrame() throws {
+        let piece = Piece(size: .s32)
+        XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(piece.frameData))
+        let decoded = try FrameCodec.decodeSequence(piece.frameData)
+        XCTAssertEqual(decoded.frames.count, 1)
+        XCTAssertEqual(decoded.frames[0].layers.count, 1)
+        XCTAssertEqual(decoded.frames[0].layers[0].name, "Layer 1")
+        XCTAssertEqual(decoded.activeFrameIndex, 0)
+        XCTAssertEqual(decoded.fps, 12)
+    }
 }
