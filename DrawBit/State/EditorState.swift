@@ -216,6 +216,13 @@ final class EditorState {
         commitStroke()
     }
 
+    /// If a floating marquee selection exists, commit it back into the active
+    /// layer's pixels. Safe to call when there is no selection (no-op).
+    func commitFloatingSelectionIfAny() {
+        guard selection != nil else { return }
+        commitMarquee()
+    }
+
     func cancelMarquee() {
         selection = nil
         pendingMarqueeRect = nil

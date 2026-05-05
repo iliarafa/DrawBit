@@ -73,6 +73,7 @@ struct CanvasView: View {
             .contentShape(Rectangle())
             .clipped()
         }
+        .accessibilityIdentifier("Canvas")
     }
 
     /// Canvas edge length at scale=1 in points. Integer multiple of `dimension` so each canvas

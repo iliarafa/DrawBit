@@ -4,7 +4,11 @@ struct LayersPanel: View {
     @Bindable var state: EditorState
     let isPresented: Bool
     let onRenameLayer: (UUID, String) -> Void
+    let onStructuralChange: () -> Void
     let onDismiss: () -> Void
+
+    @State private var confirmDeleteLayerID: UUID?
+    @State private var editMode: EditMode = .inactive
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -20,6 +24,15 @@ struct LayersPanel: View {
                         Text("LAYERS").font(.pixel(11)).foregroundStyle(.white.opacity(0.85))
                         Spacer()
                         Button {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                editMode = (editMode == .active) ? .inactive : .active
+                            }
+                        } label: {
+                            Text(editMode == .active ? "DONE" : "EDIT")
+                                .font(.pixel(11))
+                        }
+                        .foregroundStyle(.white.opacity(0.85))
+                        Button {
                             onDismiss()
                         } label: {
                             Image(systemName: "xmark").foregroundStyle(.white)
@@ -31,34 +44,80 @@ struct LayersPanel: View {
                     Divider().overlay(Color.white.opacity(0.08))
 
                     // Top of list = top of stack (layers stored bottom-up; reverse for display).
-                    List {
-                        ForEach(state.frame.layers.reversed(), id: \.id) { layer in
-                            LayerRow(
-                                layer: layer,
-                                size: state.size,
-                                isActive: layer.id == state.frame.activeLayerID,
-                                onTap: { state.frame.setActive(id: layer.id) },
-                                onRename: { newName in
-                                    onRenameLayer(layer.id, newName)
-                                }
-                            )
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                        }
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
+                    layerList
 
-                    // Action bar — disabled placeholders for stage 2.
+                    // Action bar — wired in stage 3.
                     HStack(spacing: 12) {
-                        Image(systemName: "plus").opacity(0.3)
-                        Image(systemName: "doc.on.doc").opacity(0.3)
-                        Image(systemName: "trash").opacity(0.3)
+                        Button {
+                            state.commitFloatingSelectionIfAny()
+                            state.beginStructuralSnapshot()
+                            state.frame.addLayer(name: "Layer \(state.frame.layers.count + 1)")
+                            state.commitStructuralChange()
+                            onStructuralChange()
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityIdentifier("LayersPanel-plus")
+                        .disabled(state.frame.layers.count >= 16)
+
+                        Button {
+                            state.commitFloatingSelectionIfAny()
+                            state.beginStructuralSnapshot()
+                            state.frame.duplicateActiveLayer()
+                            state.commitStructuralChange()
+                            onStructuralChange()
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                        }
+                        .disabled(state.frame.layers.count >= 16)
+
+                        Button {
+                            // Commit any floating marquee FIRST so the isEmpty check sees
+                            // the post-commit layer pixels — without this reorder, a
+                            // layer whose content has been entirely lifted into a marquee
+                            // selection reads as empty (because extractAndCut zeroes the
+                            // stored buffer) and would be silently deleted along with the
+                            // selection it just received back.
+                            state.commitFloatingSelectionIfAny()
+                            let active = state.frame.activeLayer
+                            let isEmpty = active.pixels.allSatisfy { $0 == 0 }
+                            if isEmpty {
+                                state.beginStructuralSnapshot()
+                                state.frame.removeLayer(id: active.id)
+                                state.commitStructuralChange()
+                                onStructuralChange()
+                            } else {
+                                confirmDeleteLayerID = active.id
+                            }
+                        } label: {
+                            Image(systemName: "trash")
+                        }
+                        .disabled(state.frame.layers.count <= 1)
+
                         Spacer()
                     }
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
+                    .confirmationDialog(
+                        "Delete this layer?",
+                        isPresented: Binding(
+                            get: { confirmDeleteLayerID != nil },
+                            set: { if !$0 { confirmDeleteLayerID = nil } }
+                        )
+                    ) {
+                        Button("Delete", role: .destructive) {
+                            if let id = confirmDeleteLayerID {
+                                state.commitFloatingSelectionIfAny()
+                                state.beginStructuralSnapshot()
+                                state.frame.removeLayer(id: id)
+                                state.commitStructuralChange()
+                                onStructuralChange()
+                            }
+                            confirmDeleteLayerID = nil
+                        }
+                        Button("Cancel", role: .cancel) { confirmDeleteLayerID = nil }
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .frame(width: 360)
@@ -67,5 +126,52 @@ struct LayersPanel: View {
             }
         }
         .animation(.easeInOut(duration: 0.18), value: isPresented)
+        .onChange(of: isPresented) { _, nowPresented in
+            if !nowPresented {
+                editMode = .inactive
+            }
+        }
+    }
+
+    // MARK: - Layer list
+
+    private var layerList: some View {
+        List {
+            ForEach(state.frame.layers.reversed(), id: \.id) { layer in
+                LayerRow(
+                    layer: layer,
+                    size: state.size,
+                    isActive: layer.id == state.frame.activeLayerID,
+                    onTap: {
+                        state.commitFloatingSelectionIfAny()
+                        state.frame.setActive(id: layer.id)
+                        onStructuralChange()
+                    },
+                    onRename: { newName in
+                        onRenameLayer(layer.id, newName)
+                    }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
+            .onMove(perform: editMode == .active ? performMove : nil)
+        }
+        .environment(\.editMode, editMode == .active ? .constant(.active) : .constant(.inactive))
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+    }
+
+    private func performMove(indices: IndexSet, newOffset: Int) {
+        guard let displayedFrom = indices.first else { return }
+        let count = state.frame.layers.count
+        guard let modelTo = Frame.modelTargetIndex(displayedFrom: displayedFrom, newOffset: newOffset, count: count) else { return }
+        let modelFrom = count - 1 - displayedFrom
+        let id = state.frame.layers[modelFrom].id
+
+        state.commitFloatingSelectionIfAny()
+        state.beginStructuralSnapshot()
+        state.frame.move(id: id, toIndex: modelTo)
+        state.commitStructuralChange()
+        onStructuralChange()
     }
 }

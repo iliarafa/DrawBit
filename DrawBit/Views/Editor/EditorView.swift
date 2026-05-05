@@ -49,11 +49,13 @@ struct EditorView: View {
                 state: state,
                 isPresented: showingLayersPanel,
                 onRenameLayer: { layerID, newName in
+                    state.commitFloatingSelectionIfAny()
                     state.beginStructuralSnapshot()
                     state.frame.setName(id: layerID, to: newName)
                     state.commitStructuralChange()
                     saveCurrentFrame()
                 },
+                onStructuralChange: { saveCurrentFrame() },
                 onDismiss: { showingLayersPanel = false }
             )
         }
@@ -90,8 +92,8 @@ struct EditorView: View {
         .onDisappear {
             if state.selection != nil {
                 state.commitMarquee()
-                saveCurrentFrame()
             }
+            saveCurrentFrame()
         }
     }
 
@@ -136,7 +138,18 @@ struct EditorView: View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
             HStack(spacing: 20) {
-                ToolBar(state: state, onClear: clearCanvas)
+                ToolBar(
+                    state: state,
+                    onUndo: {
+                        state.undo()
+                        saveCurrentFrame()
+                    },
+                    onRedo: {
+                        state.redo()
+                        saveCurrentFrame()
+                    },
+                    onClear: clearCanvas
+                )
                 Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
                 RecentColorsStrip(
                     selectedColor: Binding(
