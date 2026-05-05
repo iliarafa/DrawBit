@@ -313,6 +313,13 @@ struct EditorView: View {
     }
 
     private func clearCanvas() {
+        // Clear is a pixel mutation on the active layer — same lock semantics as
+        // pencil/eraser/fill/marquee. Without this guard, Stage 4's lock would
+        // have a hole.
+        if state.activeLayerIsLocked {
+            triggerLockPulse(layerID: state.frame.activeLayerID)
+            return
+        }
         if state.selection != nil { state.cancelMarquee() }
         state.beginStrokeSnapshot()
         state.setActiveLayerPixels(Data(count: state.size.byteCount))
