@@ -265,6 +265,11 @@ struct EditorView: View {
                 state.endMarqueeDrag()
             }
             // No save while floating — commit happens on tap-outside / tool-switch / dismiss.
+        } else if state.activeLayerIsLocked {
+            // Lock guard fired during this stroke: discard the orphaned snapshot
+            // (taken in handleStrokeBegin before applyDrawPoint had a chance to
+            // run the lock guard) without pushing a no-op undo entry.
+            state.cancelStroke()
         } else {
             commitStrokeAndSave()
         }
