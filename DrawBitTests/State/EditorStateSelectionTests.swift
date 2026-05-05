@@ -8,7 +8,7 @@ final class EditorStateSelectionTests: XCTestCase {
     private func makeState(size: CanvasSize = .s16) -> EditorState {
         let piece = Piece(size: size)
         let frame = FrameCodec.wrapV1Data(Data(count: size.byteCount), defaultName: "Layer 1")
-        return EditorState(piece: piece, frame: frame)
+        return EditorState(piece: piece, frames: [frame], activeFrameIndex: 0, fps: 12)
     }
 
     /// Convenience: write a pixel into the active layer without recording an undo entry.

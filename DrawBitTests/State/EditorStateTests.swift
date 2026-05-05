@@ -6,7 +6,7 @@ final class EditorStateTests: XCTestCase {
     private func makeState(size: CanvasSize = .s16) -> EditorState {
         let piece = Piece(size: size)
         let frame = FrameCodec.wrapV1Data(Data(count: size.byteCount), defaultName: "Layer 1")
-        return EditorState(piece: piece, frame: frame)
+        return EditorState(piece: piece, frames: [frame], activeFrameIndex: 0, fps: 12)
     }
 
     func testInitialStateFromPiece() {
@@ -101,5 +101,28 @@ final class EditorStateTests: XCTestCase {
         state.cancelStroke()
         XCTAssertEqual(state.activeLayerPixelGrid.pixel(x: 1, y: 1), .transparent)
         XCTAssertFalse(state.canUndo)
+    }
+
+    func testEditorStateFrameAccessorIsActiveFrame() {
+        let pixels = Data(count: CanvasSize.s32.byteCount)
+        let layer = Layer(name: "Layer 1", pixels: pixels)
+        let f1 = Frame(name: "Frame 1", layers: [layer], activeLayerID: layer.id)
+        let state = EditorState(pieceID: UUID(), size: .s32,
+                                frames: [f1], activeFrameIndex: 0, fps: 12)
+        XCTAssertEqual(state.frame.id, f1.id)
+        XCTAssertEqual(state.frames.count, 1)
+        XCTAssertEqual(state.fps, 12)
+    }
+
+    func testEditorStateMutatingActiveFramePixelsAffectsFramesArray() {
+        let pixels = Data(count: CanvasSize.s32.byteCount)
+        let layer = Layer(name: "L", pixels: pixels)
+        let f = Frame(name: "F", layers: [layer], activeLayerID: layer.id)
+        let state = EditorState(pieceID: UUID(), size: .s32,
+                                frames: [f], activeFrameIndex: 0, fps: 12)
+        state.mutateActiveLayerPixels { data in
+            data[0] = 0xFF
+        }
+        XCTAssertEqual(state.frames[0].layers[0].pixels[0], 0xFF)
     }
 }

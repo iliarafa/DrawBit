@@ -15,17 +15,24 @@ struct EditorView: View {
     init(piece: Piece) {
         self.piece = piece
         // Synchronous load: frameData is already in-memory on the SwiftData object.
-        // If the eager migration in DrawBitApp ran (Task 1.13), this is a v2 blob.
-        // Per-read defense-in-depth: if it's still v1 raw bytes, wrap it; the next
-        // saveFrame will write back the v2 blob.
-        let frame: Frame
-        if FrameCodec.hasV1MagicPrefix(piece.frameData) {
-            frame = (try? FrameCodec.decode(piece.frameData))
+        // Dispatch on blob format — V2 sequence, V1 single-frame, or raw legacy bytes.
+        let result: (frames: [Frame], activeFrameIndex: Int, fps: Int)
+        if FrameCodec.hasV2SequenceMagicPrefix(piece.frameData) {
+            result = (try? FrameCodec.decodeSequence(piece.frameData))
+                ?? ([FrameCodec.wrapV1Data(Data(count: piece.size.byteCount), defaultName: "Layer 1")],
+                    0, FrameCodec.defaultFPS)
+        } else if FrameCodec.hasV1MagicPrefix(piece.frameData) {
+            let f = (try? FrameCodec.decode(piece.frameData))
                 ?? FrameCodec.wrapV1Data(Data(count: piece.size.byteCount), defaultName: "Layer 1")
+            result = ([f], 0, FrameCodec.defaultFPS)
         } else {
-            frame = FrameCodec.wrapV1Data(piece.frameData, defaultName: "Layer 1")
+            let f = FrameCodec.wrapV1Data(piece.frameData, defaultName: "Layer 1")
+            result = ([f], 0, FrameCodec.defaultFPS)
         }
-        self._state = State(initialValue: EditorState(piece: piece, frame: frame))
+        self._state = State(initialValue: EditorState(piece: piece,
+                                                      frames: result.frames,
+                                                      activeFrameIndex: result.activeFrameIndex,
+                                                      fps: result.fps))
     }
 
     var body: some View {
@@ -309,7 +316,10 @@ struct EditorView: View {
 
     private func saveCurrentFrame() {
         let repo = PieceRepository(context: modelContext)
-        try? repo.saveFrame(piece: piece, state.frame)
+        try? repo.saveFrames(piece: piece,
+                             frames: state.frames,
+                             activeFrameIndex: state.activeFrameIndex,
+                             fps: state.fps)
     }
 
     private func clearCanvas() {
@@ -329,8 +339,7 @@ struct EditorView: View {
 
     private func commitStrokeAndSave() {
         state.commitStroke()
-        let repo = PieceRepository(context: modelContext)
-        try? repo.saveFrame(piece: piece, state.frame)
+        saveCurrentFrame()
         // Pencil-only: record color into recents on stroke commit. Skip for eraser/eyedropper.
         if state.tool == .pencil || state.tool == .fill {
             addRecent(state.color.hex)
