@@ -168,12 +168,29 @@ struct EditorView: View {
         .background(Color(white: 0.09))
     }
 
+    // MARK: - Lock-pulse feedback
+
+    private func triggerLockPulse(layerID: UUID) {
+        state.lockPulseLayerID = layerID
+        Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            // Only clear if it's still the same layer — if another pulse fired in the
+            // meantime (different layer), don't stomp on its timer.
+            if state.lockPulseLayerID == layerID {
+                state.lockPulseLayerID = nil
+            }
+        }
+    }
+
     // MARK: - Drawing actions
 
     private func applyDrawPoint(x: Int, y: Int) {
         let isMutatingTool = state.tool == .pencil || state.tool == .eraser
                            || state.tool == .fill   || state.tool == .marquee
-        if isMutatingTool && state.activeLayerIsLocked { return }
+        if isMutatingTool && state.activeLayerIsLocked {
+            triggerLockPulse(layerID: state.frame.activeLayerID)
+            return
+        }
 
         switch state.tool {
         case .pencil:
@@ -219,6 +236,12 @@ struct EditorView: View {
         if let sel = state.selection, sel.displayBounds.contains(x: x, y: y) {
             state.beginMarqueeDrag(at: (x, y))
         } else {
+            // Block starting a new define on a locked layer. (Dragging an already-floating
+            // selection is allowed above — those pixels are already detached from the layer.)
+            if state.activeLayerIsLocked {
+                triggerLockPulse(layerID: state.frame.activeLayerID)
+                return
+            }
             if state.selection != nil {
                 state.commitMarquee()
                 saveCurrentFrame()
@@ -267,6 +290,11 @@ struct EditorView: View {
                 saveCurrentFrame()
             }
             // Tap inside floating selection or with no selection: no-op.
+            return
+        }
+        // Lock guard: triggers a pulse on the row and returns without snapshotting.
+        if state.activeLayerIsLocked {
+            triggerLockPulse(layerID: state.frame.activeLayerID)
             return
         }
         state.beginStrokeSnapshot()

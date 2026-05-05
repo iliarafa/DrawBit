@@ -48,6 +48,11 @@ final class EditorState {
 
     var activeLayerIsLocked: Bool { frame.activeLayer.isLocked }
 
+    /// When the user attempts to draw on a locked layer, the editor sets this to that layer's ID
+    /// for a brief moment so the panel can flash a red border on the row. Set back to nil after
+    /// the animation duration. UI-feedback only — never persisted.
+    var lockPulseLayerID: UUID? = nil
+
     init(pieceID: UUID, size: CanvasSize, frame: Frame) {
         self.pieceID = pieceID
         self.size = size

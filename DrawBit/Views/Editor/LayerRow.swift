@@ -6,6 +6,8 @@ struct LayerRow: View {
     let isActive: Bool
     let onTap: () -> Void
     let onToggleVisible: () -> Void
+    let onToggleLocked: () -> Void
+    let isPulsing: Bool
     let onRename: (String) -> Void
 
     @State private var isEditingName = false
@@ -40,14 +42,22 @@ struct LayerRow: View {
                     .foregroundStyle(.white.opacity(layer.isVisible ? 0.85 : 0.45))
             }
             .buttonStyle(.plain)
-            Image(systemName: layer.isLocked  ? "lock.fill" : "lock.open")
-                .foregroundStyle(.white.opacity(0.55))
+            Button { onToggleLocked() } label: {
+                Image(systemName: layer.isLocked ? "lock.fill" : "lock.open")
+                    .foregroundStyle(.white.opacity(layer.isLocked ? 0.85 : 0.45))
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(isActive ? Color.blue.opacity(0.30) : Color.clear)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
+        .overlay(
+            RoundedRectangle(cornerRadius: 0)
+                .stroke(Color.red.opacity(isPulsing ? 0.85 : 0), lineWidth: 2)
+        )
+        .animation(.easeInOut(duration: 0.18), value: isPulsing)
     }
 
     private var thumbnail: some View {
