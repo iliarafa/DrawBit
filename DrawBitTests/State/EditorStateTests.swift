@@ -194,6 +194,29 @@ final class EditorStateTests: XCTestCase {
         XCTAssertEqual(state.frames.count, 3)
     }
 
+    func testActiveFrameHasContentAfterFloatingSelectionCommit() {
+        let state = makeStateWithTwoFrames()
+        // Paint a non-zero byte into frame 0's active layer.
+        state.mutateActiveLayerPixels { data in
+            data[0] = 0xFF
+            data[3] = 0xFF
+        }
+        // Lift it into a floating marquee selection.
+        state.beginMarqueeDefine(at: (0, 0))
+        state.updateMarqueeDefine(to: (1, 1))
+        state.endMarqueeDefine()
+        XCTAssertNotNil(state.selection, "Floating selection should exist after extract")
+        // The layer pixels under the lifted area are zeroed while the selection floats.
+        let beforeCommit = state.frames[state.activeFrameIndex].layers[0].pixels
+        XCTAssertTrue(beforeCommit.allSatisfy { $0 == 0 },
+                      "Floating selection lifts content out of the layer")
+        // Commit the floating selection; pixels should reappear in the layer.
+        state.commitFloatingSelectionIfAny()
+        let afterCommit = state.frames[state.activeFrameIndex].layers[0].pixels
+        XCTAssertTrue(afterCommit.contains(where: { $0 != 0 }),
+                      "After commit, the layer should contain non-zero bytes again")
+    }
+
     func testCancelSequenceChangeRestoresFrames() {
         let state = makeStateWithTwoFrames()
         state.beginSequenceSnapshot()
