@@ -36,10 +36,11 @@ final class EditorState {
         case frameStructure(before: Frame)            // legacy from layers v2 — used for in-frame structural changes; will be retired in a future stage if obsolete.
         /// Full-sequence snapshot. Memory cost at the cap is real:
         /// 60 frames × 16 layers × 256×256 RGBA = 240 MB per snapshot, × 50 = 12 GB undo stack.
-        /// The Stage 2 implementer should profile undo at large piece sizes. If memory pressure
-        /// is observed, migrate to a delta-encoded enum (`.frameInserted(at:)`,
-        /// `.layerInsertedAcross(at:layerID:)`, etc.) before merging stage 2 to main.
-        /// See spec § "Undo storage".
+        /// Stage 2 ships this whole-snapshot form because there is no UI yet to actually
+        /// create a many-frame piece. Profiling is deferred to Stage 3 — once the timeline
+        /// strip can produce a worst-case sequence, we revisit and migrate to a
+        /// delta-encoded enum (`.frameInserted(at:)`, `.layerInsertedAcross(at:layerID:)`,
+        /// etc.) if memory pressure is observed. See spec § "Undo storage".
         case sequenceStructure(beforeFrames: [Frame], beforeActive: Int)
     }
 

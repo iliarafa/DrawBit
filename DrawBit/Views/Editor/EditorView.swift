@@ -366,15 +366,11 @@ struct EditorView: View {
 
     func addFrameAfterActive() {
         let activeID = state.frames[state.activeFrameIndex].id
-        var newActiveIdx: Int?
         mutateFrameSequence { frames in
             if let newID = FrameSequence.addFrameAfter(frameID: activeID, in: &frames),
                let idx = frames.firstIndex(where: { $0.id == newID }) {
-                newActiveIdx = idx
+                state.activeFrameIndex = idx
             }
-        }
-        if let idx = newActiveIdx {
-            state.activeFrameIndex = idx
         }
     }
 
@@ -399,9 +395,9 @@ struct EditorView: View {
                                                            count: state.frames.count) else { return }
         mutateFrameSequence { frames in
             FrameSequence.move(frameID: movingID, toIndex: modelTo, in: &frames)
-        }
-        if let newActiveIdx = state.frames.firstIndex(where: { $0.id == activeID }) {
-            state.activeFrameIndex = newActiveIdx
+            if let newActiveIdx = frames.firstIndex(where: { $0.id == activeID }) {
+                state.activeFrameIndex = newActiveIdx
+            }
         }
     }
 }
