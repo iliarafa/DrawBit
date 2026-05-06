@@ -33,7 +33,15 @@ final class EditorState {
 
     enum UndoEntry {
         case layerPixels(layerID: UUID, before: Data)
-        case frameStructure(before: Frame)
+        case frameStructure(before: Frame)            // legacy from layers v2 — used for in-frame structural changes; will be retired in a future stage if obsolete.
+        /// Full-sequence snapshot. Memory cost at the cap is real:
+        /// 60 frames × 16 layers × 256×256 RGBA = 240 MB per snapshot, × 50 = 12 GB undo stack.
+        /// Stage 2 ships this whole-snapshot form because there is no UI yet to actually
+        /// create a many-frame piece. Profiling is deferred to Stage 3 — once the timeline
+        /// strip can produce a worst-case sequence, we revisit and migrate to a
+        /// delta-encoded enum (`.frameInserted(at:)`, `.layerInsertedAcross(at:layerID:)`,
+        /// etc.) if memory pressure is observed. See spec § "Undo storage".
+        case sequenceStructure(beforeFrames: [Frame], beforeActive: Int)
     }
 
     private var undoStack: [UndoEntry] = []
@@ -41,6 +49,7 @@ final class EditorState {
     private var preStrokeSnapshot: Data?
     private var preStrokeLayerID: UUID?
     private var preStructuralSnapshot: Frame?
+    private var preSequenceSnapshot: (frames: [Frame], activeFrameIndex: Int)?
 
     private let undoLimit = 50
 
@@ -137,6 +146,37 @@ final class EditorState {
         preStructuralSnapshot = nil
     }
 
+    // MARK: - Sequence-structural-change undo
+
+    func beginSequenceSnapshot() {
+        preSequenceSnapshot = (frames, activeFrameIndex)
+    }
+
+    func commitSequenceChange() {
+        guard let snap = preSequenceSnapshot else { return }
+        push(.sequenceStructure(beforeFrames: snap.frames, beforeActive: snap.activeFrameIndex))
+        preSequenceSnapshot = nil
+    }
+
+    func cancelSequenceChange() {
+        if let snap = preSequenceSnapshot {
+            frames = snap.frames
+            activeFrameIndex = snap.activeFrameIndex
+        }
+        preSequenceSnapshot = nil
+    }
+
+    // MARK: - Active-frame switching
+
+    func setActiveFrame(index: Int) {
+        guard (0..<frames.count).contains(index) else { return }
+        if index == activeFrameIndex { return }
+        if selection != nil { commitMarquee() }
+        if pendingMarqueeRect != nil { cancelMarquee() }
+        if preStrokeSnapshot != nil { cancelStroke() }
+        activeFrameIndex = index
+    }
+
     private func push(_ entry: UndoEntry) {
         undoStack.append(entry)
         if undoStack.count > undoLimit {
@@ -163,6 +203,10 @@ final class EditorState {
         case .frameStructure(let before):
             redoStack.append(.frameStructure(before: frame))
             frame = before
+        case .sequenceStructure(let beforeFrames, let beforeActive):
+            redoStack.append(.sequenceStructure(beforeFrames: frames, beforeActive: activeFrameIndex))
+            frames = beforeFrames
+            activeFrameIndex = beforeActive
         }
     }
 
@@ -184,6 +228,10 @@ final class EditorState {
         case .frameStructure(let before):
             undoStack.append(.frameStructure(before: frame))
             frame = before
+        case .sequenceStructure(let beforeFrames, let beforeActive):
+            undoStack.append(.sequenceStructure(beforeFrames: frames, beforeActive: activeFrameIndex))
+            frames = beforeFrames
+            activeFrameIndex = beforeActive
         }
     }
 

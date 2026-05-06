@@ -125,4 +125,91 @@ final class EditorStateTests: XCTestCase {
         }
         XCTAssertEqual(state.frames[0].layers[0].pixels[0], 0xFF)
     }
+
+    // MARK: - setActiveFrame tests
+
+    func testSetActiveFrameUpdatesIndex() {
+        let state = makeStateWithTwoFrames()
+        state.setActiveFrame(index: 1)
+        XCTAssertEqual(state.activeFrameIndex, 1)
+    }
+
+    func testSetActiveFrameAutoCommitsFloatingMarquee() {
+        let state = makeStateWithTwoFrames()
+        // Paint a pixel so extractAndCut finds opaque content and creates a floating selection.
+        state.mutateActiveLayerPixels { data in data[0] = 255; data[3] = 255 }
+        state.beginMarqueeDefine(at: (0, 0))
+        state.updateMarqueeDefine(to: (4, 4))
+        state.endMarqueeDefine()
+        XCTAssertNotNil(state.selection, "Floating selection should exist")
+        state.setActiveFrame(index: 1)
+        XCTAssertNil(state.selection, "Frame switch must commit the floating selection")
+    }
+
+    func testSetActiveFrameCancelsPendingMarquee() {
+        let state = makeStateWithTwoFrames()
+        state.beginMarqueeDefine(at: (0, 0))
+        state.updateMarqueeDefine(to: (4, 4))
+        XCTAssertNotNil(state.pendingMarqueeRect)
+        state.setActiveFrame(index: 1)
+        XCTAssertNil(state.pendingMarqueeRect, "Frame switch must cancel pending marquee define")
+    }
+
+    func testSetActiveFrameOutOfRangeNoOps() {
+        let state = makeStateWithTwoFrames()
+        state.setActiveFrame(index: 5)
+        XCTAssertEqual(state.activeFrameIndex, 0, "Out-of-range index must no-op")
+    }
+
+    func testSetActiveFrameSameIndexNoOpsForMarquee() {
+        let state = makeStateWithTwoFrames()
+        // Paint a pixel so extractAndCut finds opaque content and creates a floating selection.
+        state.mutateActiveLayerPixels { data in data[0] = 255; data[3] = 255 }
+        state.beginMarqueeDefine(at: (0, 0))
+        state.updateMarqueeDefine(to: (4, 4))
+        state.endMarqueeDefine()
+        XCTAssertNotNil(state.selection)
+        state.setActiveFrame(index: 0)  // already on frame 0
+        XCTAssertNotNil(state.selection, "Setting active to current frame must not commit marquee")
+    }
+
+    func testSequenceStructuralUndoRestoresFrames() {
+        let state = makeStateWithTwoFrames()
+        state.beginSequenceSnapshot()
+        FrameSequence.addFrameAfter(frameID: state.frames.last!.id, in: &state.frames)
+        state.commitSequenceChange()
+        XCTAssertEqual(state.frames.count, 3)
+        state.undo()
+        XCTAssertEqual(state.frames.count, 2)
+    }
+
+    func testSequenceStructuralRedoReplaysFrames() {
+        let state = makeStateWithTwoFrames()
+        state.beginSequenceSnapshot()
+        FrameSequence.addFrameAfter(frameID: state.frames.last!.id, in: &state.frames)
+        state.commitSequenceChange()
+        state.undo()
+        XCTAssertEqual(state.frames.count, 2)
+        state.redo()
+        XCTAssertEqual(state.frames.count, 3)
+    }
+
+    func testCancelSequenceChangeRestoresFrames() {
+        let state = makeStateWithTwoFrames()
+        state.beginSequenceSnapshot()
+        FrameSequence.addFrameAfter(frameID: state.frames.last!.id, in: &state.frames)
+        XCTAssertEqual(state.frames.count, 3)
+        state.cancelSequenceChange()
+        XCTAssertEqual(state.frames.count, 2, "Cancel must restore the pre-snapshot sequence")
+    }
+
+    private func makeStateWithTwoFrames() -> EditorState {
+        let pixels = Data(count: CanvasSize.s32.byteCount)
+        let layerID = UUID()
+        let l = Layer(id: layerID, name: "L", pixels: pixels)
+        let f1 = Frame(name: "F1", layers: [l], activeLayerID: l.id)
+        let f2 = Frame(name: "F2", layers: [l], activeLayerID: l.id)
+        return EditorState(pieceID: UUID(), size: .s32,
+                           frames: [f1, f2], activeFrameIndex: 0, fps: 12)
+    }
 }

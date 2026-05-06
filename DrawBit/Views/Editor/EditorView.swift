@@ -343,5 +343,62 @@ struct EditorView: View {
             try? modelContext.save()
         }
     }
+
+    // MARK: - Frame-sequence mutations
+
+    /// Wraps any frame-sequence mutation in the standard pattern:
+    /// 1. Commit any floating marquee.
+    /// 2. Take a sequence-level snapshot.
+    /// 3. Run the mutation.
+    /// 4. Clamp `activeFrameIndex` if the sequence shrank.
+    /// 5. Commit the snapshot to the undo stack.
+    /// 6. Save via the repository.
+    private func mutateFrameSequence(_ body: (inout [Frame]) -> Void) {
+        state.commitFloatingSelectionIfAny()
+        state.beginSequenceSnapshot()
+        body(&state.frames)
+        if state.activeFrameIndex >= state.frames.count {
+            state.activeFrameIndex = max(0, state.frames.count - 1)
+        }
+        state.commitSequenceChange()
+        saveCurrentFrame()
+    }
+
+    func addFrameAfterActive() {
+        let activeID = state.frames[state.activeFrameIndex].id
+        mutateFrameSequence { frames in
+            if let newID = FrameSequence.addFrameAfter(frameID: activeID, in: &frames),
+               let idx = frames.firstIndex(where: { $0.id == newID }) {
+                state.activeFrameIndex = idx
+            }
+        }
+    }
+
+    func deleteActiveFrame() {
+        let activeID = state.frames[state.activeFrameIndex].id
+        mutateFrameSequence { frames in
+            FrameSequence.removeFrame(activeID, in: &frames)
+        }
+    }
+
+    func renameFrame(id: UUID, to name: String) {
+        mutateFrameSequence { frames in
+            FrameSequence.setName(frameID: id, to: name, in: &frames)
+        }
+    }
+
+    func reorderFrame(from: Int, toOffset: Int) {
+        let activeID = state.frames[state.activeFrameIndex].id
+        let movingID = state.frames[from].id
+        guard let modelTo = FrameSequence.modelTargetIndex(displayedFrom: from,
+                                                           newOffset: toOffset,
+                                                           count: state.frames.count) else { return }
+        mutateFrameSequence { frames in
+            FrameSequence.move(frameID: movingID, toIndex: modelTo, in: &frames)
+            if let newActiveIdx = frames.firstIndex(where: { $0.id == activeID }) {
+                state.activeFrameIndex = newActiveIdx
+            }
+        }
+    }
 }
 
