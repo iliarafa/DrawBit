@@ -11,6 +11,7 @@ struct EditorView: View {
     @State private var showingSystemColorPicker = false
     @State private var showingShareSheet = false
     @State private var showingLayersPanel = false
+    @State private var showingDeleteFrameConfirm = false
 
     init(piece: Piece) {
         self.piece = piece
@@ -39,6 +40,14 @@ struct EditorView: View {
                     onTap: { x, y in handleTap(x: x, y: y) }
                 )
                 Divider().overlay(Color.white.opacity(0.08))
+                FramesStrip(
+                    state: state,
+                    onAddFrame: addFrameAfterActive,
+                    onDuplicateFrame: addFrameAfterActive,
+                    onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded,
+                    onReorderFrame: reorderFrame,
+                    onRenameFrame: renameFrame
+                )
                 bottomBar
             }
             LayersPanel(
@@ -90,6 +99,18 @@ struct EditorView: View {
                 state.commitMarquee()
             }
             saveCurrentFrame()
+        }
+        .confirmationDialog(
+            "Delete Frame?",
+            isPresented: $showingDeleteFrameConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                deleteActiveFrame()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This frame has content. Delete it from the sequence?")
         }
     }
 
@@ -362,6 +383,21 @@ struct EditorView: View {
         }
         state.commitSequenceChange()
         saveCurrentFrame()
+    }
+
+    private var activeFrameHasContent: Bool {
+        let frame = state.frames[state.activeFrameIndex]
+        return frame.layers.contains { layer in
+            layer.pixels.contains(where: { $0 != 0 })
+        }
+    }
+
+    func deleteActiveFrameWithConfirmIfNeeded() {
+        if activeFrameHasContent {
+            showingDeleteFrameConfirm = true
+        } else {
+            deleteActiveFrame()
+        }
     }
 
     func addFrameAfterActive() {
