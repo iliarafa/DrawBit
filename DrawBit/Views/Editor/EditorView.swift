@@ -46,7 +46,8 @@ struct EditorView: View {
                     onDuplicateFrame: addFrameAfterActive,
                     onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded,
                     onReorderFrame: reorderFrame,
-                    onRenameFrame: renameFrame
+                    onRenameFrame: renameFrame,
+                    onActivateFrame: setActiveFrameAndPersistIfDirty
                 )
                 bottomBar
             }
@@ -393,6 +394,7 @@ struct EditorView: View {
     }
 
     func deleteActiveFrameWithConfirmIfNeeded() {
+        state.commitFloatingSelectionIfAny()
         if activeFrameHasContent {
             showingDeleteFrameConfirm = true
         } else {
@@ -420,6 +422,15 @@ struct EditorView: View {
     func renameFrame(id: UUID, to name: String) {
         mutateFrameSequence { frames in
             FrameSequence.setName(frameID: id, to: name, in: &frames)
+        }
+    }
+
+    func setActiveFrameAndPersistIfDirty(index: Int) {
+        let hadSelection = state.selection != nil
+        state.setActiveFrame(index: index)
+        if hadSelection {
+            // setActiveFrame committed the marquee, mutating layer pixels — persist.
+            saveCurrentFrame()
         }
     }
 

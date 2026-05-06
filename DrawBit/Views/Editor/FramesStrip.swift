@@ -5,8 +5,11 @@ struct FramesStrip: View {
     let onAddFrame: () -> Void
     let onDuplicateFrame: () -> Void
     let onDeleteFrame: () -> Void
+    /// Reserved for Stage 4+ drag-to-reorder. Currently unused — the parameter is here
+    /// so the EditorView wiring doesn't need to change when reorder lands.
     let onReorderFrame: (Int, Int) -> Void
     let onRenameFrame: (UUID, String) -> Void
+    let onActivateFrame: (Int) -> Void
 
     @State private var isEditMode: Bool = false
     @State private var renamingFrameID: UUID?
@@ -32,8 +35,11 @@ struct FramesStrip: View {
                                 isActive: frame.id == state.frames[state.activeFrameIndex].id,
                                 isEditing: isEditMode,
                                 onTap: {
+                                    if renamingFrameID != nil && renamingFrameID != frame.id {
+                                        commitRename()
+                                    }
                                     if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
-                                        state.setActiveFrame(index: idx)
+                                        onActivateFrame(idx)
                                     }
                                 },
                                 onLongPressRename: {
@@ -72,6 +78,9 @@ struct FramesStrip: View {
                 }
 
                 Button(isEditMode ? "DONE" : "EDIT") {
+                    if renamingFrameID != nil {
+                        commitRename()
+                    }
                     isEditMode.toggle()
                 }
                 .font(.caption2.bold())
