@@ -6,11 +6,51 @@ struct ShareSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var selectedScale: Int
+    @State private var selectedFormat: ExportFormat
     @State private var isExporting = false
+
+    /// Output formats. PNG always works (single-frame snapshot of the active frame);
+    /// GIF and APNG are animated and require the underlying piece to actually have
+    /// multiple frames to be interesting, but exporting a single-frame piece as
+    /// either is still valid (you get a one-frame animation that loops on itself).
+    enum ExportFormat: String, CaseIterable, Identifiable {
+        case png
+        case gif
+        case apng
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .png:  "PNG"
+            case .gif:  "GIF"
+            case .apng: "Animated PNG"
+            }
+        }
+
+        var fileExtension: String {
+            switch self {
+            case .png:  "png"
+            case .gif:  "gif"
+            case .apng: "png"
+            }
+        }
+
+        var caption: String {
+            switch self {
+            case .png:  "active frame, single image"
+            case .gif:  "animated, no partial alpha"
+            case .apng: "animated, true alpha"
+            }
+        }
+    }
 
     init(piece: Piece) {
         self.piece = piece
         self._selectedScale = State(initialValue: Self.defaultScale(for: piece.size))
+        // Default the format to APNG when the piece has multiple frames so the user
+        // gets the "share my animation" affordance immediately. We can't read the
+        // piece's frame count without a SwiftData round-trip; PNG is the safe default.
+        self._selectedFormat = State(initialValue: .png)
     }
 
     private let scales = [1, 2, 4, 8, 16]
@@ -21,6 +61,16 @@ struct ShareSheet: View {
                 Color(white: 0.10).ignoresSafeArea()
                 VStack(alignment: .leading, spacing: 16) {
                     Spacer(minLength: 0)
+
+                    Text("FORMAT")
+                        .font(.pixel(11))
+                        .foregroundStyle(.white.opacity(0.55))
+
+                    VStack(spacing: 8) {
+                        ForEach(ExportFormat.allCases) { f in
+                            formatRow(format: f)
+                        }
+                    }
 
                     Text("SCALE")
                         .font(.pixel(11))
@@ -83,6 +133,37 @@ struct ShareSheet: View {
         }
     }
 
+    private func formatRow(format f: ExportFormat) -> some View {
+        let isSelected = f == selectedFormat
+        return Button {
+            selectedFormat = f
+        } label: {
+            HStack {
+                Text(f.label)
+                    .font(.pixel(14))
+                    .foregroundStyle(.white)
+                Spacer()
+                Text(f.caption)
+                    .font(.pixel(11))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(isSelected ? 0.10 : 0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color.white : Color.white.opacity(0.15),
+                            lineWidth: isSelected ? 2 : 0.5)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("ShareSheet.format.\(f.rawValue)")
+    }
+
     private func scaleRow(scale s: Int) -> some View {
         let edge = piece.size.dimension * s
         let isSelected = s == selectedScale
@@ -128,15 +209,45 @@ struct ShareSheet: View {
         isExporting = true
         defer { isExporting = false }
 
-        let frame = (try? PieceRepository(context: modelContext).loadFrame(piece: piece))
-            ?? FrameCodec.wrapV1Data(Data(count: piece.size.byteCount), defaultName: "Layer 1")
         let size = piece.size
         let scale = selectedScale
-        let filename = "\(piece.effectiveName)-\(scale)x.png".replacingOccurrences(of: "/", with: "-")
+        let format = selectedFormat
+
+        // Load whatever the format needs from the piece. Animated formats walk the
+        // full sequence; PNG only needs the active frame.
+        let repo = PieceRepository(context: modelContext)
+        let activeFrame: Frame
+        let allFrames: [Frame]
+        let fps: Int
+        do {
+            let loaded = try repo.loadFrames(piece: piece)
+            activeFrame = loaded.frames[loaded.activeFrameIndex]
+            allFrames = loaded.frames
+            fps = loaded.fps
+        } catch {
+            return
+        }
+
+        let safeName = piece.effectiveName.replacingOccurrences(of: "/", with: "-")
+        let filename: String
+        switch format {
+        case .png:  filename = "\(safeName)-\(scale)x.png"
+        case .gif:  filename = "\(safeName)-\(scale)x.gif"
+        case .apng: filename = "\(safeName)-\(scale)x.apng.png"
+        }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
 
         let writtenURL: URL? = await Task.detached(priority: .userInitiated) {
-            guard let data = PNGExporter.export(frame: frame, size: size, scale: scale) else { return nil }
+            let data: Data?
+            switch format {
+            case .png:
+                data = PNGExporter.export(frame: activeFrame, size: size, scale: scale)
+            case .gif:
+                data = GIFExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
+            case .apng:
+                data = APNGExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
+            }
+            guard let data else { return nil }
             do {
                 try data.write(to: url)
                 return url
