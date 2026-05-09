@@ -20,6 +20,21 @@ struct CanvasView: View {
         GeometryReader { geo in
             let edge = baseEdge(in: geo)
             ZStack {
+                if state.isOnionSkinEnabled,
+                   !state.isPlaying,
+                   state.activeFrameIndex > 0,
+                   let ghost = previousFrameImage() {
+                    Image(uiImage: ghost)
+                        .resizable()
+                        .interpolation(.none)
+                        .antialiased(false)
+                        .frame(width: edge, height: edge)
+                        .opacity(0.3)
+                        .scaleEffect(state.scale)
+                        .rotationEffect(.radians(state.rotation))
+                        .offset(state.translation)
+                        .allowsHitTesting(false)
+                }
                 if let image = pixelImage() {
                     Image(uiImage: image)
                         .resizable()
@@ -89,6 +104,18 @@ struct CanvasView: View {
     /// pixels are unset; grid outlines are drawn separately in SwiftUI at display resolution.
     private func pixelImage() -> UIImage? {
         let buffer = Compositor.composite(state.frame, size: state.size)
+        guard let cg = bufferToCGImage(buffer) else { return nil }
+        return UIImage(cgImage: cg)
+    }
+
+    /// Composite of the frame immediately before the active one, used as the onion-skin
+    /// ghost. Returns nil if no previous frame exists. Recomputed every layout pass —
+    /// at canvas-native resolution this is cheap (256×256 RGBA). A future optimization
+    /// could memoize on a frame content hash if needed.
+    private func previousFrameImage() -> UIImage? {
+        let idx = state.activeFrameIndex - 1
+        guard idx >= 0, idx < state.frames.count else { return nil }
+        let buffer = Compositor.composite(state.frames[idx], size: state.size)
         guard let cg = bufferToCGImage(buffer) else { return nil }
         return UIImage(cgImage: cg)
     }
