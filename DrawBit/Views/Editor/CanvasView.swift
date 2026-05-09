@@ -110,8 +110,14 @@ struct CanvasView: View {
 
     /// Composite of the frame immediately before the active one, used as the onion-skin
     /// ghost. Returns nil if no previous frame exists. Recomputed every layout pass —
-    /// at canvas-native resolution this is cheap (256×256 RGBA). A future optimization
-    /// could memoize on a frame content hash if needed.
+    /// the compositor walks every visible layer of the previous frame, so worst-case
+    /// (256×256 × 16 visible layers, ~4 MB byte scan) at 60 fps drag is ~240 MB/s of
+    /// scanning that ALWAYS produces the same bytes during a stroke on the active
+    /// frame. Fine on M-series iPads, marginal on A12-class hardware. A frame-content
+    /// memoization keyed on activeFrameIndex changes would eliminate the per-stroke
+    /// cost; deferred to a Stage 5 follow-up since the simple `@State` cache pattern
+    /// trips SwiftUI's "modifying state during view update" rule and a clean fix
+    /// requires lifting the cache to a small helper class.
     private func previousFrameImage() -> UIImage? {
         let idx = state.activeFrameIndex - 1
         guard idx >= 0, idx < state.frames.count else { return nil }
