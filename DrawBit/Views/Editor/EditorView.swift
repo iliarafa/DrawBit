@@ -215,12 +215,14 @@ struct EditorView: View {
         case .pencil:
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
+                state.revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: (x, y))
                 Pencil.paint(on: &grid, at: (x, y), color: state.color)
                 data = grid.data
             }
         case .eraser:
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
+                state.revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: (x, y))
                 Eraser.erase(on: &grid, at: (x, y))
                 data = grid.data
             }
