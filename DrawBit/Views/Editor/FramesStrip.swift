@@ -103,6 +103,7 @@ struct FramesStrip: View {
                 .font(.caption2.bold())
                 .accessibilityIdentifier("FramesStrip.editToggle")
             }
+            .disabled(state.isPlaying)
         }
         .padding(.horizontal, 8)
         .frame(height: 60)

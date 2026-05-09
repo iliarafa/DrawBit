@@ -40,6 +40,7 @@ struct EditorView: View {
                     onStrokeCancel: { handleStrokeCancel() },
                     onTap: { x, y in handleTap(x: x, y: y) }
                 )
+                .allowsHitTesting(!state.isPlaying)
                 Divider().overlay(Color.white.opacity(0.08))
                 FramesStrip(
                     state: state,
@@ -142,12 +143,14 @@ struct EditorView: View {
                 Text("LAYERS").font(.pixel(11))
             }
             .foregroundStyle(showingLayersPanel ? .blue : .white)
+            .disabled(state.isPlaying)
             Button {
                 showingShareSheet = true
             } label: {
                 Text("SHARE")
                     .font(.pixel(11))
             }
+            .disabled(state.isPlaying)
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 18)
@@ -180,6 +183,7 @@ struct EditorView: View {
                     onRequestColorPicker: { showingSystemColorPicker = true }
                 )
             }
+            .disabled(state.isPlaying)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 18)

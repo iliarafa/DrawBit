@@ -58,7 +58,7 @@ struct LayersPanel: View {
                             Image(systemName: "plus")
                         }
                         .accessibilityIdentifier("LayersPanel-plus")
-                        .disabled(state.frame.layers.count >= 16)
+                        .disabled(state.frame.layers.count >= 16 || state.isPlaying)
 
                         Button {
                             state.commitFloatingSelectionIfAny()
@@ -69,7 +69,7 @@ struct LayersPanel: View {
                         } label: {
                             Image(systemName: "doc.on.doc")
                         }
-                        .disabled(state.frame.layers.count >= 16)
+                        .disabled(state.frame.layers.count >= 16 || state.isPlaying)
 
                         Button {
                             // Commit any floating marquee FIRST so the isEmpty check sees
@@ -92,7 +92,7 @@ struct LayersPanel: View {
                         } label: {
                             Image(systemName: "trash")
                         }
-                        .disabled(state.frame.layers.count <= 1)
+                        .disabled(state.frame.layers.count <= 1 || state.isPlaying)
 
                         Spacer()
                     }
