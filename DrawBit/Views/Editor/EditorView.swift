@@ -12,6 +12,7 @@ struct EditorView: View {
     @State private var showingShareSheet = false
     @State private var showingLayersPanel = false
     @State private var showingDeleteFrameConfirm = false
+    @State private var playback: PlaybackController?
 
     init(piece: Piece) {
         self.piece = piece
@@ -47,7 +48,8 @@ struct EditorView: View {
                     onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded,
                     onReorderFrame: reorderFrame,
                     onRenameFrame: renameFrame,
-                    onActivateFrame: setActiveFrameAndPersistIfDirty
+                    onActivateFrame: setActiveFrameAndPersistIfDirty,
+                    onTogglePlay: togglePlay
                 )
                 bottomBar
             }
@@ -444,6 +446,17 @@ struct EditorView: View {
         if hadSelection {
             // setActiveFrame committed the marquee, mutating layer pixels — persist.
             saveCurrentFrame()
+        }
+    }
+
+    func togglePlay() {
+        if playback == nil { playback = PlaybackController(state: state) }
+        if state.isPlaying {
+            playback?.stop()
+            // Persist the frame the user paused on so a force-quit doesn't lose it.
+            saveCurrentFrame()
+        } else {
+            playback?.start()
         }
     }
 

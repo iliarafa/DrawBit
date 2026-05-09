@@ -10,14 +10,31 @@ struct FramesStrip: View {
     let onReorderFrame: (Int, Int) -> Void
     let onRenameFrame: (UUID, String) -> Void
     let onActivateFrame: (Int) -> Void
+    let onTogglePlay: () -> Void
 
     @State private var isEditMode: Bool = false
     @State private var renamingFrameID: UUID?
     @State private var renameText: String = ""
 
+    private static let fpsChoices = [4, 8, 12, 24, 30, 60]
+
     var body: some View {
         HStack(spacing: 8) {
-            // Stage 4 will add play/pause and FPS picker controls here on the left side.
+            HStack(spacing: 6) {
+                Button(action: onTogglePlay) {
+                    Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
+                        .frame(width: 28, height: 28)
+                        .foregroundStyle(state.isPlaying ? Color.red : Color.accentColor)
+                }
+                .accessibilityIdentifier("FramesStrip.playPause")
+                .disabled(state.frames.count <= 1)
+
+                Button(action: cycleFPS) {
+                    Text("\(state.fps) fps").font(.caption2.bold())
+                }
+                .accessibilityIdentifier("FramesStrip.fps")
+                .disabled(state.isPlaying)
+            }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
@@ -102,5 +119,10 @@ struct FramesStrip: View {
         }
         renamingFrameID = nil
         renameText = ""
+    }
+
+    private func cycleFPS() {
+        let idx = Self.fpsChoices.firstIndex(of: state.fps) ?? 2
+        state.fps = Self.fpsChoices[(idx + 1) % Self.fpsChoices.count]
     }
 }
