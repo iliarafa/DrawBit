@@ -21,6 +21,11 @@ final class EditorState {
     var tool: Tool = .pencil
     var color: RGBA = RGBA(r: 255, g: 255, b: 255, a: 255)
 
+    /// True while `PlaybackController` is advancing frames. Display-only state used to
+    /// gate input (canvas hit-testing, frame/layer ops) and surface the play/pause icon.
+    /// Cleared on `PlaybackController.stop()`. Not persisted.
+    var isPlaying: Bool = false
+
     var translation: CGSize = .zero
     var scale: CGFloat = 1.0
     var rotation: CGFloat = 0.0

@@ -12,6 +12,7 @@ struct EditorView: View {
     @State private var showingShareSheet = false
     @State private var showingLayersPanel = false
     @State private var showingDeleteFrameConfirm = false
+    @State private var playback: PlaybackController?
 
     init(piece: Piece) {
         self.piece = piece
@@ -39,6 +40,7 @@ struct EditorView: View {
                     onStrokeCancel: { handleStrokeCancel() },
                     onTap: { x, y in handleTap(x: x, y: y) }
                 )
+                .allowsHitTesting(!state.isPlaying)
                 Divider().overlay(Color.white.opacity(0.08))
                 FramesStrip(
                     state: state,
@@ -47,7 +49,8 @@ struct EditorView: View {
                     onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded,
                     onReorderFrame: reorderFrame,
                     onRenameFrame: renameFrame,
-                    onActivateFrame: setActiveFrameAndPersistIfDirty
+                    onActivateFrame: setActiveFrameAndPersistIfDirty,
+                    onTogglePlay: togglePlay
                 )
                 bottomBar
             }
@@ -96,6 +99,8 @@ struct EditorView: View {
             }
         }
         .onDisappear {
+            // Stop playback first so the timer doesn't keep mutating state during teardown.
+            playback?.stop()
             if state.selection != nil {
                 state.commitMarquee()
             }
@@ -140,12 +145,14 @@ struct EditorView: View {
                 Text("LAYERS").font(.pixel(11))
             }
             .foregroundStyle(showingLayersPanel ? .blue : .white)
+            .disabled(state.isPlaying)
             Button {
                 showingShareSheet = true
             } label: {
                 Text("SHARE")
                     .font(.pixel(11))
             }
+            .disabled(state.isPlaying)
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 18)
@@ -178,6 +185,7 @@ struct EditorView: View {
                     onRequestColorPicker: { showingSystemColorPicker = true }
                 )
             }
+            .disabled(state.isPlaying)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 18)
@@ -444,6 +452,23 @@ struct EditorView: View {
         if hadSelection {
             // setActiveFrame committed the marquee, mutating layer pixels — persist.
             saveCurrentFrame()
+        }
+    }
+
+    func togglePlay() {
+        if playback == nil { playback = PlaybackController(state: state) }
+        if state.isPlaying {
+            playback?.stop()
+            // Persist the frame the user paused on so a force-quit doesn't lose it.
+            saveCurrentFrame()
+        } else {
+            // Auto-commit any floating selection BEFORE starting playback (the
+            // controller also commits as defense-in-depth). Persist immediately so
+            // the now-merged pixels survive a force-quit during playback.
+            let hadSelection = state.selection != nil
+            state.commitFloatingSelectionIfAny()
+            if hadSelection { saveCurrentFrame() }
+            playback?.start()
         }
     }
 
