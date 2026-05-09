@@ -99,6 +99,8 @@ struct EditorView: View {
             }
         }
         .onDisappear {
+            // Stop playback first so the timer doesn't keep mutating state during teardown.
+            playback?.stop()
             if state.selection != nil {
                 state.commitMarquee()
             }
@@ -460,6 +462,12 @@ struct EditorView: View {
             // Persist the frame the user paused on so a force-quit doesn't lose it.
             saveCurrentFrame()
         } else {
+            // Auto-commit any floating selection BEFORE starting playback (the
+            // controller also commits as defense-in-depth). Persist immediately so
+            // the now-merged pixels survive a force-quit during playback.
+            let hadSelection = state.selection != nil
+            state.commitFloatingSelectionIfAny()
+            if hadSelection { saveCurrentFrame() }
             playback?.start()
         }
     }

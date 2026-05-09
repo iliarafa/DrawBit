@@ -69,6 +69,7 @@ struct FramesStrip: View {
                 }
                 .padding(.horizontal, 4)
             }
+            .disabled(state.isPlaying)
 
             HStack(spacing: 6) {
                 Button(action: onAddFrame) {
