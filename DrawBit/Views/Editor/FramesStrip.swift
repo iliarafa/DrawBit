@@ -34,6 +34,14 @@ struct FramesStrip: View {
                 }
                 .accessibilityIdentifier("FramesStrip.fps")
                 .disabled(state.isPlaying)
+
+                Button(action: { state.isOnionSkinEnabled.toggle() }) {
+                    Image(systemName: state.isOnionSkinEnabled ? "circle.righthalf.filled" : "circle")
+                        .frame(width: 28, height: 28)
+                        .foregroundStyle(state.isOnionSkinEnabled ? Color.accentColor : Color.white.opacity(0.6))
+                }
+                .accessibilityIdentifier("FramesStrip.onionSkin")
+                .disabled(state.activeFrameIndex == 0 || state.isPlaying)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {

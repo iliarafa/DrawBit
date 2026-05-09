@@ -26,6 +26,11 @@ final class EditorState {
     /// Cleared on `PlaybackController.stop()`. Not persisted.
     var isPlaying: Bool = false
 
+    /// User-toggled onion-skin overlay state. When true and `activeFrameIndex > 0`,
+    /// the canvas renders the previous frame as a faint ghost behind the active frame.
+    /// Display-only — never written to pixel storage. Hidden during playback.
+    var isOnionSkinEnabled: Bool = false
+
     var translation: CGSize = .zero
     var scale: CGFloat = 1.0
     var rotation: CGFloat = 0.0
