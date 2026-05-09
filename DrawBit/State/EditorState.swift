@@ -51,6 +51,8 @@ final class EditorState {
     private var preStructuralSnapshot: Frame?
     private var preSequenceSnapshot: (frames: [Frame], activeFrameIndex: Int)?
 
+    private var pixelPerfectBuffer = PixelPerfectStroke()
+
     private let undoLimit = 50
 
     var canUndo: Bool { !undoStack.isEmpty }
@@ -103,6 +105,7 @@ final class EditorState {
     func beginStrokeSnapshot() {
         preStrokeSnapshot = frame.activeLayer.pixels
         preStrokeLayerID = frame.activeLayerID
+        pixelPerfectBuffer.reset()
     }
 
     func commitStroke() {
@@ -110,6 +113,7 @@ final class EditorState {
         push(.layerPixels(layerID: layerID, before: snap))
         preStrokeSnapshot = nil
         preStrokeLayerID = nil
+        pixelPerfectBuffer.reset()
     }
 
     func cancelStroke() {
@@ -125,6 +129,18 @@ final class EditorState {
         }
         preStrokeSnapshot = nil
         preStrokeLayerID = nil
+        pixelPerfectBuffer.reset()
+    }
+
+    /// Pencil/eraser stroke filtering: append the new point and, if the trailing three points
+    /// form an L-corner, mutate `grid` to restore the elbow pixel to its pre-stroke color.
+    /// The new point at `p` should still be painted by the caller after this returns.
+    func revertPixelPerfectElbow(grid: inout PixelGrid, beforeApplyingAt p: (Int, Int)) {
+        guard let elbow = pixelPerfectBuffer.append(p),
+              let snap = preStrokeSnapshot else { return }
+        let snapGrid = PixelGrid(data: snap, size: size)
+        grid.setPixel(x: elbow.0, y: elbow.1,
+                      color: snapGrid.pixel(x: elbow.0, y: elbow.1))
     }
 
     // MARK: - Structural-change undo

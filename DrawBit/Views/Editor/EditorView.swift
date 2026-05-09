@@ -203,8 +203,9 @@ struct EditorView: View {
     // MARK: - Drawing actions
 
     private func applyDrawPoint(x: Int, y: Int) {
-        let isMutatingTool = state.tool == .pencil || state.tool == .eraser
-                           || state.tool == .fill   || state.tool == .marquee
+        let isMutatingTool = state.tool == .pencil    || state.tool == .eraser
+                           || state.tool == .fill     || state.tool == .colorSwap
+                           || state.tool == .marquee
         if isMutatingTool && state.activeLayerIsLocked {
             triggerLockPulse(layerID: state.frame.activeLayerID)
             return
@@ -214,12 +215,14 @@ struct EditorView: View {
         case .pencil:
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
+                state.revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: (x, y))
                 Pencil.paint(on: &grid, at: (x, y), color: state.color)
                 data = grid.data
             }
         case .eraser:
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
+                state.revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: (x, y))
                 Eraser.erase(on: &grid, at: (x, y))
                 data = grid.data
             }
@@ -227,6 +230,16 @@ struct EditorView: View {
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
                 Fill.fill(on: &grid, at: (x, y), with: state.color)
+                data = grid.data
+            }
+        case .colorSwap:
+            // Sample from the active layer, not the composite — swap should only affect this layer.
+            // Transparent pixels are skipped to avoid "tap empty area = paint everything".
+            let picked = state.activeLayerPixelGrid.pixel(x: x, y: y)
+            guard picked.a > 0, picked != state.color else { return }
+            state.mutateActiveLayerPixels { data in
+                var grid = PixelGrid(data: data, size: state.size)
+                ColorSwap.swap(on: &grid, from: picked, to: state.color)
                 data = grid.data
             }
         case .eyedropper:
