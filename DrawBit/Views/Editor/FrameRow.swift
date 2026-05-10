@@ -14,9 +14,8 @@ struct FrameRow: View {
                 Rectangle()
                     .fill(Color.black.opacity(0.25))
                     .frame(width: 36, height: 36)
-                if let png = FrameThumbnailRenderer.render(frame: frame, size: size, targetEdge: 36),
-                   let uiImage = UIImage(data: png) {
-                    Image(uiImage: uiImage)
+                if let cg = FrameThumbnailRenderer.renderCGImage(frame: frame, size: size, targetEdge: 36) {
+                    Image(uiImage: UIImage(cgImage: cg))
                         .interpolation(.none)
                         .antialiased(false)
                         .resizable()
