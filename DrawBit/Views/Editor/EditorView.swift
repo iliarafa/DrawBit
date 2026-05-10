@@ -147,6 +147,10 @@ struct EditorView: View {
             .foregroundStyle(showingLayersPanel ? .blue : .white)
             .disabled(state.isPlaying)
             Button {
+                // Auto-commit any floating marquee + persist before the sheet's
+                // export reads from SwiftData. Otherwise the user's in-flight
+                // cut+drag wouldn't appear in the exported GIF/APNG/PNG.
+                commitFloatingMarqueeAndPersist()
                 showingShareSheet = true
             } label: {
                 Text("SHARE")
@@ -465,11 +469,21 @@ struct EditorView: View {
             // Auto-commit any floating selection BEFORE starting playback (the
             // controller also commits as defense-in-depth). Persist immediately so
             // the now-merged pixels survive a force-quit during playback.
-            let hadSelection = state.selection != nil
-            state.commitFloatingSelectionIfAny()
-            if hadSelection { saveCurrentFrame() }
+            commitFloatingMarqueeAndPersist()
             playback?.start()
         }
+    }
+
+    /// Canonical "auto-commit floating selection before <X>" call site. Use this
+    /// before any operation that either (a) reads the persisted piece state
+    /// (export, share) or (b) mutates the active-frame index in a way that
+    /// changes the destination of an eventual marquee commit (playback). The
+    /// `saveCurrentFrame()` after commit ensures the now-merged pixels survive a
+    /// force-quit between the commit and the next user-driven save.
+    private func commitFloatingMarqueeAndPersist() {
+        let hadSelection = state.selection != nil
+        state.commitFloatingSelectionIfAny()
+        if hadSelection { saveCurrentFrame() }
     }
 
     func reorderFrame(from: Int, toOffset: Int) {
