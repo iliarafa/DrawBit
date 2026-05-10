@@ -17,29 +17,33 @@ struct ShareSheet: View {
         case png
         case gif
         case apng
+        case spriteSheet
         var id: String { rawValue }
 
         var label: String {
             switch self {
-            case .png:  "PNG"
-            case .gif:  "GIF"
-            case .apng: "Animated PNG"
+            case .png:         "PNG"
+            case .gif:         "GIF"
+            case .apng:        "Animated PNG"
+            case .spriteSheet: "Sprite Sheet"
             }
         }
 
         var fileExtension: String {
             switch self {
-            case .png:  "png"
-            case .gif:  "gif"
-            case .apng: "apng"
+            case .png:         "png"
+            case .gif:         "gif"
+            case .apng:        "apng"
+            case .spriteSheet: "png"
             }
         }
 
         var caption: String {
             switch self {
-            case .png:  "active frame, single image"
-            case .gif:  "animated, no partial alpha"
-            case .apng: "animated, true alpha"
+            case .png:         "active frame, single image"
+            case .gif:         "animated, no partial alpha"
+            case .apng:        "animated, true alpha"
+            case .spriteSheet: "all frames in a grid, single PNG"
             }
         }
     }
@@ -239,6 +243,8 @@ struct ShareSheet: View {
                 data = GIFExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
             case .apng:
                 data = APNGExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
+            case .spriteSheet:
+                data = SpriteSheetExporter.export(frames: allFrames, size: size, scale: scale)
             }
             guard let data else { return nil }
             do {
