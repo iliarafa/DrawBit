@@ -75,4 +75,41 @@ final class GIFExporterTests: XCTestCase {
         let src = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
         XCTAssertEqual(CGImageSourceGetCount(src), 1)
     }
+
+    /// GIF has only a single transparent palette index (no real alpha), but
+    /// DrawBit's pixel model is binary 0-or-255 alpha, which maps cleanly onto
+    /// that. Verify ImageIO's encoder picks up the transparent pixels and
+    /// round-trips them as transparent at the byte level.
+    func testGIFPreservesBinaryTransparency() throws {
+        // 16×16 frame: pixel (0,0) opaque green, pixel (1,0) transparent.
+        var pixels = Data(count: CanvasSize.s16.byteCount)
+        pixels[0] = 0; pixels[1] = 200; pixels[2] = 0; pixels[3] = 255
+        let layer = Layer(name: "L", pixels: pixels)
+        let frame = Frame(name: "F", layers: [layer], activeLayerID: layer.id)
+        let data = try XCTUnwrap(GIFExporter.export(frames: [frame], size: .s16, scale: 1, fps: 12))
+
+        let src = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
+        let img = try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
+
+        let dim = 16
+        let bytesPerRow = dim * 4
+        var out = [UInt8](repeating: 0, count: bytesPerRow * dim)
+        out.withUnsafeMutableBytes { buf in
+            guard let cs = CGColorSpace(name: CGColorSpace.sRGB),
+                  let ctx = CGContext(
+                    data: buf.baseAddress,
+                    width: dim, height: dim,
+                    bitsPerComponent: 8, bytesPerRow: bytesPerRow,
+                    space: cs,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                  )
+            else {
+                XCTFail("failed to make read-back context")
+                return
+            }
+            ctx.draw(img, in: CGRect(x: 0, y: 0, width: dim, height: dim))
+        }
+        XCTAssertEqual(out[3], 255, "opaque pixel must remain opaque after GIF round-trip")
+        XCTAssertEqual(out[7], 0, "transparent pixel must remain transparent after GIF round-trip")
+    }
 }

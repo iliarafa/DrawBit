@@ -31,7 +31,7 @@ struct ShareSheet: View {
             switch self {
             case .png:  "png"
             case .gif:  "gif"
-            case .apng: "png"
+            case .apng: "apng"
             }
         }
 
@@ -47,9 +47,7 @@ struct ShareSheet: View {
     init(piece: Piece) {
         self.piece = piece
         self._selectedScale = State(initialValue: Self.defaultScale(for: piece.size))
-        // Default the format to APNG when the piece has multiple frames so the user
-        // gets the "share my animation" affordance immediately. We can't read the
-        // piece's frame count without a SwiftData round-trip; PNG is the safe default.
+        // PNG default — animated formats are opt-in.
         self._selectedFormat = State(initialValue: .png)
     }
 
@@ -229,12 +227,7 @@ struct ShareSheet: View {
         }
 
         let safeName = piece.effectiveName.replacingOccurrences(of: "/", with: "-")
-        let filename: String
-        switch format {
-        case .png:  filename = "\(safeName)-\(scale)x.png"
-        case .gif:  filename = "\(safeName)-\(scale)x.gif"
-        case .apng: filename = "\(safeName)-\(scale)x.apng.png"
-        }
+        let filename = "\(safeName)-\(scale)x.\(format.fileExtension)"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
 
         let writtenURL: URL? = await Task.detached(priority: .userInitiated) {

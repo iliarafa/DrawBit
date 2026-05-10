@@ -75,17 +75,49 @@ final class APNGExporterTests: XCTestCase {
         XCTAssertEqual(CGImageSourceGetCount(src), 1)
     }
 
-    /// APNG preserves alpha (unlike GIF). Verify a transparent pixel survives the round-trip.
-    func testAPNGPreservesAlpha() throws {
-        // Frame with all-transparent pixels (alpha 0).
-        let bytes = CanvasSize.s32.byteCount
-        let frame = makeFrame(name: "F", byteCount: bytes, fill: 0)  // all RGBA = 0
-        let data = try XCTUnwrap(APNGExporter.export(frames: [frame], size: .s32, scale: 1, fps: 12))
+    /// APNG preserves alpha (unlike GIF). Verify a transparent pixel survives the
+    /// round-trip at the byte level — not just that the encoder declared an alpha
+    /// channel. Construct a 4-pixel frame mixing transparent and opaque; encode,
+    /// decode, draw the decoded image into a known-shape RGBA buffer, and assert
+    /// the alpha bytes are preserved at exact-zero and exact-255.
+    func testAPNGPreservesAlphaAtPixelLevel() throws {
+        // Build a 16×16 frame manually: pixel (0,0) opaque red, pixel (1,0) transparent.
+        var pixels = Data(count: CanvasSize.s16.byteCount)
+        // (0,0): RGBA = 255, 0, 0, 255 (opaque red)
+        pixels[0] = 255; pixels[1] = 0; pixels[2] = 0; pixels[3] = 255
+        // (1,0): RGBA = 0, 0, 0, 0 (fully transparent)
+        // (already zero from Data(count:))
+        let layer = Layer(name: "L", pixels: pixels)
+        let frame = Frame(name: "F", layers: [layer], activeLayerID: layer.id)
+        let data = try XCTUnwrap(APNGExporter.export(frames: [frame], size: .s16, scale: 1, fps: 12))
 
+        // Decode and rasterize into a known RGBA buffer so we can read pixel bytes.
         let src = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
         let img = try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
-        let alphaInfo = img.alphaInfo
-        XCTAssertNotEqual(alphaInfo, .none,
-                          "APNG must preserve alpha channel; saw \(alphaInfo)")
+
+        let dim = 16
+        let bytesPerRow = dim * 4
+        var out = [UInt8](repeating: 0, count: bytesPerRow * dim)
+        out.withUnsafeMutableBytes { buf in
+            guard let cs = CGColorSpace(name: CGColorSpace.sRGB),
+                  let ctx = CGContext(
+                    data: buf.baseAddress,
+                    width: dim, height: dim,
+                    bitsPerComponent: 8, bytesPerRow: bytesPerRow,
+                    space: cs,
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                  )
+            else {
+                XCTFail("failed to make read-back context")
+                return
+            }
+            ctx.draw(img, in: CGRect(x: 0, y: 0, width: dim, height: dim))
+        }
+
+        // Pixel (0,0) at offset 0: should still be opaque red.
+        XCTAssertEqual(out[3], 255, "opaque pixel must round-trip with alpha=255")
+        XCTAssertEqual(out[0], 255, "opaque red R")
+        // Pixel (1,0) at offset 4: should still be fully transparent.
+        XCTAssertEqual(out[7], 0, "transparent pixel must round-trip with alpha=0")
     }
 }
