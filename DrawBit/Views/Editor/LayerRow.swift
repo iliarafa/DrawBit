@@ -62,8 +62,7 @@ struct LayerRow: View {
 
     private var thumbnail: some View {
         Group {
-            if let png = LayerThumbnailRenderer.render(layer: layer, size: size, targetEdge: 64),
-               let img = UIImage(data: png)?.cgImage {
+            if let img = LayerThumbnailRenderer.renderCGImage(layer: layer, size: size, targetEdge: 64) {
                 Image(decorative: img, scale: 1.0, orientation: .up)
                     .resizable()
                     .interpolation(.none)
