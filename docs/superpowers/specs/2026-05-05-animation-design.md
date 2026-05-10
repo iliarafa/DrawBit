@@ -98,10 +98,11 @@ The ghost is a *display-only overlay* in `CanvasView`, drawn beneath the active 
 
 A play / pause button in the timeline strip starts looping playback at the chosen FPS.
 
-- **While playing:** drawing tools, frame ops, layer ops, and onion-skin toggle are all disabled. Only play/pause and FPS picker remain active. Tapping the canvas does nothing.
+- **While playing:** drawing tools, frame ops, layer ops, onion-skin toggle, and the FPS picker are all disabled. Only play/pause itself and GALLERY dismiss remain active. Tapping the canvas does nothing.
 - **Loop:** always loops. There is no one-shot mode in v1.
-- **FPS:** picker right next to play/pause. Changing FPS mid-playback updates the rate immediately.
-- **Stop behavior:** tapping pause leaves the active frame at whatever frame was on screen when paused (so the artist can continue drawing on the frame they last saw).
+- **FPS:** picker right next to play/pause. Disabled while playing in v1 because the underlying `Timer` is armed at `start()` time and does not auto-re-arm when `state.fps` changes; the user must pause and resume to apply a new rate. (Earlier spec said "Changing FPS mid-playback updates the rate immediately." — that proved to require a stop/start pattern that didn't match the simpler controller design; deferred as a v1.1 enhancement.)
+- **Stop behavior:** tapping pause leaves the active frame at whatever frame was on screen when paused (so the artist can continue drawing on the frame they last saw). The pause point is persisted via `saveCurrentFrame()` so a force-quit doesn't lose it.
+- **Floating marquee on play:** auto-committed before the timer arms (mirrors the Stage 4 holistic-review fix). The same auto-commit also runs on SHARE so animated exports include any in-flight marquee instead of dropping it.
 
 ### Marquee × frame interaction
 
