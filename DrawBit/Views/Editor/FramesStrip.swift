@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FramesStrip: View {
-    @Bindable var state: EditorState
+    let state: EditorState
     let onAddFrame: () -> Void
     let onDuplicateFrame: () -> Void
     let onDeleteFrame: () -> Void

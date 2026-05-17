@@ -1,6 +1,11 @@
 import Foundation
 
 struct Frame: Equatable {
+    /// Hard upper bound on layers per frame. Enforced by `addLayer` and `duplicateActiveLayer`
+    /// via `precondition`; the UI also `.disabled`-gates the add/duplicate buttons at the cap.
+    /// If this constant changes, also update the UI's disabled predicate in `LayersPanel.swift`.
+    static let maxLayers = 16
+
     let id: UUID
     var name: String
     private(set) var layers: [Layer]
@@ -31,9 +36,13 @@ struct Frame: Equatable {
     }
 
     /// Adds a new empty layer above the active layer and makes it active. Returns the new layer.
-    /// Caller is responsible for enforcing any cap; this method always inserts.
+    /// Precondition-traps if called at or above `Frame.maxLayers`; UI must `.disabled`-gate
+    /// the trigger to prevent this. Defense in depth — the trap signals a programmer error,
+    /// not a user-facing failure.
     @discardableResult
     mutating func addLayer(name: String) -> Layer {
+        precondition(layers.count < Self.maxLayers,
+                     "Frame.addLayer called at \(Self.maxLayers)-layer cap; UI must guard")
         let pixelByteCount = layers[0].pixels.count
         let new = Layer(name: name, pixels: Data(count: pixelByteCount))
         let insertAt = activeIndex + 1
@@ -43,8 +52,11 @@ struct Frame: Equatable {
     }
 
     /// Duplicates the active layer, places the duplicate above the original, and makes it active.
+    /// Same `maxLayers` precondition as `addLayer`.
     @discardableResult
     mutating func duplicateActiveLayer(nameSuffix: String = " copy") -> Layer {
+        precondition(layers.count < Self.maxLayers,
+                     "Frame.duplicateActiveLayer called at \(Self.maxLayers)-layer cap; UI must guard")
         let original = layers[activeIndex]
         let copy = Layer(
             name: original.name + nameSuffix,

@@ -7,7 +7,7 @@ import CoreGraphics
 /// Uses Image(uiImage:).interpolation(.none).antialiased(false) so pixels stay sharp at any
 /// zoom / rotation — Image.interpolation propagates through .scaleEffect/.rotationEffect.
 struct CanvasView: View {
-    @Bindable var state: EditorState
+    let state: EditorState
     let pencilAvailability: PencilAvailability
 
     var onStrokePoint: (Int, Int) -> Void = { _, _ in }
