@@ -6,6 +6,48 @@ import CoreGraphics
 /// grid overlay outlining each pixel cell, and hosts the input layer.
 /// Uses Image(uiImage:).interpolation(.none).antialiased(false) so pixels stay sharp at any
 /// zoom / rotation — Image.interpolation propagates through .scaleEffect/.rotationEffect.
+/// Memoizes the composited previous-frame UIImage used by onion-skin so
+/// `Compositor.composite` doesn't re-run on every SwiftUI body pass (it walks
+/// every visible layer's pixel buffer; ~16 MB at 256²×16-layers per call).
+///
+/// Validity rules:
+/// - Cache HITS during strokes on the active frame (the common, hot case) — the
+///   previous frame's composite doesn't depend on active-frame mutations, so the
+///   cached image stays correct across every body pass within a stroke.
+/// - The owning view explicitly calls `invalidate()` whenever `activeFrameIndex`
+///   changes, since a different previous frame is now in play (or the
+///   previously-active frame the user just came back from may have been edited).
+///   See the `.onChange(of: state.activeFrameIndex)` modifier in `CanvasView.body`.
+/// - There's no automatic invalidation for "the previous frame's pixels changed
+///   while it wasn't active." That requires no normal user gesture (we never
+///   mutate a non-active frame programmatically); if a future code path does,
+///   add an explicit `invalidate()` call there.
+///
+/// Class (not `@State` value) so internal `var` mutations from within view body
+/// don't trip SwiftUI's "modifying state during view update" rule. SwiftUI tracks
+/// the reference identity, not the class's internal vars.
+private final class OnionSkinCache {
+    private var cachedFrameID: UUID?
+    private var cachedImage: UIImage?
+
+    func image(for frame: Frame, size: CanvasSize) -> UIImage? {
+        if cachedFrameID == frame.id, let cached = cachedImage {
+            return cached
+        }
+        let buffer = Compositor.composite(frame, size: size)
+        guard let cg = bufferToCGImage(buffer) else { return nil }
+        let img = UIImage(cgImage: cg)
+        cachedFrameID = frame.id
+        cachedImage = img
+        return img
+    }
+
+    func invalidate() {
+        cachedFrameID = nil
+        cachedImage = nil
+    }
+}
+
 struct CanvasView: View {
     let state: EditorState
     let pencilAvailability: PencilAvailability
@@ -13,6 +55,8 @@ struct CanvasView: View {
     var onStrokePoint: (Int, Int) -> Void = { _, _ in }
     var onStrokeBegin: () -> Void = {}
     var onStrokeEnd: () -> Void = {}
+
+    @State private var onionCache = OnionSkinCache()
     var onStrokeCancel: () -> Void = {}
     var onTap: (Int, Int) -> Void = { _, _ in }
 
@@ -89,6 +133,13 @@ struct CanvasView: View {
             .clipped()
         }
         .accessibilityIdentifier("Canvas")
+        .onChange(of: state.activeFrameIndex) { _, _ in
+            // Onion-skin cache holds the composited previous-frame UIImage keyed
+            // on Frame.id only; switching active frames may bring us back to a
+            // previously-cached frame whose pixels have since changed, so
+            // invalidate eagerly on every active-frame transition.
+            onionCache.invalidate()
+        }
     }
 
     /// Canvas edge length at scale=1 in points. Integer multiple of `dimension` so each canvas
@@ -109,21 +160,15 @@ struct CanvasView: View {
     }
 
     /// Composite of the frame immediately before the active one, used as the onion-skin
-    /// ghost. Returns nil if no previous frame exists. Recomputed every layout pass —
-    /// the compositor walks every visible layer of the previous frame, so worst-case
-    /// (256×256 × 16 visible layers, ~4 MB byte scan) at 60 fps drag is ~240 MB/s of
-    /// scanning that ALWAYS produces the same bytes during a stroke on the active
-    /// frame. Fine on M-series iPads, marginal on A12-class hardware. A frame-content
-    /// memoization keyed on activeFrameIndex changes would eliminate the per-stroke
-    /// cost; deferred to a Stage 5 follow-up since the simple `@State` cache pattern
-    /// trips SwiftUI's "modifying state during view update" rule and a clean fix
-    /// requires lifting the cache to a small helper class.
+    /// ghost. Returns nil if no previous frame exists. Result is memoized by
+    /// `OnionSkinCache` keyed on `frame.id` — the previous frame's composite doesn't
+    /// change during a stroke on the active frame, so the per-body-pass compositor
+    /// walk is wasted work. See `OnionSkinCache` for the cache contract and its
+    /// accepted staleness window.
     private func previousFrameImage() -> UIImage? {
         let idx = state.activeFrameIndex - 1
         guard idx >= 0, idx < state.frames.count else { return nil }
-        let buffer = Compositor.composite(state.frames[idx], size: state.size)
-        guard let cg = bufferToCGImage(buffer) else { return nil }
-        return UIImage(cgImage: cg)
+        return onionCache.image(for: state.frames[idx], size: state.size)
     }
 
     private func selectionImage(_ sel: MarqueeSelection) -> UIImage? {
