@@ -40,11 +40,15 @@ struct LayerRow: View {
             Button { onToggleVisible() } label: {
                 Image(systemName: layer.isVisible ? "eye" : "eye.slash")
                     .foregroundStyle(.white.opacity(layer.isVisible ? 0.85 : 0.45))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             Button { onToggleLocked() } label: {
                 Image(systemName: layer.isLocked ? "lock.fill" : "lock.open")
                     .foregroundStyle(.white.opacity(layer.isLocked ? 0.85 : 0.45))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ToolBar: View {
-    @Bindable var state: EditorState
+    let state: EditorState
     var onUndo: () -> Void
     var onRedo: () -> Void
     var onClear: () -> Void

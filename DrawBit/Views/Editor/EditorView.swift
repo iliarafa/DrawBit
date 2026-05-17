@@ -102,7 +102,17 @@ struct EditorView: View {
             // Stop playback first so the timer doesn't keep mutating state during teardown.
             playback?.stop()
             if state.selection != nil {
-                state.commitMarquee()
+                // Defensive: if the active layer somehow became locked while the
+                // marquee was floating, drop the selection instead of committing
+                // through the lock. Not currently reachable through any UI gesture
+                // (the lock toggle in LayersPanel auto-commits before flipping
+                // isLocked), but cheap forward-compat if a future code path
+                // bypasses that shim. See EditorState.commitMarquee's doc comment.
+                if state.activeLayerIsLocked {
+                    state.cancelMarquee()
+                } else {
+                    state.commitMarquee()
+                }
             }
             saveCurrentFrame()
         }

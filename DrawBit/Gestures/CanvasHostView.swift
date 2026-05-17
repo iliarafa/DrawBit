@@ -3,7 +3,7 @@ import UIKit
 import UIKit.UIGestureRecognizerSubclass
 
 struct CanvasHostView: UIViewRepresentable {
-    @Bindable var state: EditorState
+    let state: EditorState
     var pencilAvailability: PencilAvailability
     var baseEdge: CGFloat
     var onStrokePoint: (Int, Int) -> Void

@@ -59,4 +59,32 @@ final class MigrationTests: XCTestCase {
 
         XCTAssertEqual(piece.frameData, initialBlob, "second run must be a no-op")
     }
+
+    /// Smoke test for the `SchemaMigrationPlan` plumbing added in
+    /// `DrawBitSchema.swift`. A container built with the plan should open the
+    /// V1 schema, accept inserts, and round-trip a piece through save/load.
+    /// If `DrawBitMigrationPlan` ever gets a misconfigured stage, this is the
+    /// canary — it fails before users see `loadIssueModelContainer`.
+    func testSchemaMigrationPlanContainerOpensAndRoundTripsPiece() throws {
+        let schema = Schema(versionedSchema: DrawBitSchemaV1.self)
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(
+            for: schema,
+            migrationPlan: DrawBitMigrationPlan.self,
+            configurations: [config]
+        )
+        let ctx = ModelContext(container)
+
+        let piece = Piece(size: .s16)
+        ctx.insert(piece)
+        try ctx.save()
+
+        // Round-trip: fetch the inserted piece back and verify its frame loads.
+        let pieces = try ctx.fetch(FetchDescriptor<Piece>())
+        XCTAssertEqual(pieces.count, 1)
+        let repo = PieceRepository(context: ctx)
+        let frame = try repo.loadFrame(piece: pieces[0])
+        XCTAssertEqual(frame.layers.count, 1)
+        XCTAssertEqual(frame.layers[0].pixels.count, CanvasSize.s16.byteCount)
+    }
 }

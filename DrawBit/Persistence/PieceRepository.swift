@@ -27,6 +27,15 @@ final class PieceRepository {
     /// Loads the full frame sequence + active index + fps. If the piece is still in V1
     /// (single-frame "DBFR" blob) or raw legacy bytes, migrates in place to V2 ("DBFS")
     /// before returning.
+    ///
+    /// **Migration on MainActor:** the V1→V2 path runs synchronously here, on whichever
+    /// actor the caller is on. In practice the slow case (per-share migration for a
+    /// large piece) is mitigated by `migrateLegacyPiecesIfNeeded()` running at app launch
+    /// (`DrawBitApp.body`), so every piece is V2 by the time the user opens a share sheet.
+    /// If a code path ever inserts a V1 piece after launch — or if the launch sweep is
+    /// skipped — the on-share migration becomes a noticeable UI hitch and the decode/encode
+    /// would need to be lifted into a background task with the `context.save()` re-routed
+    /// to main. Not worth the complexity today; flagged here for whoever notices.
     func loadFrames(piece: Piece) throws
         -> (frames: [Frame], activeFrameIndex: Int, fps: Int)
     {

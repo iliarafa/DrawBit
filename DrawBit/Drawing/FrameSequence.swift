@@ -74,7 +74,10 @@ enum FrameSequence {
 
 extension FrameSequence {
 
-    static let layerCap: Int = 16
+    /// Mirrors `Frame.maxLayers` — the per-frame cap is a single number, owned
+    /// by the model. Re-declared as `layerCap` here only so existing call sites
+    /// in this file stay readable.
+    static let layerCap: Int = Frame.maxLayers
 
     /// Inserts a new empty layer above the currently-active layer in EVERY frame, with the
     /// SAME UUID across the sequence. Returns the new layer id, or nil if at the cap.

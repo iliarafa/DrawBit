@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LayersPanel: View {
-    @Bindable var state: EditorState
+    let state: EditorState
     let isPresented: Bool
     let onRenameLayer: (UUID, String) -> Void
     let onStructuralChange: () -> Void
@@ -58,7 +58,7 @@ struct LayersPanel: View {
                             Image(systemName: "plus")
                         }
                         .accessibilityIdentifier("LayersPanel-plus")
-                        .disabled(state.frame.layers.count >= 16 || state.isPlaying)
+                        .disabled(state.frame.layers.count >= Frame.maxLayers || state.isPlaying)
 
                         Button {
                             state.commitFloatingSelectionIfAny()
@@ -69,7 +69,7 @@ struct LayersPanel: View {
                         } label: {
                             Image(systemName: "doc.on.doc")
                         }
-                        .disabled(state.frame.layers.count >= 16 || state.isPlaying)
+                        .disabled(state.frame.layers.count >= Frame.maxLayers || state.isPlaying)
 
                         Button {
                             // Commit any floating marquee FIRST so the isEmpty check sees

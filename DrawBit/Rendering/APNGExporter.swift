@@ -15,7 +15,9 @@ import UniformTypeIdentifiers
 /// not deviceRGB — on P3 displays deviceRGB silently bakes wide-gamut values
 /// into the encoded output.
 enum APNGExporter {
-    static func export(frames: [Frame], size: CanvasSize, scale: Int, fps: Int) -> Data? {
+    /// Throws `CancellationError` if the surrounding `Task` is cancelled between frames.
+    /// Returns `nil` on encode failure (bad inputs, CG context creation, finalize failure).
+    static func export(frames: [Frame], size: CanvasSize, scale: Int, fps: Int) throws -> Data? {
         guard !frames.isEmpty, scale >= 1, fps >= 1 else { return nil }
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
         let outEdge = size.dimension * scale
@@ -36,6 +38,9 @@ enum APNGExporter {
         ]
 
         for frame in frames {
+            // Allow the caller to bail between frames — for a 60-frame 4× export
+            // the per-frame work isn't tiny, so cancellation matters.
+            try Task.checkCancellation()
             let buffer = Compositor.composite(frame, size: size)
             guard let source = bufferToCGImage(buffer) else { return nil }
             guard let ctx = CGContext(

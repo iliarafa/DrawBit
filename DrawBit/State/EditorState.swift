@@ -65,6 +65,21 @@ final class EditorState {
 
     private let undoLimit = 50
 
+    /// Tighter cap for `.sequenceStructure` entries specifically. Each one
+    /// snapshots the full frame array — worst case (60 frames × 16 layers ×
+    /// 128² × 4 bytes) is ~60 MiB per entry. At the generic `undoLimit=50`
+    /// the stack could grow to 3 GiB worst-case and get the app killed on
+    /// memory pressure. Capping sequence-structure entries at 10 keeps the
+    /// worst-case footprint at ~600 MiB, well inside an iPad app's
+    /// foreground budget. See `SequenceUndoMemoryTests`.
+    ///
+    /// Layer-pixel and frame-structure entries continue to use the generic
+    /// `undoLimit` — they're small enough (<= ~1 MiB each) not to matter.
+    ///
+    /// If this constant is raised, also re-evaluate the worst-case math in
+    /// `SequenceUndoMemoryTests.testWorstCaseSequenceUndoFitsBudget`.
+    private let sequenceStructureUndoLimit = 10
+
     var canUndo: Bool { !undoStack.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
 
@@ -208,6 +223,21 @@ final class EditorState {
         if undoStack.count > undoLimit {
             undoStack.removeFirst(undoStack.count - undoLimit)
         }
+        // Sequence-structure entries are heavy (~60 MiB at worst-case sequence
+        // size). Cap them separately so a flurry of frame-add operations doesn't
+        // balloon the undo stack into memory-pressure territory. Drop oldest
+        // .sequenceStructure entries until at or under sequenceStructureUndoLimit;
+        // other entry types are untouched and follow the generic undoLimit.
+        var sequenceCount = 0
+        for e in undoStack { if case .sequenceStructure = e { sequenceCount += 1 } }
+        while sequenceCount > sequenceStructureUndoLimit {
+            if let idx = undoStack.firstIndex(where: { if case .sequenceStructure = $0 { return true } else { return false } }) {
+                undoStack.remove(at: idx)
+                sequenceCount -= 1
+            } else {
+                break
+            }
+        }
         redoStack.removeAll()
     }
 
@@ -311,6 +341,31 @@ final class EditorState {
         dragAnchor = nil
     }
 
+    /// Commits the floating marquee selection back into the active layer's pixels
+    /// at the current drag offset, then clears the selection.
+    ///
+    /// # Two known UX edges
+    ///
+    /// **1. Undo of a marquee commit doesn't restore the floating state.** The
+    /// `.layerPixels` undo entry pushed here captures `preStrokeSnapshot` (the
+    /// pre-extraction layer pixels), so undoing reverts all the way to before the
+    /// lasso — the entire lasso+drag+commit collapses into one undo step. To
+    /// support "undo just the commit, leaving the selection still floating", the
+    /// undo entry would need a new case carrying the `MarqueeSelection` itself
+    /// and the layer's post-extraction state; that's an architectural change to
+    /// the undo stack rather than a one-line tweak. Accepted limitation — the
+    /// single-step undo is intuitive enough that most users never notice.
+    ///
+    /// **2. This method doesn't check `isLocked` on the active layer.** The user
+    /// can only reach `commitMarquee` via paths that either (a) the user
+    /// explicitly triggered while the layer was unlocked, or (b) the layer-lock
+    /// toggle auto-commits the marquee *before* setting the lock — so a locked
+    /// layer with a floating marquee isn't reachable through any UI gesture
+    /// today. If a future code path flips `Layer.isLocked` without going through
+    /// the auto-commit shim, `commitMarquee` would silently write to a locked
+    /// layer. The `onDisappear` save path in `EditorView` adds a defensive
+    /// guard for that case (cancel instead of commit); add similar guards at any
+    /// future direct callers.
     func commitMarquee() {
         guard let sel = selection else { return }
         var grid = activeLayerPixelGrid

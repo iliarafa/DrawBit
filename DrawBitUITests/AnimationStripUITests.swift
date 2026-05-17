@@ -111,18 +111,9 @@ final class AnimationStripUITests: XCTestCase {
         // mean we landed at frame 0 for some reason).
         XCTAssertTrue(onion.isEnabled, "expected to reopen on a non-zero active frame")
 
-        // The toggle's accessibility identifier doesn't change with state, so
-        // reading the value indirectly: the icon SF Symbol changes between
-        // "circle" (off) and "circle.righthalf.filled" (on). XCTest surfaces the
-        // SF Symbol name via `value` on iOS images; check that here.
-        // Fallback if the value bridge differs by OS: just assert a tap is harmless.
-        // (This is a minimum-viable check; the strong assertion is "the toggle
-        // does not survive reopen"; if it survived as `on`, the icon would be
-        // "circle.righthalf.filled".)
-        let label = onion.label
-        // SF symbol names appear in the accessibility label when no overriding
-        // .accessibilityLabel is set. "circle" is the off state.
-        XCTAssertTrue(label.contains("circle") && !label.contains("filled"),
-                      "onion-skin toggle must reset to off after editor reopen; saw label '\(label)'")
+        // The toggle's accessibility label encodes the state explicitly
+        // ("Onion skin off" / "Onion skin on") so the test reads it directly.
+        XCTAssertEqual(onion.label, "Onion skin off",
+                       "onion-skin toggle must reset to off after editor reopen; saw label '\(onion.label)'")
     }
 }

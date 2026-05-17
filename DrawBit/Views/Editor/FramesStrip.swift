@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct FramesStrip: View {
-    @Bindable var state: EditorState
+    let state: EditorState
     let onAddFrame: () -> Void
     let onDuplicateFrame: () -> Void
     let onDeleteFrame: () -> Void
@@ -27,12 +27,16 @@ struct FramesStrip: View {
                         .foregroundStyle(state.isPlaying ? Color.red : Color.accentColor)
                 }
                 .accessibilityIdentifier("FramesStrip.playPause")
+                .accessibilityLabel(state.isPlaying ? "Pause animation" : "Play animation")
                 .disabled(state.frames.count <= 1)
 
                 Button(action: cycleFPS) {
                     Text("\(state.fps) fps").font(.caption2.bold())
                 }
                 .accessibilityIdentifier("FramesStrip.fps")
+                .accessibilityLabel("Playback speed")
+                .accessibilityValue("\(state.fps) frames per second")
+                .accessibilityHint("Double-tap to cycle to the next speed")
                 .disabled(state.isPlaying)
 
                 Button(action: { state.isOnionSkinEnabled.toggle() }) {
@@ -41,6 +45,8 @@ struct FramesStrip: View {
                         .foregroundStyle(state.isOnionSkinEnabled ? Color.accentColor : Color.white.opacity(0.6))
                 }
                 .accessibilityIdentifier("FramesStrip.onionSkin")
+                .accessibilityLabel(state.isOnionSkinEnabled ? "Onion skin on" : "Onion skin off")
+                .accessibilityHint("Shows a faded preview of the previous frame behind the current one")
                 .disabled(state.activeFrameIndex == 0 || state.isPlaying)
             }
 
@@ -85,6 +91,7 @@ struct FramesStrip: View {
                         .frame(width: 28, height: 28)
                 }
                 .accessibilityIdentifier("FramesStrip.add")
+                .accessibilityLabel("Add frame")
                 .disabled(state.frames.count >= FrameSequence.frameCap)
 
                 if isEditMode {
@@ -93,6 +100,7 @@ struct FramesStrip: View {
                             .frame(width: 28, height: 28)
                     }
                     .accessibilityIdentifier("FramesStrip.duplicate")
+                    .accessibilityLabel("Duplicate current frame")
                     .disabled(state.frames.count >= FrameSequence.frameCap)
 
                     Button(action: onDeleteFrame) {
@@ -100,6 +108,7 @@ struct FramesStrip: View {
                             .frame(width: 28, height: 28)
                     }
                     .accessibilityIdentifier("FramesStrip.delete")
+                    .accessibilityLabel("Delete current frame")
                     .disabled(state.frames.count <= 1)
                 }
 
@@ -111,6 +120,8 @@ struct FramesStrip: View {
                 }
                 .font(.caption2.bold())
                 .accessibilityIdentifier("FramesStrip.editToggle")
+                .accessibilityLabel(isEditMode ? "Done editing frames" : "Edit frames")
+                .accessibilityHint(isEditMode ? "Hides the duplicate and delete buttons" : "Shows duplicate and delete buttons for the active frame")
             }
             .disabled(state.isPlaying)
         }
