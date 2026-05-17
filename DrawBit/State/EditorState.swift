@@ -65,6 +65,21 @@ final class EditorState {
 
     private let undoLimit = 50
 
+    /// Tighter cap for `.sequenceStructure` entries specifically. Each one
+    /// snapshots the full frame array — worst case (60 frames × 16 layers ×
+    /// 128² × 4 bytes) is ~60 MiB per entry. At the generic `undoLimit=50`
+    /// the stack could grow to 3 GiB worst-case and get the app killed on
+    /// memory pressure. Capping sequence-structure entries at 10 keeps the
+    /// worst-case footprint at ~600 MiB, well inside an iPad app's
+    /// foreground budget. See `SequenceUndoMemoryTests`.
+    ///
+    /// Layer-pixel and frame-structure entries continue to use the generic
+    /// `undoLimit` — they're small enough (<= ~1 MiB each) not to matter.
+    ///
+    /// If this constant is raised, also re-evaluate the worst-case math in
+    /// `SequenceUndoMemoryTests.testWorstCaseSequenceUndoFitsBudget`.
+    private let sequenceStructureUndoLimit = 10
+
     var canUndo: Bool { !undoStack.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
 
@@ -207,6 +222,21 @@ final class EditorState {
         undoStack.append(entry)
         if undoStack.count > undoLimit {
             undoStack.removeFirst(undoStack.count - undoLimit)
+        }
+        // Sequence-structure entries are heavy (~60 MiB at worst-case sequence
+        // size). Cap them separately so a flurry of frame-add operations doesn't
+        // balloon the undo stack into memory-pressure territory. Drop oldest
+        // .sequenceStructure entries until at or under sequenceStructureUndoLimit;
+        // other entry types are untouched and follow the generic undoLimit.
+        var sequenceCount = 0
+        for e in undoStack { if case .sequenceStructure = e { sequenceCount += 1 } }
+        while sequenceCount > sequenceStructureUndoLimit {
+            if let idx = undoStack.firstIndex(where: { if case .sequenceStructure = $0 { return true } else { return false } }) {
+                undoStack.remove(at: idx)
+                sequenceCount -= 1
+            } else {
+                break
+            }
         }
         redoStack.removeAll()
     }
