@@ -7,9 +7,17 @@ final class Piece {
     var name: String?
     var sizeRaw: Int
 
-    /// Versioned blob holding the entire Frame (layers + active layer id).
-    /// External storage keeps the row light when the blob grows with multiple layers.
-    @Attribute(.externalStorage) var frameData: Data
+    /// Versioned blob holding the entire Frame (layers + active layer id) for V1,
+    /// and the encoded sequence (DBFR/DBFS) for V2+. External storage keeps the
+    /// row light when the blob grows with multiple layers.
+    ///
+    /// `originalName: "pixels"` lets SwiftData auto-rename the column for any
+    /// pre-Stage-1 store that called it `pixels` (raw single-layer bytes). Public
+    /// distribution never shipped that build, but internal test devices might
+    /// still have it. The bytes themselves are converted V1→V2 lazily by
+    /// `PieceRepository.loadFrames`; this attribute handles only the column
+    /// rename so SwiftData can open the store at all.
+    @Attribute(.externalStorage, originalName: "pixels") var frameData: Data
 
     var thumbnail: Data
     var createdAt: Date
