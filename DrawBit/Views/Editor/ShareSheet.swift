@@ -234,15 +234,21 @@ struct ShareSheet: View {
         let filename = "\(safeName)-\(scale)x.\(format.fileExtension)"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
 
+        // NOTE: the animated exporters now check `Task.checkCancellation()` between
+        // frames, so they'll bail cleanly if this detached task is cancelled. There's
+        // currently no UI to cancel a running export — wiring a CANCEL button (or
+        // auto-cancel on ShareSheet dismiss) is the follow-up that makes the
+        // checkpoints actually fire. Until then, `try?` here swallows the
+        // theoretical CancellationError the same way it swallows other failures.
         let writtenURL: URL? = await Task.detached(priority: .userInitiated) {
             let data: Data?
             switch format {
             case .png:
                 data = PNGExporter.export(frame: activeFrame, size: size, scale: scale)
             case .gif:
-                data = GIFExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
+                data = try? GIFExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
             case .apng:
-                data = APNGExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
+                data = try? APNGExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
             case .spriteSheet:
                 data = SpriteSheetExporter.export(frames: allFrames, size: size, scale: scale)
             }

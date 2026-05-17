@@ -54,18 +54,18 @@ final class APNGExporterTests: XCTestCase {
         XCTAssertEqual(img.height, 32 * 4)
     }
 
-    func testEmptyFramesReturnsNil() {
-        XCTAssertNil(APNGExporter.export(frames: [], size: .s32, scale: 1, fps: 12))
+    func testEmptyFramesReturnsNil() throws {
+        XCTAssertNil(try APNGExporter.export(frames: [], size: .s32, scale: 1, fps: 12))
     }
 
-    func testInvalidScaleReturnsNil() {
+    func testInvalidScaleReturnsNil() throws {
         let frames = [makeFrame(name: "F", byteCount: CanvasSize.s32.byteCount)]
-        XCTAssertNil(APNGExporter.export(frames: frames, size: .s32, scale: 0, fps: 12))
+        XCTAssertNil(try APNGExporter.export(frames: frames, size: .s32, scale: 0, fps: 12))
     }
 
-    func testInvalidFPSReturnsNil() {
+    func testInvalidFPSReturnsNil() throws {
         let frames = [makeFrame(name: "F", byteCount: CanvasSize.s32.byteCount)]
-        XCTAssertNil(APNGExporter.export(frames: frames, size: .s32, scale: 1, fps: 0))
+        XCTAssertNil(try APNGExporter.export(frames: frames, size: .s32, scale: 1, fps: 0))
     }
 
     func testSingleFrameExports() throws {
