@@ -10,40 +10,43 @@ import CoreGraphics
 /// `Compositor.composite` doesn't re-run on every SwiftUI body pass (it walks
 /// every visible layer's pixel buffer; ~16 MB at 256²×16-layers per call).
 ///
-/// Validity rules:
-/// - Cache HITS during strokes on the active frame (the common, hot case) — the
-///   previous frame's composite doesn't depend on active-frame mutations, so the
-///   cached image stays correct across every body pass within a stroke.
-/// - The owning view explicitly calls `invalidate()` whenever `activeFrameIndex`
-///   changes, since a different previous frame is now in play (or the
-///   previously-active frame the user just came back from may have been edited).
-///   See the `.onChange(of: state.activeFrameIndex)` modifier in `CanvasView.body`.
-/// - There's no automatic invalidation for "the previous frame's pixels changed
-///   while it wasn't active." That requires no normal user gesture (we never
-///   mutate a non-active frame programmatically); if a future code path does,
-///   add an explicit `invalidate()` call there.
+/// Cache key is the previous frame's full value, compared via `Frame ==`. A
+/// `Frame.id`-only key would miss cases where the user undoes/redoes a stroke
+/// on the previous frame: `Frame.id` is `let`, so it stays equal while the
+/// layer pixel data underneath changes — the cached image would go stale.
+/// Value equality fixes that: any pixel change to the previous frame's layers
+/// flips the equality and forces a recomposite.
+///
+/// Cost: each body pass with onion skin on runs a `Frame ==` (byte compare of
+/// every layer's pixel `Data`). For a worst-case 16-layer × 128² frame that's
+/// ~1 MiB of byte compare — meaningfully cheaper than the alternative
+/// `Compositor.composite` walk (~3 MiB with conditional copies + alpha checks),
+/// and a fast-path on `Frame.id` (cached id != incoming id → immediate miss)
+/// keeps the cross-frame case essentially free.
 ///
 /// Class (not `@State` value) so internal `var` mutations from within view body
 /// don't trip SwiftUI's "modifying state during view update" rule. SwiftUI tracks
 /// the reference identity, not the class's internal vars.
 private final class OnionSkinCache {
-    private var cachedFrameID: UUID?
+    private var cachedFrame: Frame?
     private var cachedImage: UIImage?
 
     func image(for frame: Frame, size: CanvasSize) -> UIImage? {
-        if cachedFrameID == frame.id, let cached = cachedImage {
-            return cached
+        // Fast-path: different frame.id can't be a cache hit no matter what.
+        if let cached = cachedFrame, cached.id == frame.id, cached == frame,
+           let cachedImage {
+            return cachedImage
         }
         let buffer = Compositor.composite(frame, size: size)
         guard let cg = bufferToCGImage(buffer) else { return nil }
         let img = UIImage(cgImage: cg)
-        cachedFrameID = frame.id
+        cachedFrame = frame
         cachedImage = img
         return img
     }
 
     func invalidate() {
-        cachedFrameID = nil
+        cachedFrame = nil
         cachedImage = nil
     }
 }
