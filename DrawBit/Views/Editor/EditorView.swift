@@ -11,6 +11,7 @@ struct EditorView: View {
     @State private var showingSystemColorPicker = false
     @State private var showingShareSheet = false
     @State private var showingLayersPanel = false
+    @State private var showTimeline = false
     @State private var showingDeleteFrameConfirm = false
     @State private var playback: PlaybackController?
 
@@ -42,16 +43,25 @@ struct EditorView: View {
                 )
                 .allowsHitTesting(!state.isPlaying)
                 Divider().overlay(Color.white.opacity(0.08))
-                FramesStrip(
-                    state: state,
-                    onAddFrame: addFrameAfterActive,
-                    onDuplicateFrame: addFrameAfterActive,
-                    onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded,
-                    onReorderFrame: reorderFrame,
-                    onRenameFrame: renameFrame,
-                    onActivateFrame: setActiveFrameAndPersistIfDirty,
-                    onTogglePlay: togglePlay
-                )
+                // The slot is always 60pt so toggling ANIMATE never resizes the
+                // canvas above. When hidden, the slot is just transparent.
+                Group {
+                    if showTimeline {
+                        FramesStrip(
+                            state: state,
+                            onAddFrame: addFrameAfterActive,
+                            onDuplicateFrame: addFrameAfterActive,
+                            onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded,
+                            onReorderFrame: reorderFrame,
+                            onRenameFrame: renameFrame,
+                            onActivateFrame: setActiveFrameAndPersistIfDirty,
+                            onTogglePlay: togglePlay
+                        )
+                    } else {
+                        Color.clear
+                    }
+                }
+                .frame(height: 60)
                 bottomBar
             }
             LayersPanel(
@@ -97,6 +107,7 @@ struct EditorView: View {
             if let settings = try? repo.appSettings() {
                 recentHex = settings.recentColors
             }
+            showTimeline = state.frames.count > 1
         }
         .onDisappear {
             // Stop playback first so the timer doesn't keep mutating state during teardown.
@@ -156,6 +167,24 @@ struct EditorView: View {
             }
             .foregroundStyle(showingLayersPanel ? .blue : .white)
             .disabled(state.isPlaying)
+            Button {
+                if showTimeline {
+                    showTimeline = false
+                } else {
+                    // First-time transition from still to animation: seed a 2nd frame
+                    // so the strip has something to scrub. Frames are never auto-removed
+                    // on hide — user work is preserved.
+                    if state.frames.count == 1 {
+                        addFrameAfterActive()
+                    }
+                    showTimeline = true
+                }
+            } label: {
+                Text("ANIMATE").font(.pixel(11))
+            }
+            .foregroundStyle(showTimeline ? .blue : .white)
+            .disabled(state.isPlaying)
+            .accessibilityIdentifier("Animate")
             Button {
                 // Auto-commit any floating marquee + persist before the sheet's
                 // export reads from SwiftData. Otherwise the user's in-flight
