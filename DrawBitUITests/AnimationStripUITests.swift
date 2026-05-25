@@ -204,4 +204,54 @@ final class AnimationStripUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(rowsAfterReopen.count, 2,
                                     "Both frames must persist after ANIMATE-then-hide-then-reopen")
     }
+
+    func testEditModeToggleIsGone() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        app.buttons["NewPiece-32"].tap()
+
+        let animate = app.buttons["Animate"]
+        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        animate.tap()
+
+        XCTAssertTrue(app.buttons["FramesStrip.add"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["FramesStrip.editToggle"].exists,
+                       "EDIT mode toggle must be removed from the strip")
+    }
+
+    func testAddInsertsBlankFrame() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        app.buttons["NewPiece-32"].tap()
+
+        let animate = app.buttons["Animate"]
+        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        animate.tap()
+
+        let add = app.buttons["FramesStrip.add"]
+        XCTAssertTrue(add.waitForExistence(timeout: 5))
+
+        let frameRowsPredicate = NSPredicate(format: "identifier BEGINSWITH 'FrameRow.'")
+        let before = app.buttons.matching(frameRowsPredicate).count
+        add.tap()
+        var grew = false
+        for _ in 0..<10 {
+            if app.buttons.matching(frameRowsPredicate).count > before { grew = true; break }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertTrue(grew, "ADD must insert a new frame row")
+        // Behavioral note: blank-vs-copy pixel content is asserted at the unit level
+        // (FrameSequenceTests.testAddBlankFrameAfterInsertsEmptyFrame); the UI test
+        // only verifies the button inserts a frame.
+    }
 }
