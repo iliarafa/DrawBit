@@ -122,7 +122,7 @@ struct FramesStrip: View {
             .accessibilityIdentifier("FramesStrip.add")
             .accessibilityLabel("Add blank frame")
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 18)
         .frame(height: 60)
         .background(Color.black.opacity(0.4))
     }
