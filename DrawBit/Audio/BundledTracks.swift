@@ -7,15 +7,19 @@ enum BundledTracks {
     private static let extensions = ["m4a", "mp3"]
 
     static func load(bundle: Bundle = .main) -> [AudioTrack] {
+        var seen = Set<String>()
         var urls: [URL] = []
         for ext in extensions {
-            // xcodegen flattens resources to the bundle root (like the font), but
-            // try an "Audio" subdirectory first in case folder-reference packaging
-            // is ever used; fall back to the root.
-            let found = bundle.urls(forResourcesWithExtension: ext, subdirectory: "Audio")
-                ?? bundle.urls(forResourcesWithExtension: ext, subdirectory: nil)
-                ?? []
-            urls.append(contentsOf: found)
+            // xcodegen flattens resources to the bundle root (like the font); also
+            // check an "Audio" subdirectory in case folder-reference packaging is
+            // used. NB: a missing subdirectory returns an empty array (not nil), so
+            // collect from both and dedup rather than `??`-falling-through.
+            for subdir in ["Audio", Optional<String>.none] {
+                guard let found = bundle.urls(forResourcesWithExtension: ext, subdirectory: subdir) else { continue }
+                for url in found where seen.insert(url.path).inserted {
+                    urls.append(url)
+                }
+            }
         }
         return sortedByFileName(urls).map {
             AudioTrack(url: $0, title: prettifyTitle(fileName: $0.lastPathComponent))
