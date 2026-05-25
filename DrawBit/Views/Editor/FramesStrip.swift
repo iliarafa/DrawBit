@@ -3,6 +3,8 @@ import SwiftUI
 struct FramesStrip: View {
     let state: EditorState
     let onAddFrame: () -> Void
+    /// onDuplicateFrame / onDeleteFrame are invoked from FrameRow's per-frame
+    /// context menu (wired up in FrameRow), not from the strip's own chrome.
     let onDuplicateFrame: () -> Void
     /// Index-based reorder (from, to) used by FrameRow drag-and-drop.
     let onReorderFrame: (Int, Int) -> Void
@@ -134,7 +136,7 @@ struct FramesStrip: View {
         VStack(spacing: 6) {
             Image(systemName: systemImage)
                 .font(.system(size: 20, weight: .regular))
-            Text(title)
+            Text(title.uppercased())
                 .font(.pixel(8))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
