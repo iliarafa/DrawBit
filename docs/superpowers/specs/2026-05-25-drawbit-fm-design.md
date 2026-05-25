@@ -10,7 +10,7 @@ DrawBit had no audio. "DrawBit FM" is a curated lo-fi station that loops while t
 
 ## Decisions
 
-- **Placement:** a persistent player strip in the **Gallery**, under the `GALLERY` header, above the piece grid (`GalleryView` `VStack`, between `topBar` and the `ScrollView`).
+- **Placement:** a persistent player strip pinned to the **footer** of the Gallery — below the piece grid (`GalleryView` `VStack`, after the `ScrollView`), above the home indicator. A top divider separates it from the grid.
 - **Tracks: bundled station.** The developer drops `.m4a`/`.mp3` files into `DrawBit/Resources/Audio/`; they ship with the build. No runtime import, no persistence of audio. Discovery: `BundledTracks.load` enumerates the bundle (tries the `Audio` subdirectory, falls back to the flattened root — xcodegen flattens resources), numeric-aware filename sort, filename→title prettifier.
 - **Loop: playlist radio.** `Playlist` is a pure value type with empty-safe, wraparound `next/previous/advance`. A track ending calls `advance()` (loops to the first after the last). A single track replays.
 - **Controls:** play/pause, prev, next, current title, draggable progress/scrub bar. No volume slider.

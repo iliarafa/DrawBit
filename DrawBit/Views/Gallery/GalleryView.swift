@@ -17,7 +17,6 @@ struct GalleryView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 topBar
-                RadioStrip()
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(pieces) { piece in
@@ -33,6 +32,7 @@ struct GalleryView: View {
                     .padding(.bottom, 24)
                 }
                 .scrollContentBackground(.hidden)
+                RadioStrip()
             }
             .background(Color(white: 0.10).ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)

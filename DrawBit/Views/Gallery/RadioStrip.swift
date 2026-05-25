@@ -15,7 +15,7 @@ struct RadioStrip: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .background(Color(white: 0.09))
-        .overlay(alignment: .bottom) {
+        .overlay(alignment: .top) {
             Divider().overlay(Color.white.opacity(0.08))
         }
         // NB: don't put an accessibilityIdentifier on this container — SwiftUI
