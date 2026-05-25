@@ -18,7 +18,8 @@ struct RadioStrip: View {
         .overlay(alignment: .bottom) {
             Divider().overlay(Color.white.opacity(0.08))
         }
-        .accessibilityIdentifier("RadioStrip")
+        // NB: don't put an accessibilityIdentifier on this container — SwiftUI
+        // propagates it to every descendant, clobbering the per-control ids below.
     }
 
     private var header: some View {
