@@ -17,6 +17,7 @@ struct GalleryView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 topBar
+                RadioStrip()
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(pieces) { piece in
