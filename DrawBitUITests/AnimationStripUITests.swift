@@ -254,4 +254,31 @@ final class AnimationStripUITests: XCTestCase {
         // (FrameSequenceTests.testAddBlankFrameAfterInsertsEmptyFrame); the UI test
         // only verifies the button inserts a frame.
     }
+
+    func testFPSPopoverSetsSpeedInOneTap() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        app.buttons["NewPiece-32"].tap()
+
+        let animate = app.buttons["Animate"]
+        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        animate.tap()
+
+        let fps = app.buttons["FramesStrip.fps"]
+        XCTAssertTrue(fps.waitForExistence(timeout: 5))
+        fps.tap()
+
+        // Pick a non-adjacent speed in a single tap from the custom popover.
+        let sixty = app.buttons["FramesStrip.fps.60"]
+        XCTAssertTrue(sixty.waitForExistence(timeout: 3), "fps popover row '60' must appear")
+        sixty.tap()
+
+        XCTAssertEqual(fps.value as? String, "60 frames per second",
+                       "Selecting 60 in the popover must set fps to 60 in one tap")
+    }
 }

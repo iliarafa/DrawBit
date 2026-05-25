@@ -15,6 +15,7 @@ struct FramesStrip: View {
 
     @State private var renamingFrameID: UUID?
     @State private var renameText: String = ""
+    @State private var showingFPSMenu = false
 
     private static let fpsChoices = [4, 8, 12, 24, 30, 60]
 
@@ -32,19 +33,9 @@ struct FramesStrip: View {
                 .accessibilityIdentifier("FramesStrip.playPause")
                 .accessibilityLabel(state.isPlaying ? "Pause animation" : "Play animation")
 
-                Menu {
-                    ForEach(Self.fpsChoices, id: \.self) { choice in
-                        Button {
-                            state.fps = choice
-                        } label: {
-                            if choice == state.fps {
-                                Label("\(choice) FPS", systemImage: "checkmark")
-                            } else {
-                                Text("\(choice) FPS")
-                            }
-                        }
-                    }
-                } label: {
+                // Custom dark/pixel popover instead of a native Menu, which can't
+                // take the app font or theme.
+                Button { showingFPSMenu = true } label: {
                     stripButton(systemImage: "speedometer", title: "\(state.fps) FPS")
                 }
                 .buttonStyle(.plain)
@@ -53,6 +44,7 @@ struct FramesStrip: View {
                 .accessibilityIdentifier("FramesStrip.fps")
                 .accessibilityLabel("Playback speed")
                 .accessibilityValue("\(state.fps) frames per second")
+                .popover(isPresented: $showingFPSMenu) { fpsMenu }
 
                 Button(action: { state.isOnionSkinEnabled.toggle() }) {
                     stripButton(systemImage: "square.2.layers.3d", title: "ONION")
@@ -133,6 +125,44 @@ struct FramesStrip: View {
         .padding(.horizontal, 8)
         .frame(height: 60)
         .background(Color.black.opacity(0.4))
+    }
+
+    /// Dark, pixel-font replacement for a native fps `Menu` (which renders with
+    /// system chrome we can't theme). Tap a row to set the speed.
+    private var fpsMenu: some View {
+        VStack(spacing: 0) {
+            ForEach(Self.fpsChoices, id: \.self) { choice in
+                Button {
+                    state.fps = choice
+                    showingFPSMenu = false
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("\(choice) FPS")
+                            .font(.pixel(10))
+                        Spacer(minLength: 0)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .opacity(choice == state.fps ? 1 : 0)
+                            .accessibilityHidden(true)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("FramesStrip.fps.\(choice)")
+                .accessibilityAddTraits(choice == state.fps ? .isSelected : [])
+
+                if choice != Self.fpsChoices.last {
+                    Divider().overlay(Color.white.opacity(0.12))
+                }
+            }
+        }
+        .frame(width: 160)
+        .background(Color(white: 0.12))
+        .presentationCompactAdaptation(.popover)
+        .presentationBackground(Color(white: 0.12))
     }
 
     private var divider: some View {
