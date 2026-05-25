@@ -51,7 +51,7 @@ Left to right, all in the toolbar's icon-over-label pixel style, with `Divider`s
 ### Transport group (left)
 
 - **PLAY / PAUSE** — icon `play.fill` / `pause.fill`, label `PLAY` / `PAUSE`. White; disabled (`opacity 0.25`) when `frames.count <= 1`. (Existing `onTogglePlay`.) Monochrome: no red while playing.
-- **FPS** — icon `speedometer`, label = the current value, e.g. `12 FPS`. Tapping opens a SwiftUI `Menu` listing `4/8/12/24/30/60 FPS` with a checkmark on the current value; selecting one sets `state.fps` directly. Because it now looks like a button among buttons, the affordance problem is solved without a chevron. Disabled while `state.isPlaying`.
+- **FPS** — icon `speedometer`, label = the current value, e.g. `12 FPS`. Tapping opens a **custom dark, pixel-font popover** listing `4/8/12/24/30/60 FPS` with a checkmark on the current value; selecting one sets `state.fps` directly and dismisses. Because it now looks like a button among buttons, the affordance problem is solved without a chevron. Disabled while `state.isPlaying`. (We use a custom popover rather than a native SwiftUI `Menu` because native menus render with un-themeable system chrome — light material, system font — which clashes with the app's dark pixel aesthetic. The frame long-press menu is the exception: it stays a native `.contextMenu` because it must coexist with `.draggable`, which a custom long-press popover would fight.)
 - **ONION** — icon `square.2.layers.3d` (implementer may substitute the nearest available stacked-frames symbol, e.g. `rectangle.stack`), label `ONION`. White when `state.isOnionSkinEnabled`, else `opacity 0.55`. Disabled (`opacity 0.25`) when `state.activeFrameIndex == 0` or `state.isPlaying`. (Existing toggle behavior preserved.)
 
 ### Frames group (middle)
@@ -126,13 +126,13 @@ Interactions per frame:
 
 ## Component boundaries
 
-- **`FramesStrip`** owns the three groups, the dividers, the fps `Menu`, and the scroll container. It loses `isEditMode` and the rename `TextField` ownership if that moves into `FrameRow` — keep rename state where it is today (in `FramesStrip`) to minimize churn; the context menu's RENAME action sets `renamingFrameID` as the old long-press did.
+- **`FramesStrip`** owns the three groups, the dividers, the fps popover, and the scroll container. It loses `isEditMode` and the rename `TextField` ownership if that moves into `FrameRow` — keep rename state where it is today (in `FramesStrip`) to minimize churn; the context menu's RENAME action sets `renamingFrameID` as the old long-press did.
 - **`FrameRow`** owns one thumbnail: preview, number badge, optional custom-name overlay, white active ring, the `.contextMenu`, and the drag-reorder source/drop. It exposes the same `onTap` plus callbacks for `onDuplicate`, `onRename`, `onDelete`, and a reorder hook.
 - No changes below the view layer. `FrameSequence`, `EditorState`, repository, and renderers are untouched (only *called* differently).
 
 ## Drag-to-reorder approach (for the plan)
 
-Recommended: `.draggable` / `.dropDestination` (iOS 16+) on each `FrameRow`, computing the target index from the drop. This coexists with `.contextMenu` (iOS disambiguates a drag from a menu long-press). The plan can also consider a long-press `DragGesture` with manual offset math if drag-and-drop proves fiddly inside the horizontal `ScrollView`. Either way it must call `EditorView.reorderFrame(from:toOffset:)` so the move is undoable and persisted.
+Implemented with `.draggable` / `.dropDestination` (iOS 16+) on each `FrameRow`, computing the target index from the drop. This coexists with `.contextMenu` (iOS disambiguates a drag from a menu long-press). It calls `EditorView.moveFrame(fromIndex:toIndex:)` → `FrameSequence.move` so the move is undoable and persisted (plain index-based move; the old `.onMove`-offset path `reorderFrame`/`FrameSequence.modelTargetIndex` was removed as dead code). For VoiceOver, `FrameRow` also exposes "Move left"/"Move right" accessibility actions since drag has no non-visual affordance.
 
 ## Accessibility
 
