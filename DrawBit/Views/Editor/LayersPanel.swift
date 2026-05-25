@@ -24,8 +24,12 @@ struct LayersPanel: View {
                         Text("LAYERS").font(.pixel(11)).foregroundStyle(.white.opacity(0.85))
                         Spacer()
                         Button {
-                            withAnimation(.easeInOut(duration: 0.18)) {
+                            if UITestSupport.isRunning {
                                 editMode = (editMode == .active) ? .inactive : .active
+                            } else {
+                                withAnimation(.easeInOut(duration: 0.18)) {
+                                    editMode = (editMode == .active) ? .inactive : .active
+                                }
                             }
                         } label: {
                             Text(editMode == .active ? "DONE" : "EDIT")
@@ -125,7 +129,7 @@ struct LayersPanel: View {
                 .transition(.move(edge: .trailing))
             }
         }
-        .animation(.easeInOut(duration: 0.18), value: isPresented)
+        .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.18), value: isPresented)
         .onChange(of: isPresented) { _, nowPresented in
             if !nowPresented {
                 editMode = .inactive

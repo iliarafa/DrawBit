@@ -36,8 +36,15 @@ final class AnimationStripUITests: XCTestCase {
         // .isButton trait, so XCTest surfaces them as buttons.
         let frameRowsPredicate = NSPredicate(format: "identifier BEGINSWITH 'FrameRow.'")
         let frameButtons = app.buttons.matching(frameRowsPredicate)
-        // Give the UI time to settle after the additions.
-        let countAfterAdds = frameButtons.count
+        // Poll for the row count to settle — FrameRow insertion + thumbnail render is
+        // async, so a single read right after .tap() races the SwiftUI rebuild. The
+        // sibling tests (testAnimateButtonAddsFrameRevealsTimelineAndPreservesFramesOnHide,
+        // testAddInsertsBlankFrame) use this same poll; this one was missing it.
+        var countAfterAdds = frameButtons.count
+        for _ in 0..<50 where countAfterAdds < 3 {
+            Thread.sleep(forTimeInterval: 0.1)
+            countAfterAdds = frameButtons.count
+        }
         XCTAssertGreaterThanOrEqual(countAfterAdds, 3,
                                     "Should have at least 3 frame rows after ANIMATE + two adds")
 
@@ -63,7 +70,12 @@ final class AnimationStripUITests: XCTestCase {
         XCTAssertTrue(add.waitForExistence(timeout: 15),
                       "FramesStrip.add must be visible after reopening a multi-frame piece")
         let frameButtonsAfterReopen = app.buttons.matching(frameRowsPredicate)
-        XCTAssertGreaterThanOrEqual(frameButtonsAfterReopen.count, 3,
+        var reopenCount = frameButtonsAfterReopen.count
+        for _ in 0..<50 where reopenCount < 3 {
+            Thread.sleep(forTimeInterval: 0.1)
+            reopenCount = frameButtonsAfterReopen.count
+        }
+        XCTAssertGreaterThanOrEqual(reopenCount, 3,
                                     "Frame count must persist across editor sessions")
     }
 

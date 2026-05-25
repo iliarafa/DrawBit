@@ -61,7 +61,7 @@ struct LayerRow: View {
             RoundedRectangle(cornerRadius: 0)
                 .stroke(Color.red.opacity(isPulsing ? 0.85 : 0), lineWidth: 2)
         )
-        .animation(.easeInOut(duration: 0.18), value: isPulsing)
+        .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.18), value: isPulsing)
     }
 
     private var thumbnail: some View {

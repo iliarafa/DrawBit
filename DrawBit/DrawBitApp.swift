@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 @main
 struct DrawBitApp: App {
@@ -7,6 +8,18 @@ struct DrawBitApp: App {
     // switch) so playback survives navigation and the background; injected into the
     // environment for the gallery's RadioStrip to drive.
     @State private var radio = RadioController()
+
+    init() {
+        // Under XCUITest, kill UIKit-backed animations (navigation push/pop, sheet
+        // and popover presentation, the text edit menu, keyboard show/hide). This
+        // lets the app reach "idle" promptly after every event and prevents XCUITest
+        // from tapping an element mid-transition — the dominant cause of full-suite
+        // flakiness. SwiftUI `.animation(_:value:)` modifiers run on SwiftUI's own
+        // timeline and are gated separately at each call site. See `UITestSupport`.
+        if UITestSupport.isRunning {
+            UIView.setAnimationsEnabled(false)
+        }
+    }
 
     var sharedModelContainer: ModelContainer = {
         let inMemory = ProcessInfo.processInfo.arguments.contains("-UITest-reset")

@@ -16,7 +16,11 @@ struct LandingView: View {
                     .font(.pixel(18))
                     .foregroundStyle(.white)
                     .opacity(pressStartVisible ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: pressStartVisible)
+                    // No animation under UITest: a `.repeatForever` blink never lets
+                    // the app reach "idle", which XCUITest waits for after every event.
+                    .animation(UITestSupport.isRunning ? nil
+                               : .easeInOut(duration: 0.6).repeatForever(autoreverses: true),
+                               value: pressStartVisible)
             }
         }
         .contentShape(Rectangle())
