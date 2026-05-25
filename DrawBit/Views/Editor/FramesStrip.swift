@@ -4,56 +4,72 @@ struct FramesStrip: View {
     let state: EditorState
     let onAddFrame: () -> Void
     let onDuplicateFrame: () -> Void
-    let onDeleteFrame: () -> Void
-    /// Reserved for Stage 4+ drag-to-reorder. Currently unused — the parameter is here
-    /// so the EditorView wiring doesn't need to change when reorder lands.
+    /// Index-based reorder (from, to) used by FrameRow drag-and-drop.
     let onReorderFrame: (Int, Int) -> Void
     let onRenameFrame: (UUID, String) -> Void
     let onActivateFrame: (Int) -> Void
     let onTogglePlay: () -> Void
+    let onDeleteFrame: () -> Void
 
-    @State private var isEditMode: Bool = false
     @State private var renamingFrameID: UUID?
     @State private var renameText: String = ""
 
     private static let fpsChoices = [4, 8, 12, 24, 30, 60]
 
     var body: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 6) {
+        HStack(spacing: 18) {
+            // Transport group
+            HStack(spacing: 16) {
                 Button(action: onTogglePlay) {
-                    Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
-                        .frame(width: 28, height: 28)
-                        .foregroundStyle(state.isPlaying ? Color.red : Color.accentColor)
+                    stripButton(systemImage: state.isPlaying ? "pause.fill" : "play.fill",
+                                title: state.isPlaying ? "PAUSE" : "PLAY")
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(state.frames.count <= 1 ? Color.white.opacity(0.25) : Color.white)
+                .disabled(state.frames.count <= 1)
                 .accessibilityIdentifier("FramesStrip.playPause")
                 .accessibilityLabel(state.isPlaying ? "Pause animation" : "Play animation")
-                .disabled(state.frames.count <= 1)
 
-                Button(action: cycleFPS) {
-                    Text("\(state.fps) fps").font(.caption2.bold())
+                Menu {
+                    ForEach(Self.fpsChoices, id: \.self) { choice in
+                        Button {
+                            state.fps = choice
+                        } label: {
+                            if choice == state.fps {
+                                Label("\(choice) FPS", systemImage: "checkmark")
+                            } else {
+                                Text("\(choice) FPS")
+                            }
+                        }
+                    }
+                } label: {
+                    stripButton(systemImage: "speedometer", title: "\(state.fps) FPS")
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(state.isPlaying ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
+                .disabled(state.isPlaying)
                 .accessibilityIdentifier("FramesStrip.fps")
                 .accessibilityLabel("Playback speed")
                 .accessibilityValue("\(state.fps) frames per second")
-                .accessibilityHint("Double-tap to cycle to the next speed")
-                .disabled(state.isPlaying)
 
                 Button(action: { state.isOnionSkinEnabled.toggle() }) {
-                    Image(systemName: state.isOnionSkinEnabled ? "circle.righthalf.filled" : "circle")
-                        .frame(width: 28, height: 28)
-                        .foregroundStyle(state.isOnionSkinEnabled ? Color.accentColor : Color.white.opacity(0.6))
+                    stripButton(systemImage: "square.2.layers.3d", title: "ONION")
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(onionColor)
+                .disabled(state.activeFrameIndex == 0 || state.isPlaying)
                 .accessibilityIdentifier("FramesStrip.onionSkin")
                 .accessibilityLabel(state.isOnionSkinEnabled ? "Onion skin on" : "Onion skin off")
                 .accessibilityHint("Shows a faded preview of the previous frame behind the current one")
-                .disabled(state.activeFrameIndex == 0 || state.isPlaying)
             }
 
+            divider
+
+            // Frames
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(state.frames, id: \.id) { frame in
-                        if let renamingID = renamingFrameID, renamingID == frame.id {
+                HStack(spacing: 12) {
+                    ForEach(Array(state.frames.enumerated()), id: \.element.id) { index, frame in
+                        if renamingFrameID == frame.id {
                             TextField("Frame name", text: $renameText)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 100)
@@ -64,7 +80,7 @@ struct FramesStrip: View {
                                 frame: frame,
                                 size: state.size,
                                 isActive: frame.id == state.frames[state.activeFrameIndex].id,
-                                isEditing: isEditMode,
+                                isEditing: false,
                                 onTap: {
                                     if renamingFrameID != nil && renamingFrameID != frame.id {
                                         commitRename()
@@ -85,49 +101,45 @@ struct FramesStrip: View {
             }
             .disabled(state.isPlaying)
 
-            HStack(spacing: 6) {
-                Button(action: onAddFrame) {
-                    Image(systemName: "plus")
-                        .frame(width: 28, height: 28)
-                }
-                .accessibilityIdentifier("FramesStrip.add")
-                .accessibilityLabel("Add frame")
-                .disabled(state.frames.count >= FrameSequence.frameCap)
+            divider
 
-                if isEditMode {
-                    Button(action: onDuplicateFrame) {
-                        Image(systemName: "plus.square.on.square")
-                            .frame(width: 28, height: 28)
-                    }
-                    .accessibilityIdentifier("FramesStrip.duplicate")
-                    .accessibilityLabel("Duplicate current frame")
-                    .disabled(state.frames.count >= FrameSequence.frameCap)
-
-                    Button(action: onDeleteFrame) {
-                        Image(systemName: "trash")
-                            .frame(width: 28, height: 28)
-                    }
-                    .accessibilityIdentifier("FramesStrip.delete")
-                    .accessibilityLabel("Delete current frame")
-                    .disabled(state.frames.count <= 1)
-                }
-
-                Button(isEditMode ? "DONE" : "EDIT") {
-                    if renamingFrameID != nil {
-                        commitRename()
-                    }
-                    isEditMode.toggle()
-                }
-                .font(.caption2.bold())
-                .accessibilityIdentifier("FramesStrip.editToggle")
-                .accessibilityLabel(isEditMode ? "Done editing frames" : "Edit frames")
-                .accessibilityHint(isEditMode ? "Hides the duplicate and delete buttons" : "Shows duplicate and delete buttons for the active frame")
+            // Actions
+            Button(action: onAddFrame) {
+                stripButton(systemImage: "plus", title: "ADD")
             }
-            .disabled(state.isPlaying)
+            .buttonStyle(.plain)
+            .foregroundStyle(state.frames.count >= FrameSequence.frameCap
+                             ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
+            .disabled(state.frames.count >= FrameSequence.frameCap)
+            .accessibilityIdentifier("FramesStrip.add")
+            .accessibilityLabel("Add blank frame")
         }
         .padding(.horizontal, 8)
         .frame(height: 60)
         .background(Color.black.opacity(0.4))
+    }
+
+    private var divider: some View {
+        Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
+    }
+
+    private var onionColor: Color {
+        if state.activeFrameIndex == 0 || state.isPlaying { return Color.white.opacity(0.25) }
+        return state.isOnionSkinEnabled ? Color.white : Color.white.opacity(0.55)
+    }
+
+    /// Toolbar-consistent button: SF Symbol over an uppercase pixel-font label.
+    /// Mirrors `ToolBar.iconLabel`.
+    private func stripButton(systemImage: String, title: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.system(size: 20, weight: .regular))
+            Text(title)
+                .font(.pixel(8))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .frame(minWidth: 44, minHeight: 44)
     }
 
     private func commitRename() {
@@ -140,10 +152,5 @@ struct FramesStrip: View {
         }
         renamingFrameID = nil
         renameText = ""
-    }
-
-    private func cycleFPS() {
-        let idx = Self.fpsChoices.firstIndex(of: state.fps) ?? 2
-        state.fps = Self.fpsChoices[(idx + 1) % Self.fpsChoices.count]
     }
 }

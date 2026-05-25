@@ -51,11 +51,11 @@ struct EditorView: View {
                             state: state,
                             onAddFrame: addBlankFrameAfter,
                             onDuplicateFrame: duplicateActiveFrame,
-                            onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded,
                             onReorderFrame: { moveFrame(fromIndex: $0, toIndex: $1) },
                             onRenameFrame: renameFrame,
                             onActivateFrame: setActiveFrameAndPersistIfDirty,
-                            onTogglePlay: togglePlay
+                            onTogglePlay: togglePlay,
+                            onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded
                         )
                     } else {
                         Color.clear
