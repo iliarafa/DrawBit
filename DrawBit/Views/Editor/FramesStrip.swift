@@ -81,8 +81,9 @@ struct FramesStrip: View {
                             FrameRow(
                                 frame: frame,
                                 size: state.size,
+                                index: index,
                                 isActive: frame.id == state.frames[state.activeFrameIndex].id,
-                                isEditing: false,
+                                frameCount: state.frames.count,
                                 onTap: {
                                     if renamingFrameID != nil && renamingFrameID != frame.id {
                                         commitRename()
@@ -91,10 +92,23 @@ struct FramesStrip: View {
                                         onActivateFrame(idx)
                                     }
                                 },
-                                onLongPressRename: {
+                                onDuplicate: {
+                                    if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
+                                        onActivateFrame(idx)
+                                    }
+                                    onDuplicateFrame()
+                                },
+                                onRename: {
                                     renamingFrameID = frame.id
                                     renameText = frame.name
-                                }
+                                },
+                                onDelete: {
+                                    if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
+                                        onActivateFrame(idx)
+                                    }
+                                    onDeleteFrame()
+                                },
+                                onMove: { from, to in onReorderFrame(from, to) }
                             )
                         }
                     }
