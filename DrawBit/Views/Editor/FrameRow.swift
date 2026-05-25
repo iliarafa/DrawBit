@@ -130,7 +130,7 @@ private struct FrameRowAccessibility: ViewModifier {
             .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "Duplicate") { onDuplicate() }
             .accessibilityAction(named: "Rename") { onRename() }
-            .accessibilityAction(named: "Delete") { onDelete() }
+            .accessibilityAction(named: "Delete") { if frameCount > 1 { onDelete() } }
             .accessibilityAction(named: "Move left") { if index > 0 { onMove(index, index - 1) } }
             .accessibilityAction(named: "Move right") { if index < frameCount - 1 { onMove(index, index + 1) } }
     }

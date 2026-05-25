@@ -67,16 +67,6 @@ enum FrameSequence {
         frames[idx].name = name
     }
 
-    /// Reorder math, analog of `Frame.modelTargetIndex`. SwiftUI `.onMove`'s `newOffset` is
-    /// a pre-removal insertion point; the timeline strip is displayed left→right matching
-    /// the model order, so no reversal is needed here (unlike the layers panel which reverses).
-    static func modelTargetIndex(displayedFrom: Int, newOffset: Int, count: Int) -> Int? {
-        let displayedTo = newOffset > count ? count : newOffset
-        let modelFrom = displayedFrom
-        let correctedTo = max(0, min(count - 1, displayedTo - (displayedTo > displayedFrom ? 1 : 0)))
-        return modelFrom == correctedTo ? nil : correctedTo
-    }
-
     // MARK: - Naming (frame)
 
     /// Returns "Frame N" where N is the lowest unused integer. Existing frames named

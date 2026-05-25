@@ -558,19 +558,5 @@ struct EditorView: View {
         state.commitFloatingSelectionIfAny()
         if hadSelection { saveCurrentFrame() }
     }
-
-    func reorderFrame(from: Int, toOffset: Int) {
-        let activeID = state.frames[state.activeFrameIndex].id
-        let movingID = state.frames[from].id
-        guard let modelTo = FrameSequence.modelTargetIndex(displayedFrom: from,
-                                                           newOffset: toOffset,
-                                                           count: state.frames.count) else { return }
-        mutateFrameSequence { frames in
-            FrameSequence.move(frameID: movingID, toIndex: modelTo, in: &frames)
-            if let newActiveIdx = frames.firstIndex(where: { $0.id == activeID }) {
-                state.activeFrameIndex = newActiveIdx
-            }
-        }
-    }
 }
 

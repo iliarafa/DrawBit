@@ -107,15 +107,6 @@ final class FrameSequenceTests: XCTestCase {
         XCTAssertEqual(frames.count, 60)
     }
 
-    func testReorderMath() {
-        // Pre-removal newOffset semantics, mirrors Frame.modelTargetIndex but without the
-        // display-array reversal (timeline strip is left-to-right == model order).
-        XCTAssertEqual(FrameSequence.modelTargetIndex(displayedFrom: 0, newOffset: 2, count: 3), 1)
-        XCTAssertEqual(FrameSequence.modelTargetIndex(displayedFrom: 2, newOffset: 0, count: 3), 0)
-        XCTAssertNil(FrameSequence.modelTargetIndex(displayedFrom: 1, newOffset: 1, count: 3))
-        XCTAssertNil(FrameSequence.modelTargetIndex(displayedFrom: 1, newOffset: 2, count: 3))
-    }
-
     // MARK: - Task 2.2: Layer cascade
 
     func testAddLayerCascadesAcrossAllFrames() {
