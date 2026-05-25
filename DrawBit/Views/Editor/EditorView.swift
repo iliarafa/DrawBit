@@ -49,10 +49,10 @@ struct EditorView: View {
                     if showTimeline {
                         FramesStrip(
                             state: state,
-                            onAddFrame: addFrameAfterActive,
-                            onDuplicateFrame: addFrameAfterActive,
+                            onAddFrame: addBlankFrameAfter,
+                            onDuplicateFrame: duplicateActiveFrame,
                             onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded,
-                            onReorderFrame: reorderFrame,
+                            onReorderFrame: { moveFrame(fromIndex: $0, toIndex: $1) },
                             onRenameFrame: renameFrame,
                             onActivateFrame: setActiveFrameAndPersistIfDirty,
                             onTogglePlay: togglePlay
@@ -472,6 +472,40 @@ struct EditorView: View {
             if let newID = FrameSequence.addFrameAfter(frameID: activeID, in: &frames),
                let idx = frames.firstIndex(where: { $0.id == newID }) {
                 state.activeFrameIndex = idx
+            }
+        }
+    }
+
+    func addBlankFrameAfter() {
+        let activeID = state.frames[state.activeFrameIndex].id
+        mutateFrameSequence { frames in
+            if let newID = FrameSequence.addBlankFrameAfter(frameID: activeID, in: &frames),
+               let idx = frames.firstIndex(where: { $0.id == newID }) {
+                state.activeFrameIndex = idx
+            }
+        }
+    }
+
+    func duplicateActiveFrame() {
+        let activeID = state.frames[state.activeFrameIndex].id
+        mutateFrameSequence { frames in
+            if let newID = FrameSequence.duplicateFrame(activeID, in: &frames),
+               let idx = frames.firstIndex(where: { $0.id == newID }) {
+                state.activeFrameIndex = idx
+            }
+        }
+    }
+
+    /// Index-based reorder for drag-and-drop (plain from/to, not `.onMove` offsets).
+    func moveFrame(fromIndex: Int, toIndex: Int) {
+        guard fromIndex != toIndex,
+              state.frames.indices.contains(fromIndex) else { return }
+        let activeID = state.frames[state.activeFrameIndex].id
+        let movingID = state.frames[fromIndex].id
+        mutateFrameSequence { frames in
+            FrameSequence.move(frameID: movingID, toIndex: toIndex, in: &frames)
+            if let newActiveIdx = frames.firstIndex(where: { $0.id == activeID }) {
+                state.activeFrameIndex = newActiveIdx
             }
         }
     }
