@@ -11,7 +11,7 @@ The animation strip (the bar of frame thumbnails with playback controls) has acc
 ## The seven problems
 
 1. **Speed is a guessing game.** `12 fps` is plain text with no affordance that it's tappable; it only cycles one direction through `[4, 8, 12, 24, 30, 60]`, so 60 → 12 takes five taps and you can't see the other speeds.
-2. **Duplicate is hidden and broken.** The flipbook workflow is "draw a frame, duplicate it, nudge, repeat." Duplicate is buried behind EDIT mode, and worse, `onDuplicateFrame` is wired to `addFrameAfterActive` — it adds a *blank* frame, not a copy.
+2. **Add and Duplicate are the same function; there's no blank-add.** `addFrameAfter` copies the active frame's pixels, and `duplicateFrame` just calls it — so the `+` button and the EDIT-mode Duplicate button do the identical thing (both copy). There is no way to insert an empty frame, and Duplicate is buried behind EDIT mode.
 3. **No way to reorder frames.** `onReorderFrame` / `EditorView.reorderFrame` exist and are undoable, but nothing in the UI invokes them.
 4. **The onion-skin toggle is a mystery icon.** A plain/half-filled circle doesn't communicate "show the previous frame."
 5. **EDIT is a mode.** Tap EDIT to reveal duplicate/delete, do one thing, tap DONE — modes hide tools and cost taps, including the most-used action (duplicate).
@@ -32,19 +32,20 @@ The redesign matches `ToolBar.swift` exactly. Its visual language:
 
 | Topic | Decision |
 |---|---|
-| Per-frame actions | **Hybrid** — DUPE + ADD are always-visible buttons; RENAME + DELETE live in a long-press context menu (which also offers DUPE). |
+| Per-frame actions | **ADD** (blank frame) is the only always-visible action button. DUPLICATE, RENAME, and DELETE live in the long-press context menu. |
 | Speed control | **Tap → menu** of `4/8/12/24/30/60`, current one checked. |
 | Frame labels | **Number badge in the thumbnail corner.** Custom names show on the thumbnail only when set; no `Frame N` text row. |
 | Onion skin | **Stacked-frames icon + "ONION" label**, white when on. |
 | Selection / ON color | **Pure monochrome** — no blue. Active frame = white ring + inverted (white-on-black) number badge; ONION-on = white. |
-| Duplicate label | **DUPE** |
+| Add vs Duplicate | **ADD inserts a blank frame** (new pure-logic function); **DUPLICATE** (context menu) copies the active frame. ANIMATE's frame-2 seed keeps copy semantics. |
+| Duplicate label | **DUPLICATE** (full word, context menu only) |
 
 ## The redesigned bar
 
 Left to right, all in the toolbar's icon-over-label pixel style, with `Divider`s separating the three groups:
 
 ```
-[▶ PLAY] [⏱ 12 FPS] [▦ ONION]  |  «frame thumbnails»  |  [⧉ DUPE] [+ ADD]
+[▶ PLAY] [⏱ 12 FPS] [▦ ONION]  |  «frame thumbnails»  |  [+ ADD]
 ```
 
 ### Transport group (left)
@@ -64,20 +65,50 @@ Each thumbnail:
 
 Interactions per frame:
 - **Tap** — select the frame (existing `onActivateFrame` → `setActiveFrameAndPersistIfDirty`).
-- **Long-press** — lift the frame to **drag-reorder** within the row, or release in place to show a **context menu**: `DUPE` · `RENAME` · `DELETE` (DELETE in destructive red `#e0452a`, disabled when `frames.count <= 1`). This is the iOS home-screen interaction (long-press → hold for menu, or move to drag).
-  - `DUPE` → new `duplicateActiveFrame()` (see wiring).
+- **Long-press** — lift the frame to **drag-reorder** within the row, or release in place to show a **context menu**: `DUPLICATE` · `RENAME` · `DELETE` (DELETE in destructive red `#e0452a`, disabled when `frames.count <= 1`). This is the iOS home-screen interaction (long-press → hold for menu, or move to drag).
+  - `DUPLICATE` → `duplicateActiveFrame()` (copies the active frame via `FrameSequence.duplicateFrame`; see wiring).
   - `RENAME` → the existing inline-rename `TextField` flow (reused, just triggered from the menu instead of directly from long-press).
   - `DELETE` → existing `deleteActiveFrameWithConfirmIfNeeded()` (already confirms only when the frame has content; already undoable). No new dialog.
 
 ### Actions group (right)
 
-- **DUPE** — icon `plus.square.on.square`, label `DUPE`. Calls `duplicateActiveFrame()`. Disabled at `frames.count >= FrameSequence.frameCap`.
-- **ADD** — icon `plus`, label `ADD`. Calls existing `addFrameAfterActive()` (blank frame). Disabled at the cap.
+- **ADD** — icon `plus`, label `ADD`. Inserts a **blank** frame after the active one via a new `addBlankFrameAfter()` (see wiring). Disabled at `frames.count >= FrameSequence.frameCap`.
+- There is **no DUPE button**; duplicate lives in the context menu only.
 - **EDIT / DONE button is removed entirely**, along with `FramesStrip.isEditMode` and the edit-mode-only duplicate/delete buttons.
 
-## Wiring changes (`EditorView.swift`)
+## Wiring changes
 
-1. **Add a real duplicate.** New method:
+1. **Blank-frame insert (new pure-logic function in `FrameSequence`).** Mirrors `addFrameAfter` but clears pixels while preserving the layer UUIDs/order (cascade invariant):
+   ```swift
+   @discardableResult
+   static func addBlankFrameAfter(frameID: UUID, in frames: inout [Frame]) -> UUID? {
+       guard frames.count < frameCap else { return nil }
+       guard let idx = frames.firstIndex(where: { $0.id == frameID }) else { return nil }
+       let source = frames[idx]
+       let blankLayers = source.layers.map { layer in
+           Layer(id: layer.id, name: layer.name,
+                 pixels: Data(count: layer.pixels.count),
+                 isVisible: layer.isVisible, isLocked: layer.isLocked)
+       }
+       let copy = Frame(name: nextFrameName(in: frames),
+                        layers: blankLayers, activeLayerID: source.activeLayerID)
+       frames.insert(copy, at: idx + 1)
+       return copy.id
+   }
+   ```
+2. **`EditorView.addBlankFrameAfter()`** wired to ADD (`onAddFrame`):
+   ```swift
+   func addBlankFrameAfter() {
+       let activeID = state.frames[state.activeFrameIndex].id
+       mutateFrameSequence { frames in
+           if let newID = FrameSequence.addBlankFrameAfter(frameID: activeID, in: &frames),
+              let idx = frames.firstIndex(where: { $0.id == newID }) {
+               state.activeFrameIndex = idx
+           }
+       }
+   }
+   ```
+3. **`EditorView.duplicateActiveFrame()`** for the context-menu DUPLICATE (`onDuplicateFrame`, currently `addFrameAfterActive`):
    ```swift
    func duplicateActiveFrame() {
        let activeID = state.frames[state.activeFrameIndex].id
@@ -89,9 +120,9 @@ Interactions per frame:
        }
    }
    ```
-   Wire `onDuplicateFrame: duplicateActiveFrame` (currently `addFrameAfterActive`). This is undoable for free via `mutateFrameSequence`.
-2. Wire the context-menu DELETE to `deleteActiveFrameWithConfirmIfNeeded` (the strip needs a delete callback that routes here rather than to the raw `deleteActiveFrame`).
-3. `onReorderFrame: reorderFrame` is already wired; the strip just needs to actually call it from the drag interaction. `reorderFrame(from:toOffset:)` takes a displayed-from index and an offset; the drag handler computes these.
+   Both are undoable for free via `mutateFrameSequence`.
+4. `onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded` and `onReorderFrame: reorderFrame` are already wired. The strip surfaces DELETE in the context menu (routing to `onDeleteFrame`) and calls `onReorderFrame(from:toOffset:)` from the drag interaction.
+5. **ANIMATE seeding keeps copy semantics.** The ANIMATE toggle calls `addFrameAfterActive()` (copy) to seed frame 2 — intentional ("start animating from this drawing") and left unchanged. Only the ADD button switches to blank.
 
 ## Component boundaries
 
@@ -107,7 +138,7 @@ Recommended: `.draggable` / `.dropDestination` (iOS 16+) on each `FrameRow`, com
 
 Preserve and update existing identifiers/labels:
 - `FramesStrip.playPause`, `FramesStrip.fps`, `FramesStrip.onionSkin`, `FramesStrip.add` stay.
-- `FramesStrip.duplicate` and `FramesStrip.delete` move out of edit mode: `duplicate` is now always present; `delete` becomes a context-menu action (give the menu items accessibility labels).
+- `FramesStrip.duplicate` and `FramesStrip.delete` move out of edit mode into the per-frame context menu / row accessibility actions (there is no DUPE button). `FramesStrip.add` stays (now inserts a blank frame).
 - Remove `FramesStrip.editToggle`.
 - `FrameRow.<uuid>` stays; add an accessibility value for the position number and custom name; expose DUPE/RENAME/DELETE as accessibility actions on the row so VoiceOver users don't need the long-press menu.
 - All buttons keep the 44pt minimum hit target (inherited from the toolbar's `minWidth/minHeight: 44`).
@@ -121,7 +152,7 @@ Preserve and update existing identifiers/labels:
 
 ## Verification
 
-- Existing unit tests for `FrameSequence` (duplicate/move/remove/setName) already cover the model layer; no new model tests needed.
-- Add/extend UI tests: DUPE produces a copy (not a blank), long-press menu shows DUPE/RENAME/DELETE, DELETE on a content frame confirms, reorder changes order and is undoable, fps menu sets a non-adjacent value in one tap.
+- New unit test: `addBlankFrameAfter` inserts an empty frame (all pixels zero), preserves layer UUIDs/order, and respects the cap. Existing `FrameSequence` tests cover duplicate/move/remove/setName.
+- Add/extend UI tests: ADD produces a blank frame, DUPLICATE (context menu) produces a copy, the long-press menu shows DUPLICATE/RENAME/DELETE, DELETE on a content frame confirms, reorder changes order and is undoable, the fps menu sets a non-adjacent value in one tap.
 - Manual: confirm the strip reads as the same visual family as the toolbar (font, casing, icon weight, dividers, monochrome states) at the iPad Pro 13" simulator.
 - Build + full test run per `CLAUDE.md` before merge.
