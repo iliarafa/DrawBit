@@ -1,56 +1,15 @@
 import SwiftUI
 
-struct RecentColorsStrip: View {
-    @Binding var selectedColor: RGBA
-    @Binding var recentHex: [String]
-    var onRequestColorPicker: () -> Void
-
-    static let maxSwatches = 7
-
-    static let reservedWidth: CGFloat = {
-        let swatch: CGFloat = 34
-        let plus: CGFloat = 26
-        let spacing: CGFloat = 10
-        let horizontalPadding: CGFloat = 8
-        let elements = CGFloat(maxSwatches) + 1
-        return CGFloat(maxSwatches) * swatch
-            + plus
-            + (elements - 1) * spacing
-            + horizontalPadding
-    }()
-
-    var body: some View {
-        HStack(spacing: 10) {
-            ForEach(recentHex.prefix(Self.maxSwatches), id: \.self) { hex in
-                SwatchButton(
-                    hex: hex,
-                    isSelected: RGBA(hex: hex) == selectedColor,
-                    action: {
-                        if RGBA(hex: hex) == selectedColor {
-                            onRequestColorPicker()
-                        } else if let c = RGBA(hex: hex) {
-                            selectedColor = c
-                        }
-                    }
-                )
-            }
-            Button(action: onRequestColorPicker) {
-                Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 26, height: 26)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(Color.white.opacity(0.25), style: .init(lineWidth: 1, dash: [2, 2]))
-                    )
-            }
-        }
-        .padding(.horizontal, 4)
-        .frame(width: Self.reservedWidth, alignment: .leading)
-    }
+/// Recent-color configuration shared by the bottom toolbar (which shows the most
+/// recent swatches) and the color picker (which shows the older ones beyond them).
+enum RecentColors {
+    /// How many recent swatches the bottom toolbar displays.
+    static let maxSwatches = 3
 }
 
-private struct SwatchButton: View {
+/// A single recent-color swatch. Tapping a non-selected swatch selects it; tapping
+/// the already-selected swatch opens the color picker (handled by the caller).
+struct SwatchButton: View {
     let hex: String
     let isSelected: Bool
     let action: () -> Void

@@ -120,7 +120,7 @@ struct DrawBitColorPicker: View {
     }
 
     private var olderRecents: [String] {
-        Array(recentHex.dropFirst(RecentColorsStrip.maxSwatches).prefix(16))
+        Array(recentHex.dropFirst(RecentColors.maxSwatches).prefix(16))
     }
 
     private var historySection: some View {

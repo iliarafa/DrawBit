@@ -203,34 +203,25 @@ struct EditorView: View {
     }
 
     private var bottomBar: some View {
-        HStack(spacing: 0) {
-            Spacer(minLength: 0)
-            HStack(spacing: 20) {
-                ToolBar(
-                    state: state,
-                    onUndo: {
-                        state.undo()
-                        saveCurrentFrame()
-                    },
-                    onRedo: {
-                        state.redo()
-                        saveCurrentFrame()
-                    },
-                    onClear: clearCanvas
-                )
-                Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
-                RecentColorsStrip(
-                    selectedColor: Binding(
-                        get: { state.color },
-                        set: { state.color = $0 }
-                    ),
-                    recentHex: $recentHex,
-                    onRequestColorPicker: { showingSystemColorPicker = true }
-                )
-            }
-            .disabled(state.isPlaying)
-            Spacer(minLength: 0)
-        }
+        ToolBar(
+            state: state,
+            selectedColor: Binding(
+                get: { state.color },
+                set: { state.color = $0 }
+            ),
+            recentHex: $recentHex,
+            onUndo: {
+                state.undo()
+                saveCurrentFrame()
+            },
+            onRedo: {
+                state.redo()
+                saveCurrentFrame()
+            },
+            onClear: clearCanvas,
+            onRequestColorPicker: { showingSystemColorPicker = true }
+        )
+        .disabled(state.isPlaying)
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
         .frame(height: 72)
