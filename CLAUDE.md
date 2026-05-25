@@ -84,6 +84,7 @@ These are load-bearing; breaking them silently corrupts exports or kills perceiv
 - Unit tests `@testable import DrawBit` — internal (non-`public`) symbols are visible. Default access control is fine.
 - SwiftData tests use an in-memory container: `ModelConfiguration(isStoredInMemoryOnly: true)`. See `PieceRepositoryTests` for the setup pattern; reuse it for any new persistence test.
 - UI tests launch the app with `launchArguments = ["-UITest-reset"]`, which is checked in `DrawBitApp.swift` to switch the `ModelContainer` to `inMemory: true`. Tests get a clean store every run.
+- **UI test waits use a generous `waitForExistence(timeout: 15)`.** The full UI suite runs ~15 tests back-to-back on one simulator; under that contention, transitions/re-renders are slower than in isolation, so tight 2–3s waits flake. `waitForExistence` returns the instant the element appears, so a large timeout costs nothing on success — only on a genuine failure. Keep *negative* assertions (`XCTAssertFalse(...waitForExistence(timeout: 1))`) and optional-UI probes short on purpose.
 
 ## Docs
 

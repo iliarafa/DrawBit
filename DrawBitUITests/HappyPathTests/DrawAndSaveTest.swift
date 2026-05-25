@@ -7,10 +7,10 @@ final class DrawAndSaveTest: XCTestCase {
         app.launch()
 
         // 1. Create a 32x32 piece from the gallery.
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
 
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
         app.buttons["NewPiece-32"].tap()
 
         // 2. Editor is up. Tap near the middle to paint one pixel.
@@ -19,11 +19,11 @@ final class DrawAndSaveTest: XCTestCase {
         center.tap()
 
         // 3. Go back to the gallery.
-        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 15))
         app.buttons["Gallery"].tap()
 
         // 4. The thumbnail for our piece should be present.
         // PieceThumbnailView has the .isButton trait so XCTest reports it as a button element.
-        XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 15))
     }
 }

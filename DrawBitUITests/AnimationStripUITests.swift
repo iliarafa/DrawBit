@@ -12,20 +12,20 @@ final class AnimationStripUITests: XCTestCase {
 
         // Create a fresh 32×32 piece from the gallery — same tap sequence used
         // by DrawAndSaveTest and LayersPanelUITests.
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
 
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
         app.buttons["NewPiece-32"].tap()
 
         // FramesStrip is hidden by default for a new (single-frame) piece.
         // ANIMATE both reveals the strip and seeds the second frame.
         let animate = app.buttons["Animate"]
-        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
         animate.tap()
 
         let add = app.buttons["FramesStrip.add"]
-        XCTAssertTrue(add.waitForExistence(timeout: 5),
+        XCTAssertTrue(add.waitForExistence(timeout: 15),
                       "FramesStrip.add must be visible after tapping ANIMATE")
 
         // ANIMATE seeded one extra frame (total: 2). Add two more (total: 4).
@@ -53,14 +53,14 @@ final class AnimationStripUITests: XCTestCase {
 
         // Persistence round-trip: navigate back to gallery and reopen the piece.
         // The frame count must survive the SwiftData save/load cycle.
-        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 15))
         app.buttons["Gallery"].tap()
 
         XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 10))
         app.buttons["PieceThumbnail"].firstMatch.tap()
 
         // Reopened — the piece now has ≥2 frames, so the strip auto-shows.
-        XCTAssertTrue(add.waitForExistence(timeout: 5),
+        XCTAssertTrue(add.waitForExistence(timeout: 15),
                       "FramesStrip.add must be visible after reopening a multi-frame piece")
         let frameButtonsAfterReopen = app.buttons.matching(frameRowsPredicate)
         XCTAssertGreaterThanOrEqual(frameButtonsAfterReopen.count, 3,
@@ -73,19 +73,19 @@ final class AnimationStripUITests: XCTestCase {
         app.launch()
 
         // Create a fresh 32×32 piece.
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
         app.buttons["NewPiece-32"].tap()
 
         // FramesStrip is hidden by default. ANIMATE reveals it and seeds frame 2;
         // active frame becomes #2 (FrameSequence.addFrameAfter selects the new one).
         let animate = app.buttons["Animate"]
-        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
         animate.tap()
 
         let onion = app.buttons["FramesStrip.onionSkin"]
-        XCTAssertTrue(onion.waitForExistence(timeout: 5))
+        XCTAssertTrue(onion.waitForExistence(timeout: 15))
 
         // We landed on frame 1, so onion is enabled. Switch back to frame 0 to
         // verify the gate ("disabled when no previous frame to ghost").
@@ -93,7 +93,7 @@ final class AnimationStripUITests: XCTestCase {
         let frameButtons = app.buttons.matching(frameRowsPredicate)
         frameButtons.element(boundBy: 0).tap()
         var disabled = false
-        for _ in 0..<10 {
+        for _ in 0..<50 {
             if !onion.isEnabled { disabled = true; break }
             Thread.sleep(forTimeInterval: 0.1)
         }
@@ -102,7 +102,7 @@ final class AnimationStripUITests: XCTestCase {
         // Switch back to frame 1; onion should re-enable.
         frameButtons.element(boundBy: 1).tap()
         var enabled = false
-        for _ in 0..<10 {
+        for _ in 0..<50 {
             if onion.isEnabled { enabled = true; break }
             Thread.sleep(forTimeInterval: 0.1)
         }
@@ -111,7 +111,7 @@ final class AnimationStripUITests: XCTestCase {
         // Toggle on, then leave the editor and re-open.
         onion.tap()
 
-        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 15))
         app.buttons["Gallery"].tap()
         XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 10))
         app.buttons["PieceThumbnail"].firstMatch.tap()
@@ -119,7 +119,7 @@ final class AnimationStripUITests: XCTestCase {
         // Reopened — piece has 2 frames so the strip auto-shows. Active frame is
         // the last-saved one (frame 1), and onion skin must have reset to off
         // because EditorState.isOnionSkinEnabled is display-only and not persisted.
-        XCTAssertTrue(onion.waitForExistence(timeout: 5))
+        XCTAssertTrue(onion.waitForExistence(timeout: 15))
         XCTAssertTrue(onion.isEnabled, "expected to reopen on a non-zero active frame")
 
         // The toggle's accessibility label encodes the state explicitly
@@ -135,14 +135,14 @@ final class AnimationStripUITests: XCTestCase {
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
         app.buttons["NewPiece-32"].tap()
 
         // ANIMATE button must exist and be the entry point — strip itself must NOT.
         let animate = app.buttons["Animate"]
-        XCTAssertTrue(animate.waitForExistence(timeout: 5),
+        XCTAssertTrue(animate.waitForExistence(timeout: 15),
                       "ANIMATE button must exist in the top bar")
 
         let add = app.buttons["FramesStrip.add"]
@@ -159,26 +159,26 @@ final class AnimationStripUITests: XCTestCase {
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
         app.buttons["NewPiece-32"].tap()
 
         let animate = app.buttons["Animate"]
-        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
 
         // First tap: reveal strip + seed a 2nd frame.
         animate.tap()
 
         let add = app.buttons["FramesStrip.add"]
-        XCTAssertTrue(add.waitForExistence(timeout: 5),
+        XCTAssertTrue(add.waitForExistence(timeout: 15),
                       "FramesStrip.add must appear after first ANIMATE tap")
 
         let frameRowsPredicate = NSPredicate(format: "identifier BEGINSWITH 'FrameRow.'")
         let frameButtons = app.buttons.matching(frameRowsPredicate)
         // Poll briefly — view rebuild after addFrame can take a moment.
         var sawTwoRows = false
-        for _ in 0..<10 {
+        for _ in 0..<50 {
             if frameButtons.count >= 2 { sawTwoRows = true; break }
             Thread.sleep(forTimeInterval: 0.1)
         }
@@ -192,13 +192,13 @@ final class AnimationStripUITests: XCTestCase {
 
         // Persistence: reopen the piece. Both frames must still be there, and
         // because frames.count > 1 the strip must auto-show without any tap.
-        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 15))
         app.buttons["Gallery"].tap()
 
         XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 10))
         app.buttons["PieceThumbnail"].firstMatch.tap()
 
-        XCTAssertTrue(add.waitForExistence(timeout: 5),
+        XCTAssertTrue(add.waitForExistence(timeout: 15),
                       "Strip must auto-show on reopen for a multi-frame piece (no ANIMATE tap needed)")
         let rowsAfterReopen = app.buttons.matching(frameRowsPredicate)
         XCTAssertGreaterThanOrEqual(rowsAfterReopen.count, 2,
@@ -210,16 +210,16 @@ final class AnimationStripUITests: XCTestCase {
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
         app.buttons["NewPiece-32"].tap()
 
         let animate = app.buttons["Animate"]
-        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
         animate.tap()
 
-        XCTAssertTrue(app.buttons["FramesStrip.add"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["FramesStrip.add"].waitForExistence(timeout: 15))
         XCTAssertFalse(app.buttons["FramesStrip.editToggle"].exists,
                        "EDIT mode toggle must be removed from the strip")
     }
@@ -229,23 +229,23 @@ final class AnimationStripUITests: XCTestCase {
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
         app.buttons["NewPiece-32"].tap()
 
         let animate = app.buttons["Animate"]
-        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
         animate.tap()
 
         let add = app.buttons["FramesStrip.add"]
-        XCTAssertTrue(add.waitForExistence(timeout: 5))
+        XCTAssertTrue(add.waitForExistence(timeout: 15))
 
         let frameRowsPredicate = NSPredicate(format: "identifier BEGINSWITH 'FrameRow.'")
         let before = app.buttons.matching(frameRowsPredicate).count
         add.tap()
         var grew = false
-        for _ in 0..<10 {
+        for _ in 0..<50 {
             if app.buttons.matching(frameRowsPredicate).count > before { grew = true; break }
             Thread.sleep(forTimeInterval: 0.1)
         }
@@ -260,22 +260,22 @@ final class AnimationStripUITests: XCTestCase {
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
 
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
         app.buttons["NewPiece-32"].tap()
 
         let animate = app.buttons["Animate"]
-        XCTAssertTrue(animate.waitForExistence(timeout: 5))
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
         animate.tap()
 
         let fps = app.buttons["FramesStrip.fps"]
-        XCTAssertTrue(fps.waitForExistence(timeout: 5))
+        XCTAssertTrue(fps.waitForExistence(timeout: 15))
         fps.tap()
 
         // Pick a non-adjacent speed in a single tap from the custom popover.
         let sixty = app.buttons["FramesStrip.fps.60"]
-        XCTAssertTrue(sixty.waitForExistence(timeout: 3), "fps popover row '60' must appear")
+        XCTAssertTrue(sixty.waitForExistence(timeout: 15), "fps popover row '60' must appear")
         sixty.tap()
 
         XCTAssertEqual(fps.value as? String, "60 frames per second",

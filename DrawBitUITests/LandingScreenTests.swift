@@ -11,9 +11,9 @@ final class LandingScreenTests: XCTestCase {
         app.launch()
 
         let start = landingStart(app)
-        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
         start.tap()
 
-        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
     }
 }

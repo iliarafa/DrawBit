@@ -13,7 +13,7 @@ final class RadioStripUITests: XCTestCase {
         // -UITest-skipLanding lands straight in the gallery; the DrawBit FM strip
         // sits under the GALLERY header. (Controls are present even with no bundled
         // audio — they're just disabled in that empty-station state.)
-        XCTAssertTrue(app.staticTexts["DRAWBIT FM"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.staticTexts["DRAWBIT FM"].waitForExistence(timeout: 15),
                       "DrawBit FM header must appear in the gallery")
         XCTAssertTrue(app.buttons["RadioStrip.playPause"].exists,
                       "FM play/pause control must be present")
@@ -29,7 +29,7 @@ final class RadioStripUITests: XCTestCase {
         app.launch()
 
         let play = app.buttons["RadioStrip.playPause"]
-        XCTAssertTrue(play.waitForExistence(timeout: 5))
+        XCTAssertTrue(play.waitForExistence(timeout: 15))
         // The bundled station ships with tracks, so the control is live.
         XCTAssertTrue(play.isEnabled, "play must be enabled when the station has tracks")
         XCTAssertEqual(play.label, "Play station")
@@ -38,7 +38,7 @@ final class RadioStripUITests: XCTestCase {
 
         // Tapping play starts playback; the control flips to the pause state.
         var flipped = false
-        for _ in 0..<10 {
+        for _ in 0..<25 {
             if app.buttons["RadioStrip.playPause"].label == "Pause station" { flipped = true; break }
             Thread.sleep(forTimeInterval: 0.2)
         }
