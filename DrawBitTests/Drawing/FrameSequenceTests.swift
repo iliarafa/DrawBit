@@ -37,6 +37,43 @@ final class FrameSequenceTests: XCTestCase {
         XCTAssertNotEqual(frames[1].id, frames[0].id)
     }
 
+    func testAddBlankFrameAfterInsertsEmptyFrame() {
+        var frames = makeFrames(["F1"])
+        // Draw something into F1 so we can prove the new frame is NOT a copy.
+        var layers = frames[0].layers
+        layers[0].pixels[0] = 0xCC
+        frames[0] = Frame(id: frames[0].id, name: frames[0].name,
+                          layers: layers, activeLayerID: frames[0].activeLayerID)
+
+        let newID = FrameSequence.addBlankFrameAfter(frameID: frames[0].id, in: &frames)
+        XCTAssertNotNil(newID)
+        XCTAssertEqual(frames.count, 2)
+        XCTAssertEqual(frames[1].id, newID)
+        XCTAssertNotEqual(frames[1].id, frames[0].id)
+        // New frame is blank in every layer:
+        XCTAssertTrue(frames[1].layers.allSatisfy { $0.pixels.allSatisfy { $0 == 0 } },
+                      "Blank-added frame must have all-zero pixels")
+        // Source frame is untouched:
+        XCTAssertEqual(frames[0].layers[0].pixels[0], 0xCC)
+    }
+
+    func testAddBlankFrameAfterPreservesLayerUUIDsAndOrder() {
+        var frames = makeFrames(["F1"])
+        _ = FrameSequence.addLayer(name: "Layer 2", in: &frames)
+        let sourceLayerIDs = frames[0].layers.map(\.id)
+
+        _ = FrameSequence.addBlankFrameAfter(frameID: frames[0].id, in: &frames)
+        // The cascade invariant: the new frame has the SAME layer UUIDs in the same order.
+        XCTAssertEqual(frames[1].layers.map(\.id), sourceLayerIDs)
+    }
+
+    func testAddBlankFrameAfterRespectsCap() {
+        var frames = makeFrames((1...60).map { "F\($0)" })
+        let newID = FrameSequence.addBlankFrameAfter(frameID: frames.last!.id, in: &frames)
+        XCTAssertNil(newID, "Adding past the 60-frame cap must return nil")
+        XCTAssertEqual(frames.count, 60)
+    }
+
     func testRemoveFrame() {
         var frames = makeFrames(["F1", "F2", "F3"])
         FrameSequence.removeFrame(frames[1].id, in: &frames)

@@ -25,6 +25,29 @@ enum FrameSequence {
         return addFrameAfter(frameID: frameID, in: &frames)
     }
 
+    /// Inserts a new EMPTY frame after the frame with the given id: same layer UUIDs,
+    /// names, visibility and lock state (so the cascade invariant holds) but all-zero
+    /// pixels. Contrast with `addFrameAfter`/`duplicateFrame`, which copy pixels.
+    /// Returns the new frame id, or nil if at the cap.
+    @discardableResult
+    static func addBlankFrameAfter(frameID: UUID, in frames: inout [Frame]) -> UUID? {
+        guard frames.count < frameCap else { return nil }
+        guard let idx = frames.firstIndex(where: { $0.id == frameID }) else { return nil }
+        let source = frames[idx]
+        let blankLayers = source.layers.map { layer in
+            Layer(id: layer.id,
+                  name: layer.name,
+                  pixels: Data(count: layer.pixels.count),
+                  isVisible: layer.isVisible,
+                  isLocked: layer.isLocked)
+        }
+        let copy = Frame(name: nextFrameName(in: frames),
+                         layers: blankLayers,
+                         activeLayerID: source.activeLayerID)
+        frames.insert(copy, at: idx + 1)
+        return copy.id
+    }
+
     static func removeFrame(_ frameID: UUID, in frames: inout [Frame]) {
         guard frames.count > 1 else { return }
         guard let idx = frames.firstIndex(where: { $0.id == frameID }) else { return }
