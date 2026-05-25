@@ -1,45 +1,65 @@
 # DrawBit
 
-A minimal native iPad pixel-art creator. Draw on fixed-size canvases, save locally, share scaled PNGs.
+A native iPad pixel-art studio: draw on fixed-size canvases with layers, build frame-by-frame animations, listen to a built-in chiptune station while you work, and export PNGs, animated GIF/APNG, or sprite sheets. Fully offline, no accounts.
 
 ## Features
 
 - **Four canvas sizes:** 16×16, 32×32, 64×64, 128×128.
-- **Tools:** pencil, eraser, fill bucket, eyedropper.
+- **Six tools:** pencil, eraser, fill bucket, eyedropper, color swap (recolor one color across the active layer), and a rectangular marquee for select / cut / move.
+- **Layers:** up to 16 per frame — add, duplicate, delete, reorder (drag), rename, plus per-layer visibility and lock. Composited with straight-alpha.
+- **Frame-by-frame animation:** up to 60 frames with a timeline strip — add blank/duplicate frames, reorder, rename, delete, scrub, and play back at 4 / 8 / 12 / 24 / 30 / 60 fps with optional onion-skinning.
+- **DrawBit FM:** a built-in looping audio station pinned to the gallery footer (play / pause / next / previous), with background-audio playback so it keeps going across navigation.
+- **Color picker + recent colors:** full-spectrum picker with a recent-colors palette (last 23).
 - **Gallery-first UI:** thumbnails of your pieces; tap to edit, long-press for Rename / Duplicate / Delete.
 - **Procreate-style canvas transform:** two-finger pan + pinch-zoom + rotation (scale clamped to 0.25×–40×, rotation snaps to 0° within ~4°, two-finger double-tap resets).
 - **Apple Pencil aware:** when a Pencil is detected, finger input pans/zooms and only the Pencil draws. Without a Pencil, finger draws.
 - **Pixel-perfect rendering:** nearest-neighbor interpolation everywhere (editor, thumbnails, export). sRGB end-to-end. No anti-aliasing.
+- **Export & share:** PNG, animated GIF, Animated PNG (APNG), or sprite sheet; scale picker (1× / 2× / 4× / 8× / 16×) with size-appropriate defaults; save to Photos or the share sheet.
 - **Local storage:** SwiftData, fully offline, no accounts.
-- **Share as PNG:** scale picker (1× / 2× / 4× / 8× / 16×) with size-appropriate defaults.
-- **Up to 50 undo/redo steps** per editing session.
+- **Up to 50 undo/redo steps** per editing session (frame-sequence structural edits capped at 10).
 
 ## Platform
 
 - **iPadOS 17+**, iPad-only (no iPhone layout, no Mac Catalyst).
-- Swift 5.10, SwiftUI, SwiftData, CoreGraphics, UIKit (for coalesced touches and gesture recognizers).
+- Swift 5.10, SwiftUI, SwiftData, CoreGraphics + ImageIO (rendering & export), AVFoundation + MediaPlayer (DrawBit FM), UIKit (coalesced touches, gesture recognizers).
+- Background-audio mode enabled (`UIBackgroundModes: [audio]`) for the FM station.
 - No external dependencies; no Swift Package Manager manifest.
 
 ## Repo layout
 
 ```
-DrawBit/                              # App target — 26 Swift files
+DrawBit/                              # App target — 57 Swift files
   DrawBitApp.swift                    # @main SwiftUI App, ModelContainer
-  Models/                           # SwiftData: Piece, AppSettings, CanvasSize, Tool
+  Models/                           # SwiftData + value types: Piece, AppSettings,
+                                    #   CanvasSize, Tool, DrawBitSchema (migration plan)
   Drawing/                          # Pure logic: PixelGrid, Pencil, Eraser, Fill,
-                                    #   Eyedropper, BresenhamLine
-  Rendering/                        # CoreGraphics: pixelsToCGImage, ThumbnailRenderer,
-                                    #   PNGExporter
-  Gestures/                         # PencilAvailability, CanvasHostView (UIKit input)
+                                    #   Eyedropper, ColorSwap, Marquee, BresenhamLine,
+                                    #   PixelPerfectStroke, PixelRect, Layer, Frame,
+                                    #   FrameSequence, FrameCodec
+  Rendering/                        # CoreGraphics/ImageIO: PixelsToCGImage, Compositor,
+                                    #   ThumbnailRenderer, Frame/LayerThumbnailRenderer,
+                                    #   PNGExporter, GIFExporter, APNGExporter,
+                                    #   SpriteSheetExporter
+  Audio/                            # DrawBit FM core: AudioTrack, Playlist, BundledTracks
+  Gestures/                         # CanvasHostView (UIKit input + transform), PencilAvailability
   Persistence/                      # PieceRepository (wraps ModelContext)
-  State/                            # EditorState (@Observable, undo/redo, transform)
+  State/                            # EditorState (undo/redo, transform), PlaybackController,
+                                    #   RadioController
   Views/
-    Gallery/                        # GalleryView, PieceThumbnailView, NewPieceSheet
-    Editor/                         # EditorView, CanvasView, ToolBar,
-                                    #   RecentColorsStrip, ShareSheet
+    Gallery/                        # GalleryView, PieceThumbnailView, New/Rename/Delete
+                                    #   sheets, RadioStrip
+    Editor/                         # EditorView, CanvasView, ToolBar, RecentColorsStrip,
+                                    #   DrawBitColorPicker, LayersPanel, LayerRow,
+                                    #   FramesStrip, FrameRow, ShareSheet
+    Landing/                        # LandingView (PRESS START)
+    Support/                        # RootView, PixelFont
+  Resources/
+    Fonts/                          # PressStart2P-Regular.ttf
+    fm/                             # bundled DrawBit FM tracks (.mp3)
 
-DrawBitTests/                         # 57 unit tests across 16 files
-DrawBitUITests/HappyPathTests/        # 1 end-to-end UI test (create → draw → reopen)
+DrawBitTests/                         # 260 unit tests across 45 files
+DrawBitUITests/                       # 15 UI tests across 5 files (landing, gallery,
+                                    #   layers panel, animation strip, FM strip)
 
 docs/superpowers/
   specs/2026-04-19-drawbit-design.md          # Full product spec
@@ -50,7 +70,7 @@ project.yml                         # xcodegen project spec (DrawBit.xcodeproj i
 
 ## Build and run
 
-The `DrawBit.xcodeproj` is generated by [xcodegen](https://github.com/yonaskolb/XcodeGen) from `project.yml` and is gitignored. Generate it once after cloning.
+The `DrawBit.xcodeproj` is generated by [xcodegen](https://github.com/yonaskolb/XcodeGen) from `project.yml` and is gitignored. Generate it once after cloning (and regenerate after adding, renaming, or moving any source/resource file).
 
 **Prerequisites:** macOS with Xcode 16 or later and Homebrew.
 
@@ -100,18 +120,20 @@ The project's bundle identifier is `com.iamilias.drawbit`; change it to somethin
 
 ## Architecture notes
 
-- **Pure-Swift drawing and rendering modules.** Everything in `DrawBit/Drawing/` and `DrawBit/Rendering/` has no UI or SwiftData dependency. This is why Phases 2–3 are covered by fast, deterministic unit tests.
+- **Pure-Swift drawing and rendering modules.** Everything in `DrawBit/Drawing/` and `DrawBit/Rendering/` imports only Foundation / CoreGraphics / ImageIO — no UI or SwiftData — which is why they're covered by fast, deterministic unit tests.
 - **`PieceRepository` wraps `ModelContext`.** Views do not touch SwiftData directly; they go through the repository.
-- **`EditorState` is in-memory and session-scoped.** Undo/redo snapshots live in the state and are cleared when the editor closes.
-- **Input is UIKit-hosted.** `CanvasHostView` is a `UIViewRepresentable` around a `UIView` subclass that reads `UIEvent.coalescedTouches` (up to 240 Hz with Apple Pencil) and interpolates between samples with Bresenham so fast drags don't leave gaps.
+- **`EditorState` is in-memory and session-scoped.** Undo/redo snapshots and the view transform live in the state and are cleared when the editor closes; transform is never persisted to the `Piece`.
+- **Input is UIKit-hosted.** `CanvasHostView` is a `UIViewRepresentable` around `CanvasInputView`, a `UIView` subclass that reads `UIEvent.coalescedTouches` (up to 240 Hz with Apple Pencil) and interpolates between samples with Bresenham so fast drags don't leave gaps. Two-finger pan/zoom/rotate runs through a single custom `TwoFingerTransformGestureRecognizer`.
 - **Canvas transform is view-only.** Rotation/zoom/pan never alter the stored pixel grid; exported PNGs are always axis-aligned.
-- **Color pipeline is sRGB all the way.** `pixelsToCGImage` and the export `CGContext` use explicit `CGColorSpace(name: CGColorSpace.sRGB)` so rendering matches export across iPad models (including P3 displays).
+- **Color pipeline is sRGB all the way.** `pixelsToCGImage` and every export `CGContext` use an explicit `CGColorSpace(name: CGColorSpace.sRGB)` so rendering matches export across iPad models (including P3 displays).
+- **Animations are disabled under UI test.** A `-UITest*` launch argument (`UITestSupport.isRunning`) turns off UIKit and SwiftUI animations so the XCUITest suite is deterministic. See `CLAUDE.md` → "Test conventions".
 
 ## Docs
 
 - **Spec:** [docs/superpowers/specs/2026-04-19-drawbit-design.md](docs/superpowers/specs/2026-04-19-drawbit-design.md) — the product-level design with fidelity guarantees and out-of-scope list.
 - **Plan:** [docs/superpowers/plans/2026-04-19-drawbit-implementation.md](docs/superpowers/plans/2026-04-19-drawbit-implementation.md) — the TDD task sequence used to build the app.
+- **Working with the code:** [CLAUDE.md](CLAUDE.md) — commands, layer boundaries, and non-obvious invariants.
 
 ## Status
 
-Initial implementation complete; all 57 unit tests and the happy-path UI test pass on iPad Pro 13-inch (M5) simulator. No App Store build or distribution yet.
+Feature-complete for v1 (drawing, layers, animation, DrawBit FM, multi-format export). All 260 unit tests and 15 UI tests pass on the iPad Pro 13-inch (M5) simulator, and the app compiles clean for device in Release. Preparing the first App Store build.
