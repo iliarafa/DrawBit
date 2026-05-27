@@ -16,32 +16,38 @@ struct FMTile: View {
         ZStack {
             Color(white: 0.09)
 
+            // Layout sizing notes: the tile is 120pt square. After 10pt
+            // padding on each side, ~100pt of usable width remains, and the
+            // 44pt play/pause hit target leaves ~50pt for the title column.
+            // Pixel fonts are roughly 1ch ≈ 1pt at the named size, so the
+            // wordmark at pixel(8) ("DRAWBIT FM" ≈ 80pt) sits on one line
+            // alongside a small radio glyph, and titles up to ~7 characters
+            // (pixel(7)) fit on one line beside the play button. Longer
+            // titles wrap cleanly to two lines.
             VStack(alignment: .leading, spacing: 0) {
-                // Header: radio-wave glyph + wordmark
-                HStack(spacing: 6) {
+                // Header: small radio-wave glyph + wordmark on one line.
+                HStack(spacing: 4) {
                     Image(systemName: "dot.radiowaves.left.and.right")
-                        .font(.system(size: 14, weight: .regular))
-                    Text("DRAWBIT FM").font(.pixel(11))
+                        .font(.system(size: 9, weight: .regular))
+                    Text("DRAWBIT FM").font(.pixel(8))
                     Spacer(minLength: 0)
                 }
                 .foregroundStyle(.white)
 
                 Spacer(minLength: 0)
 
-                // Footer: now-playing + inline play/pause
-                HStack(alignment: .bottom, spacing: 6) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("NOW PLAYING")
-                            .font(.pixel(7))
-                            .foregroundStyle(.white.opacity(0.4))
-                        Text(titleText)
-                            .font(.pixel(8))
-                            .lineLimit(2)
-                            .truncationMode(.tail)
-                            .foregroundStyle(.white.opacity(radio.hasTracks ? 0.85 : 0.4))
-                            .accessibilityIdentifier("FM.tile.title")
-                    }
-                    Spacer(minLength: 0)
+                // Footer: just the current track title + inline play/pause.
+                // The "NOW PLAYING" label is redundant on a tile that
+                // literally is the FM station, so it's dropped to give the
+                // title room to render without truncating.
+                HStack(alignment: .bottom, spacing: 4) {
+                    Text(titleText)
+                        .font(.pixel(7))
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .foregroundStyle(.white.opacity(radio.hasTracks ? 0.85 : 0.4))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("FM.tile.title")
                     playPauseButton
                 }
             }
@@ -75,8 +81,8 @@ struct FMTile: View {
             radio.togglePlayPause()
         } label: {
             Image(systemName: radio.isPlaying ? "pause.fill" : "play.fill")
-                .font(.system(size: 18, weight: .regular))
-                .frame(minWidth: 44, minHeight: 44)
+                .font(.system(size: 14, weight: .regular))
+                .frame(width: 44, height: 44)
                 .foregroundStyle(.white.opacity(radio.hasTracks ? 1 : 0.3))
         }
         .buttonStyle(.plain)
