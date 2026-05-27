@@ -24,8 +24,8 @@ struct ShareSheet: View {
             switch self {
             case .png:         "PNG"
             case .gif:         "GIF"
-            case .apng:        "Animated PNG"
-            case .spriteSheet: "Sprite Sheet"
+            case .apng:        "MP4"
+            case .spriteSheet: "Sprite"
             }
         }
 
@@ -35,15 +35,6 @@ struct ShareSheet: View {
             case .gif:         "gif"
             case .apng:        "apng"
             case .spriteSheet: "png"
-            }
-        }
-
-        var caption: String {
-            switch self {
-            case .png:         "active frame, single image"
-            case .gif:         "animated, no partial alpha"
-            case .apng:        "animated, true alpha"
-            case .spriteSheet: "all frames in a grid, single PNG"
             }
         }
     }
@@ -68,9 +59,12 @@ struct ShareSheet: View {
                         .font(.pixel(11))
                         .foregroundStyle(.white.opacity(0.55))
 
-                    VStack(spacing: 8) {
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4),
+                        spacing: 8
+                    ) {
                         ForEach(ExportFormat.allCases) { f in
-                            formatRow(format: f)
+                            formatTile(format: f)
                         }
                     }
 
@@ -78,33 +72,14 @@ struct ShareSheet: View {
                         .font(.pixel(11))
                         .foregroundStyle(.white.opacity(0.55))
 
-                    VStack(spacing: 8) {
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5),
+                        spacing: 8
+                    ) {
                         ForEach(scales, id: \.self) { s in
-                            scaleRow(scale: s)
+                            scaleTile(scale: s)
                         }
                     }
-
-                    Spacer(minLength: 0)
-
-                    Button {
-                        Task { await share() }
-                    } label: {
-                        HStack(spacing: 8) {
-                            if isExporting {
-                                ProgressView().tint(.white)
-                                Text("EXPORTING…").font(.pixel(14))
-                            } else {
-                                Text("SHARE").font(.pixel(14))
-                            }
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Capsule().fill(Color.white.opacity(0.12)))
-                        .overlay(Capsule().stroke(Color.white.opacity(0.4), lineWidth: 1))
-                        .opacity(isExporting ? 0.6 : 1)
-                    }
-                    .disabled(isExporting)
 
                     Spacer(minLength: 0)
                 }
@@ -128,6 +103,21 @@ struct ShareSheet: View {
                             .foregroundStyle(.white.opacity(0.8))
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await share() }
+                    } label: {
+                        if isExporting {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("EXPORT")
+                                .font(.pixel(12))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .disabled(isExporting)
+                    .accessibilityIdentifier("ShareSheet.export")
+                }
             }
             .toolbarBackground(Color(white: 0.10), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -135,66 +125,59 @@ struct ShareSheet: View {
         }
     }
 
-    private func formatRow(format f: ExportFormat) -> some View {
+    private func formatTile(format f: ExportFormat) -> some View {
         let isSelected = f == selectedFormat
         return Button {
             selectedFormat = f
         } label: {
-            HStack {
-                Text(f.label)
-                    .font(.pixel(14))
-                    .foregroundStyle(.white)
-                Spacer()
-                Text(f.caption)
-                    .font(.pixel(11))
-                    .foregroundStyle(.white.opacity(0.55))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
+            ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.white.opacity(isSelected ? 0.10 : 0.04))
-            )
-            .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.white : Color.white.opacity(0.15),
                             lineWidth: isSelected ? 2 : 0.5)
-            )
+                Text(f.label)
+                    .font(.pixel(14))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("ShareSheet.format.\(f.rawValue)")
     }
 
-    private func scaleRow(scale s: Int) -> some View {
+    private func scaleTile(scale s: Int) -> some View {
         let edge = piece.size.dimension * s
         let isSelected = s == selectedScale
         return Button {
             selectedScale = s
         } label: {
-            HStack {
-                Text("\(s)×")
-                    .font(.pixel(14))
-                    .foregroundStyle(.white)
-                Spacer()
-                Text("\(edge) × \(edge)")
-                    .font(.pixel(11))
-                    .foregroundStyle(.white.opacity(0.55))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
+            ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.white.opacity(isSelected ? 0.10 : 0.04))
-            )
-            .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.white : Color.white.opacity(0.15),
                             lineWidth: isSelected ? 2 : 0.5)
-            )
+                VStack(spacing: 4) {
+                    Text("\(s)×")
+                        .font(.pixel(14))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    Text("\(edge)×\(edge)")
+                        .font(.pixel(8))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 72)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("ShareSheet.scale.\(s)")
     }
 
     private static func defaultScale(for size: CanvasSize) -> Int {
