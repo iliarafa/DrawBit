@@ -3,6 +3,10 @@ import UIKit
 
 struct ShareSheet: View {
     let piece: Piece
+    /// Frame count from the live editor state. Passed in (rather than re-decoded
+    /// from `piece.frameData`) so the budget predicate has the right input
+    /// immediately — the share sheet has no `.task` of its own.
+    let frameCount: Int
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var selectedScale: Int
@@ -37,10 +41,21 @@ struct ShareSheet: View {
             case .spriteSheet: "png"
             }
         }
+
+        /// Maps to the Foundation-only enum the budget predicate uses.
+        var budgetKind: ExportSizeBudget.Format {
+            switch self {
+            case .png:         .png
+            case .gif:         .gif
+            case .apng:        .apng
+            case .spriteSheet: .spriteSheet
+            }
+        }
     }
 
-    init(piece: Piece) {
+    init(piece: Piece, frameCount: Int = 1) {
         self.piece = piece
+        self.frameCount = max(1, frameCount)
         self._selectedScale = State(initialValue: Self.defaultScale(for: piece.size))
         // PNG default — animated formats are opt-in.
         self._selectedFormat = State(initialValue: .png)
@@ -120,6 +135,18 @@ struct ShareSheet: View {
             .toolbarBackground(Color(white: 0.10), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .onChange(of: selectedFormat) { _, newFormat in
+                // Switching to a format with a tighter budget (e.g. PNG → sprite
+                // sheet at high frame counts) can leave `selectedScale` pointing
+                // at a now-disabled tile. Snap it down to the largest tile that
+                // still fits so the EXPORT button never targets a doomed config.
+                if isOverBudget(scale: selectedScale, format: newFormat),
+                   let safe = Self.scales(for: piece.size).reversed()
+                       .first(where: { !isOverBudget(scale: $0, format: newFormat) })
+                {
+                    selectedScale = safe
+                }
+            }
         }
     }
 
@@ -150,6 +177,11 @@ struct ShareSheet: View {
     private func scaleTile(scale s: Int) -> some View {
         let edge = piece.size.dimension * s
         let isSelected = s == selectedScale
+        let overBudget = isOverBudget(scale: s, format: selectedFormat)
+        // Surface the predicate verdict up front rather than letting the
+        // exporter return `nil` and the share popover silently no-op.
+        let primaryOpacity = overBudget ? 0.30 : 1.0
+        let secondaryOpacity = overBudget ? 0.40 : 0.55
         return Button {
             selectedScale = s
         } label: {
@@ -162,11 +194,11 @@ struct ShareSheet: View {
                 VStack(spacing: 4) {
                     Text("\(s)×")
                         .font(.pixel(14))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.white.opacity(primaryOpacity))
                         .lineLimit(1)
-                    Text("\(edge)×\(edge)")
+                    Text(overBudget ? "TOO BIG" : "\(edge)×\(edge)")
                         .font(.pixel(8))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(.white.opacity(secondaryOpacity))
                         .lineLimit(1)
                 }
             }
@@ -175,7 +207,21 @@ struct ShareSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(overBudget)
         .accessibilityIdentifier("ShareSheet.scale.\(s)")
+    }
+
+    /// Wraps `ExportSizeBudget.isOverBudget` with this view's piece + frame
+    /// count. Used by `scaleTile` to gray itself out, and by the format-change
+    /// hook below to snap `selectedScale` back into the safe range so the
+    /// EXPORT button never points at a doomed config.
+    private func isOverBudget(scale s: Int, format f: ExportFormat) -> Bool {
+        ExportSizeBudget.isOverBudget(
+            format: f.budgetKind,
+            canvasEdge: piece.size.dimension,
+            scale: s,
+            frameCount: frameCount
+        )
     }
 
     /// Five export scales per canvas — every canvas hits the same output edges
@@ -210,6 +256,10 @@ struct ShareSheet: View {
 
     private func share() async {
         guard !isExporting else { return }
+        // Defense-in-depth: the tile is already disabled when this would fail,
+        // and `selectedScale` is snapped to a safe value on format change, but
+        // if either of those slips we still bail before the exporter no-ops.
+        guard !isOverBudget(scale: selectedScale, format: selectedFormat) else { return }
         isExporting = true
         defer { isExporting = false }
 
