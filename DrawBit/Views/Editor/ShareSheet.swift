@@ -46,8 +46,6 @@ struct ShareSheet: View {
         self._selectedFormat = State(initialValue: .png)
     }
 
-    private let scales = [1, 2, 4, 8, 16]
-
     var body: some View {
         NavigationStack {
             ZStack {
@@ -76,7 +74,7 @@ struct ShareSheet: View {
                         columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5),
                         spacing: 8
                     ) {
-                        ForEach(scales, id: \.self) { s in
+                        ForEach(Self.scales(for: piece.size), id: \.self) { s in
                             scaleTile(scale: s)
                         }
                     }
@@ -180,12 +178,33 @@ struct ShareSheet: View {
         .accessibilityIdentifier("ShareSheet.scale.\(s)")
     }
 
-    private static func defaultScale(for size: CanvasSize) -> Int {
+    /// Five export scales per canvas — every canvas hits the same output edges
+    /// (128 / 256 / 512 / 1024 / 2048 px), with the multiplier sliding to compensate.
+    /// Users effectively pick an *output size*; we just spell it as a magnification
+    /// number to keep the math integer (each source pixel becomes an exact N×N
+    /// block on output — see `PNGExporter.swift:24-25`, nearest-neighbour everywhere).
+    static func scales(for size: CanvasSize) -> [Int] {
         switch size {
-        case .s16: 16
-        case .s32: 16
-        case .s64: 8
-        case .s128: 4
+        case .s16:  [8, 16, 32, 64, 128]   // 128, 256, 512, 1024, 2048
+        case .s32:  [4, 8, 16, 32, 64]     // 128, 256, 512, 1024, 2048
+        case .s64:  [2, 4, 8, 16, 32]      // 128, 256, 512, 1024, 2048
+        case .s128: [1, 2, 4, 8, 16]       // 128, 256, 512, 1024, 2048
+        }
+    }
+
+    /// Default lands at 1024–2048 px output regardless of canvas. iOS Photos
+    /// (and most social platforms) renders images through bilinear smoothing at
+    /// non-1:1 zoom — a 256 px export looks soft in the Photos preview even when
+    /// the file bytes are mathematically pixel-perfect. 1024 px+ is the community
+    /// standard that survives the smoothing; see Pixaki's user-guide note on
+    /// nearest-neighbour magnification (every dedicated pixel-art app ships
+    /// bigger-by-default for this reason).
+    static func defaultScale(for size: CanvasSize) -> Int {
+        switch size {
+        case .s16:  64   // 1024 px
+        case .s32:  32   // 1024 px
+        case .s64:  32   // 2048 px
+        case .s128: 16   // 2048 px
         }
     }
 
