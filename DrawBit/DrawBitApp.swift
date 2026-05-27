@@ -6,7 +6,7 @@ import UIKit
 struct DrawBitApp: App {
     // App-lifetime DrawBit FM station. Owned here (above the Landing/Gallery/Editor
     // switch) so playback survives navigation and the background; injected into the
-    // environment for the gallery's RadioStrip to drive.
+    // environment so the gallery's `FMTile` and the pushed `FMScreen` can both drive it.
     @State private var radio = RadioController()
 
     init() {

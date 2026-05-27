@@ -44,6 +44,12 @@ final class RadioController {
 
     var hasTracks: Bool { !playlist.isEmpty }
     var currentTitle: String { playlist.current?.title ?? "" }
+    /// All tracks in the station, in playback order. Lets a track list UI render
+    /// the full programme.
+    var tracks: [AudioTrack] { playlist.tracks }
+    /// Index of the currently-selected track (0 when the station is empty).
+    /// Lets a track list UI highlight the active row.
+    var currentIndex: Int { playlist.currentIndex }
 
     func togglePlayPause() {
         if isPlaying { pause() } else { play() }
@@ -76,6 +82,16 @@ final class RadioController {
         guard !playlist.isEmpty else { return }
         playlist.previous()
         loadCurrentTrack(autoplay: isPlaying)
+    }
+
+    /// Jump to a specific track and start playing it. Out-of-range indices are
+    /// ignored (mirrors `Playlist.select(index:)`). Mirrors the `next()`/`previous()`
+    /// discipline but always autoplays — a tap on the track list is an explicit
+    /// "play this one" gesture.
+    func play(trackAt index: Int) {
+        guard !playlist.isEmpty, playlist.tracks.indices.contains(index) else { return }
+        playlist.select(index: index)
+        loadCurrentTrack(autoplay: true)
     }
 
     func seek(toFraction fraction: Double) {

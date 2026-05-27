@@ -6,6 +6,10 @@ struct GalleryView: View {
     @Query(sort: \Piece.updatedAt, order: .reverse) private var pieces: [Piece]
     @State private var showingNewSheet = false
     @State private var selectedPiece: Piece?
+    /// True while the FM destination is pushed onto the navigation stack.
+    /// Mirrors the `selectedPiece` pattern but on a Bool because the FM screen
+    /// is a singleton destination (only one station).
+    @State private var showingFM = false
 
     @State private var renameTarget: Piece?
     @State private var renameDraft: String = ""
@@ -19,6 +23,12 @@ struct GalleryView: View {
                 topBar
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 12) {
+                        // FM tile is always the first cell, regardless of
+                        // `updatedAt` sort on the pieces. Tapping the tile body
+                        // pushes `FMScreen`; the tile's inline play/pause
+                        // button captures its own taps so it doesn't navigate.
+                        FMTile()
+                            .onTapGesture { showingFM = true }
                         ForEach(pieces) { piece in
                             thumbnailCell(for: piece)
                         }
@@ -32,7 +42,6 @@ struct GalleryView: View {
                     .padding(.bottom, 24)
                 }
                 .scrollContentBackground(.hidden)
-                RadioStrip()
             }
             .background(Color(white: 0.10).ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
@@ -51,6 +60,9 @@ struct GalleryView: View {
             }
             .navigationDestination(item: $selectedPiece) { piece in
                 EditorView(piece: piece)
+            }
+            .navigationDestination(isPresented: $showingFM) {
+                FMScreen()
             }
             .sheet(isPresented: Binding(
                 get: { renameTarget != nil },
