@@ -139,7 +139,7 @@ struct GalleryView: View {
             Button {
                 showingHelp = true
             } label: {
-                Image(systemName: "questionmark.circle")
+                Image(systemName: "info.circle")
                     .font(.system(size: 20, weight: .regular))
                     .frame(width: Self.helpButtonHitSize, height: Self.helpButtonHitSize)
                     .foregroundStyle(.white.opacity(0.85))
