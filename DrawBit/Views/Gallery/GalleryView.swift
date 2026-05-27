@@ -139,10 +139,14 @@ struct GalleryView: View {
             Button {
                 showingHelp = true
             } label: {
-                Image(systemName: "info")
-                    .font(.system(size: 26, weight: .regular))
-                    .frame(width: Self.helpButtonHitSize, height: Self.helpButtonHitSize)
+                // Pixel-font "i" instead of SF Symbol so the glyph shares the
+                // GALLERY title's baseline, rasterization, and weight — the
+                // two read as part of the same row instead of two different
+                // typefaces side by side. pixel(20) matches the title size.
+                Text("i")
+                    .font(.pixel(20))
                     .foregroundStyle(.white.opacity(0.85))
+                    .frame(width: Self.helpButtonHitSize, height: Self.helpButtonHitSize)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("Help.button")
