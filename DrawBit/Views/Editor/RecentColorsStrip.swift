@@ -17,18 +17,22 @@ struct SwatchButton: View {
     var body: some View {
         let rgba = RGBA(hex: hex) ?? .transparent
         let color = Color(rgba: rgba)
+        // Selection reads as a size differential rather than an outline halo:
+        // the selected swatch grows to fill the slot the outline used to occupy
+        // (30pt), while unselected swatches stay at the prior 26pt fill. The
+        // outer 34pt frame is the tap target — unchanged so the hit area still
+        // meets the 44pt accessibility minimum together with the surrounding
+        // toolbar padding.
+        let fillEdge: CGFloat = isSelected ? 30 : 26
         Button(action: action) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(color)
-                    .frame(width: 26, height: 26)
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 3)
-                        .stroke(color, lineWidth: 3)
-                        .frame(width: 30, height: 30)
-                }
-            }
-            .frame(width: 34, height: 34)
+            RoundedRectangle(cornerRadius: 3)
+                .fill(color)
+                .frame(width: fillEdge, height: fillEdge)
+                .frame(width: 34, height: 34)
+                .animation(
+                    UITestSupport.isRunning ? nil : .spring(response: 0.28, dampingFraction: 0.7),
+                    value: isSelected
+                )
         }
         .buttonStyle(.plain)
     }
