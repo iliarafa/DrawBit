@@ -10,6 +10,8 @@ struct GalleryView: View {
     /// Mirrors the `selectedPiece` pattern but on a Bool because the FM screen
     /// is a singleton destination (only one station).
     @State private var showingFM = false
+    /// True while the help destination is pushed. Same shape as `showingFM`.
+    @State private var showingHelp = false
 
     @State private var renameTarget: Piece?
     @State private var renameDraft: String = ""
@@ -76,6 +78,9 @@ struct GalleryView: View {
             .navigationDestination(isPresented: $showingFM) {
                 FMScreen()
             }
+            .navigationDestination(isPresented: $showingHelp) {
+                HelpScreen()
+            }
             .sheet(isPresented: Binding(
                 get: { renameTarget != nil },
                 set: { if !$0 { renameTarget = nil } }
@@ -114,13 +119,37 @@ struct GalleryView: View {
         }
     }
 
+    /// Width of the trailing "?" help button's hit area. A clear leading
+    /// spacer of the same width keeps the `GALLERY` title visually centered
+    /// despite the trailing button taking real estate on only one side.
+    private static let helpButtonHitSize: CGFloat = 44
+
     private var topBar: some View {
-        Text("GALLERY")
-            .font(.pixel(20))
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 22)
+        HStack(spacing: 0) {
+            // Invisible leading spacer balancing the trailing button so the
+            // centered title remains centered on the screen, not pushed left.
+            Color.clear
+                .frame(width: Self.helpButtonHitSize, height: Self.helpButtonHitSize)
+
+            Text("GALLERY")
+                .font(.pixel(20))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+
+            Button {
+                showingHelp = true
+            } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.system(size: 20, weight: .regular))
+                    .frame(width: Self.helpButtonHitSize, height: Self.helpButtonHitSize)
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("Help.button")
+            .accessibilityLabel("Help")
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 22)
     }
 
     @ViewBuilder
