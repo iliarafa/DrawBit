@@ -23,19 +23,17 @@ struct GalleryView: View {
                 topBar
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 12) {
-                        // FM tile is always the first cell, regardless of
-                        // `updatedAt` sort on the pieces. Tapping the tile body
-                        // pushes `FMScreen`; the tile's inline play/pause
-                        // button captures its own taps so it doesn't navigate.
-                        FMTile()
-                            .onTapGesture { showingFM = true }
-                        ForEach(pieces) { piece in
-                            thumbnailCell(for: piece)
-                        }
+                        // NEW tile lives at position 0 — the gallery's primary
+                        // action, top-left of the grid. Pieces follow, sorted
+                        // by `updatedAt` descending, so the newest piece sits
+                        // immediately to its right.
                         NewPieceTile()
                             .onTapGesture { showingNewSheet = true }
                             .accessibilityLabel("New")
                             .accessibilityIdentifier("NewButton")
+                        ForEach(pieces) { piece in
+                            thumbnailCell(for: piece)
+                        }
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 28)
@@ -44,6 +42,20 @@ struct GalleryView: View {
                 .scrollContentBackground(.hidden)
             }
             .background(Color(white: 0.10).ignoresSafeArea())
+            // FM is pinned to the bottom-left of the gallery viewport as a
+            // fixed overlay rather than a grid cell. The 120pt square matches
+            // a grid tile so it visually echoes the row above; the leading
+            // and bottom paddings match the grid's own paddings so the FM
+            // tile aligns with the leftmost column and rests at the same
+            // bottom offset. Inline play/pause and the body-tap-to-push-
+            // `FMScreen` behaviour are unchanged.
+            .overlay(alignment: .bottomLeading) {
+                FMTile()
+                    .frame(width: 120, height: 120)
+                    .onTapGesture { showingFM = true }
+                    .padding(.leading, 20)
+                    .padding(.bottom, 24)
+            }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingNewSheet) {
                 NewPieceSheet { size in
