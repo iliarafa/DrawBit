@@ -16,40 +16,43 @@ struct FMTile: View {
         ZStack {
             Color(white: 0.09)
 
-            // Layout sizing notes: the tile is 120pt square. After 10pt
-            // padding on each side, ~100pt of usable width remains, and the
-            // 44pt play/pause hit target leaves ~50pt for the title column.
-            // Pixel fonts are roughly 1ch ≈ 1pt at the named size, so the
-            // wordmark at pixel(8) ("DRAWBIT FM" ≈ 80pt) sits on one line
-            // alongside a small radio glyph, and titles up to ~7 characters
-            // (pixel(7)) fit on one line beside the play button. Longer
-            // titles wrap cleanly to two lines.
+            // Layout: the tile is 120pt square (≈100pt usable after 10pt
+            // padding). The play/pause icon is the focal element, centered
+            // and large; the wordmark sits at the top in one line and the
+            // current track title sits at the bottom-left. pixel(7) on the
+            // wordmark + 8pt glyph fit "DRAWBIT FM" cleanly on one line at
+            // this width.
             VStack(alignment: .leading, spacing: 0) {
-                // Header: small radio-wave glyph + wordmark on one line.
+                // Top: small radio glyph + wordmark on a single line.
                 HStack(spacing: 4) {
                     Image(systemName: "dot.radiowaves.left.and.right")
-                        .font(.system(size: 9, weight: .regular))
-                    Text("DRAWBIT FM").font(.pixel(8))
-                    Spacer(minLength: 0)
+                        .font(.system(size: 8, weight: .regular))
+                    Text("DRAWBIT FM")
+                        .font(.pixel(7))
+                        .lineLimit(1)
                 }
                 .foregroundStyle(.white)
 
                 Spacer(minLength: 0)
 
-                // Footer: just the current track title + inline play/pause.
-                // The "NOW PLAYING" label is redundant on a tile that
-                // literally is the FM station, so it's dropped to give the
-                // title room to render without truncating.
-                HStack(alignment: .bottom, spacing: 4) {
-                    Text(titleText)
-                        .font(.pixel(7))
-                        .lineLimit(2)
-                        .truncationMode(.tail)
-                        .foregroundStyle(.white.opacity(radio.hasTracks ? 0.85 : 0.4))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("FM.tile.title")
+                // Middle: big, centered play/pause — the tile's focal point.
+                HStack {
+                    Spacer(minLength: 0)
                     playPauseButton
+                    Spacer(minLength: 0)
                 }
+
+                Spacer(minLength: 0)
+
+                // Bottom-left: current track title. The "NOW PLAYING" label
+                // is intentionally omitted — redundant on a tile that *is*
+                // the FM station — so the title gets full breathing room.
+                Text(titleText)
+                    .font(.pixel(7))
+                    .lineLimit(2)
+                    .truncationMode(.tail)
+                    .foregroundStyle(.white.opacity(radio.hasTracks ? 0.85 : 0.4))
+                    .accessibilityIdentifier("FM.tile.title")
             }
             .padding(10)
         }
@@ -76,13 +79,17 @@ struct FMTile: View {
     /// captures taps inside its frame, so a tap here doesn't bubble to the
     /// tile's outer `onTapGesture` (set on `GalleryView`'s side) and won't
     /// open the FM destination.
+    /// Big, centered play/pause. 40pt icon in a 56pt square — well over the
+    /// 44pt hit-target guideline and unmistakably the focal element of the
+    /// tile. Captures its own taps so it pauses in place without bubbling to
+    /// the tile's outer `onTapGesture`.
     private var playPauseButton: some View {
         Button {
             radio.togglePlayPause()
         } label: {
             Image(systemName: radio.isPlaying ? "pause.fill" : "play.fill")
-                .font(.system(size: 14, weight: .regular))
-                .frame(width: 44, height: 44)
+                .font(.system(size: 40, weight: .regular))
+                .frame(width: 56, height: 56)
                 .foregroundStyle(.white.opacity(radio.hasTracks ? 1 : 0.3))
         }
         .buttonStyle(.plain)
