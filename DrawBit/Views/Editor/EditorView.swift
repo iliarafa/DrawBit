@@ -163,10 +163,12 @@ struct EditorView: View {
             Button {
                 showingLayersPanel.toggle()
             } label: {
-                Text("LAYERS").font(.pixel(11))
+                PixelArtIcon(pattern: Self.layersIcon, size: 22)
+                    .frame(width: 44, height: 44)
             }
             .foregroundStyle(showingLayersPanel ? .blue : .white)
             .disabled(state.isPlaying)
+            .accessibilityLabel("LAYERS")
             Button {
                 if showTimeline {
                     showTimeline = false
@@ -180,11 +182,13 @@ struct EditorView: View {
                     showTimeline = true
                 }
             } label: {
-                Text("ANIMATE").font(.pixel(11))
+                PixelArtIcon(pattern: Self.animateIcon, size: 22)
+                    .frame(width: 44, height: 44)
             }
-            .foregroundStyle(showTimeline ? .blue : .white)
+            .foregroundStyle(showTimeline ? Self.animateActiveGreen : .white)
             .disabled(state.isPlaying)
             .accessibilityIdentifier("Animate")
+            .accessibilityLabel("ANIMATE")
             Button {
                 // Auto-commit any floating marquee + persist before the sheet's
                 // export reads from SwiftData. Otherwise the user's in-flight
@@ -192,10 +196,11 @@ struct EditorView: View {
                 commitFloatingMarqueeAndPersist()
                 showingShareSheet = true
             } label: {
-                Text("SHARE")
-                    .font(.pixel(11))
+                PixelArtIcon(pattern: Self.shareIcon, size: 22)
+                    .frame(width: 44, height: 44)
             }
             .disabled(state.isPlaying)
+            .accessibilityLabel("SHARE")
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 18)
@@ -549,5 +554,59 @@ struct EditorView: View {
         state.commitFloatingSelectionIfAny()
         if hadSelection { saveCurrentFrame() }
     }
+
+    // MARK: - Pixel icons (topBar)
+
+    /// Tint for ANIMATE when the timeline is open — a desaturated bright
+    /// green, deliberately distinct from the blue used for LAYERS-active.
+    private static let animateActiveGreen = Color(red: 0.50, green: 0.85, blue: 0.55)
+
+    /// Three offset portrait-rectangle outlines stacked back→front from
+    /// top-right to bottom-left, with edges crossing through where they
+    /// overlap. `PixelArtIcon` fills with `.foreground`, so the icon
+    /// inherits the button's `.foregroundStyle` (white / blue-when-active).
+    private static let layersIcon: [String] = [
+        "....######.",
+        "....#....#.",
+        "..######.#.",
+        "..#.#..#.#.",
+        "######.#.#.",
+        "#.#.##.#.#.",
+        "#.#.######.",
+        "#.#..#.#...",
+        "#.#######..",
+        "#....#.....",
+        "######.....",
+    ]
+
+    /// Right-pointing play triangle.
+    private static let animateIcon: [String] = [
+        "...........",
+        ".#.........",
+        ".###.......",
+        ".#####.....",
+        ".#######...",
+        ".#########.",
+        ".#######...",
+        ".#####.....",
+        ".###.......",
+        ".#.........",
+        "...........",
+    ]
+
+    /// Open-top box with an arrow rising through the gap.
+    private static let shareIcon: [String] = [
+        ".....#.....",
+        "....###....",
+        "...#####...",
+        ".....#.....",
+        ".....#.....",
+        ".###.#.###.",
+        ".#...#...#.",
+        ".#.......#.",
+        ".#.......#.",
+        ".#.......#.",
+        ".#########.",
+    ]
 }
 
