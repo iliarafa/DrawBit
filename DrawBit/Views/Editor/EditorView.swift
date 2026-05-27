@@ -163,10 +163,14 @@ struct EditorView: View {
             Button {
                 showingLayersPanel.toggle()
             } label: {
-                PixelArtIcon(pattern: Self.layersIcon, size: 22)
+                Image("LayersIcon")
+                    .resizable()
+                    .interpolation(.none)
+                    .antialiased(false)
+                    .frame(width: 22, height: 22)
                     .frame(width: 44, height: 44)
             }
-            .foregroundStyle(showingLayersPanel ? .blue : .white)
+            .foregroundStyle(showingLayersPanel ? Self.layersActiveGreen : .white)
             .disabled(state.isPlaying)
             .accessibilityLabel("LAYERS")
             Button {
@@ -558,26 +562,12 @@ struct EditorView: View {
     // MARK: - Pixel icons (topBar)
 
     /// Tint for ANIMATE when the timeline is open — a desaturated bright
-    /// green, deliberately distinct from the blue used for LAYERS-active.
+    /// green, deliberately distinct from the deeper green used for LAYERS-active.
     private static let animateActiveGreen = Color(red: 0.50, green: 0.85, blue: 0.55)
 
-    /// Three offset portrait-rectangle outlines stacked back→front from
-    /// top-right to bottom-left, with edges crossing through where they
-    /// overlap. `PixelArtIcon` fills with `.foreground`, so the icon
-    /// inherits the button's `.foregroundStyle` (white / blue-when-active).
-    private static let layersIcon: [String] = [
-        "....######.",
-        "....#....#.",
-        "..######.#.",
-        "..#.#..#.#.",
-        "######.#.#.",
-        "#.#.##.#.#.",
-        "#.#.######.",
-        "#.#..#.#...",
-        "#.#######..",
-        "#....#.....",
-        "######.....",
-    ]
+    /// Tint for LAYERS when the panel is open — a deeper, more saturated
+    /// emerald that reads as a clearly different state from ANIMATE's lime.
+    private static let layersActiveGreen = Color(red: 0.20, green: 0.60, blue: 0.35)
 
     /// Right-pointing play triangle.
     private static let animateIcon: [String] = [
