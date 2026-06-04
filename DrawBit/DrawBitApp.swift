@@ -25,9 +25,11 @@ struct DrawBitApp: App {
         let inMemory = ProcessInfo.processInfo.arguments.contains("-UITest-reset")
         let schema = Schema(versionedSchema: DrawBitSchemaV1.self)
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
-        // SchemaMigrationPlan is wired even with zero stages today — the moment
-        // a schema-changing V2 is added, the container reload becomes safe
-        // without an extra ship-day scramble. See `DrawBitSchema.swift`.
+        // The single declared schema (V1) tracks the live model, which now carries the
+        // reference-photo fields. Adding optional/defaulted attributes is handled by
+        // SwiftData's inferred lightweight migration when an older on-disk store is
+        // opened — no extra VersionedSchema or stage is needed. The plan stays wired
+        // (empty stages) so a future reshaping migration has a home. See `DrawBitSchema.swift`.
         return try! ModelContainer(for: schema,
                                    migrationPlan: DrawBitMigrationPlan.self,
                                    configurations: [config])

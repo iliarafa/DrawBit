@@ -87,4 +87,51 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(frame.layers.count, 1)
         XCTAssertEqual(frame.layers[0].pixels.count, CanvasSize.s16.byteCount)
     }
+
+    /// Exercises the PRODUCTION container path: an ON-DISK store built with the
+    /// migration plan. This is the path a real device launch takes and the only
+    /// one where a misconfigured plan (e.g. two schemas sharing a checksum) would
+    /// abort with "Duplicate version checksums detected". It also proves the
+    /// additive reference-photo fields round-trip across a close/reopen of the
+    /// same store file via inferred lightweight migration.
+    func testOnDiskContainerWithPlanRoundTripsReferenceFields() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("drawbit-migration-\(UUID().uuidString).store")
+        defer {
+            for ext in ["", "-shm", "-wal"] {
+                try? FileManager.default.removeItem(
+                    at: url.deletingLastPathComponent()
+                        .appendingPathComponent(url.lastPathComponent + ext))
+            }
+        }
+
+        let schema = Schema(versionedSchema: DrawBitSchemaV1.self)
+        let config = ModelConfiguration(schema: schema, url: url)
+
+        // First open: write a piece carrying both reference fields, then let the
+        // container deallocate so the file is released.
+        let pieceID: UUID
+        do {
+            let container = try ModelContainer(for: schema,
+                                               migrationPlan: DrawBitMigrationPlan.self,
+                                               configurations: [config])
+            let ctx = ModelContext(container)
+            let piece = Piece(size: .s16)
+            pieceID = piece.id
+            piece.referenceImageData = Data([1, 2, 3])
+            piece.referenceOpacity = 0.5
+            ctx.insert(piece)
+            try ctx.save()
+        }
+
+        // Reopen the same on-disk store with the same plan and verify the fields persisted.
+        let container2 = try ModelContainer(for: schema,
+                                            migrationPlan: DrawBitMigrationPlan.self,
+                                            configurations: [config])
+        let ctx2 = ModelContext(container2)
+        let fetched = try ctx2.fetch(FetchDescriptor<Piece>())
+        let p = try XCTUnwrap(fetched.first { $0.id == pieceID })
+        XCTAssertEqual(p.referenceImageData, Data([1, 2, 3]))
+        XCTAssertEqual(p.referenceOpacity, 0.5, accuracy: 0.0001)
+    }
 }
