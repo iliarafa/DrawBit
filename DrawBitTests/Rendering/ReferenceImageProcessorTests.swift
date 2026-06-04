@@ -10,7 +10,6 @@ final class ReferenceImageProcessorTests: XCTestCase {
         let input = Self.makePNG(width: 4000, height: 2000)
         let out = try XCTUnwrap(ReferenceImageProcessor.process(input))
         let dims = try XCTUnwrap(Self.pixelSize(of: out))
-        XCTAssertEqual(max(dims.width, dims.height), 1024)
         XCTAssertEqual(dims.width, 1024)   // 4000x2000 -> 1024x512
         XCTAssertEqual(dims.height, 512)
     }
