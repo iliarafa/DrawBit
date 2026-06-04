@@ -15,7 +15,10 @@ struct ReferenceRow: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var confirmRemove = false
 
-    private var hasReference: Bool { state.referenceImage != nil }
+    /// Drive the controls off the stored bytes, not the decoded image, so a reference
+    /// that somehow failed to decode can still be removed (the thumbnail falls back to
+    /// its placeholder). In practice the two are always in lock-step via `setReference`.
+    private var hasReference: Bool { state.referenceImageData != nil }
 
     var body: some View {
         VStack(spacing: 8) {
