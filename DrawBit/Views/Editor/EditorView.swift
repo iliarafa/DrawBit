@@ -21,10 +21,13 @@ struct EditorView: View {
         // decodeAnyFrameData handles V2 sequence, V1 single-frame, and raw legacy bytes.
         let result = FrameCodec.decodeAnyFrameData(piece.frameData,
                                                     fallbackByteCount: piece.size.byteCount)
-        self._state = State(initialValue: EditorState(piece: piece,
-                                                      frames: result.frames,
-                                                      activeFrameIndex: result.activeFrameIndex,
-                                                      fps: result.fps))
+        let editorState = EditorState(piece: piece,
+                                      frames: result.frames,
+                                      activeFrameIndex: result.activeFrameIndex,
+                                      fps: result.fps)
+        editorState.setReference(imageData: piece.referenceImageData)
+        editorState.referenceOpacity = piece.referenceOpacity
+        self._state = State(initialValue: editorState)
     }
 
     var body: some View {
@@ -395,6 +398,13 @@ struct EditorView: View {
                              frames: state.frames,
                              activeFrameIndex: state.activeFrameIndex,
                              fps: state.fps)
+    }
+
+    private func saveReference() {
+        let repo = PieceRepository(context: modelContext)
+        try? repo.saveReference(piece: piece,
+                                imageData: state.referenceImageData,
+                                opacity: state.referenceOpacity)
     }
 
     private func clearCanvas() {

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 @Observable
 final class EditorState {
@@ -34,6 +35,21 @@ final class EditorState {
     var translation: CGSize = .zero
     var scale: CGFloat = 1.0
     var rotation: CGFloat = 0.0
+
+    // MARK: - Reference photo (display-only tracing backdrop)
+
+    /// Decoded reference image for rendering. Kept in sync with `referenceImageData`
+    /// by `setReference(imageData:)` so the JPEG is decoded once, not every body pass.
+    var referenceImage: UIImage?
+
+    /// Raw stored bytes (size-capped JPEG). Source of truth for persistence.
+    var referenceImageData: Data?
+
+    /// Fade for the backdrop, 0...1. Mirrors `Piece.referenceOpacity`; edited live by the slider.
+    var referenceOpacity: Double = 0.35
+
+    /// Session-only show/hide of the backdrop. Not persisted (defaults visible when a reference exists).
+    var isReferenceVisible: Bool = true
 
     var selection: MarqueeSelection?
     var pendingMarqueeRect: PixelRect?
@@ -123,6 +139,12 @@ final class EditorState {
 
     func setActiveLayerPixels(_ data: Data) {
         frame.withActiveLayerPixels { $0 = data }
+    }
+
+    /// Sets the reference photo from stored bytes, decoding for display. Pass nil to clear.
+    func setReference(imageData: Data?) {
+        referenceImageData = imageData
+        referenceImage = imageData.flatMap { UIImage(data: $0) }
     }
 
     // MARK: - Drawing-stroke undo
