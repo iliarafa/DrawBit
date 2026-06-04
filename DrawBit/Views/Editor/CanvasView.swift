@@ -67,6 +67,20 @@ struct CanvasView: View {
         GeometryReader { geo in
             let edge = baseEdge(in: geo)
             ZStack {
+                if state.isReferenceVisible,
+                   !state.isPlaying,
+                   let reference = state.referenceImage {
+                    Image(uiImage: reference)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width: edge, height: edge)
+                        .opacity(state.referenceOpacity)
+                        .scaleEffect(state.scale)
+                        .rotationEffect(.radians(state.rotation))
+                        .offset(state.translation)
+                        .allowsHitTesting(false)
+                }
                 if state.isOnionSkinEnabled,
                    !state.isPlaying,
                    state.activeFrameIndex > 0,
