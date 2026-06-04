@@ -73,6 +73,17 @@ final class PieceRepository {
         try context.save()
     }
 
+    // MARK: - Reference photo
+
+    /// Persists the tracing reference image + fade onto the piece. `imageData` should
+    /// already be processed via `ReferenceImageProcessor`; pass nil to clear it.
+    func saveReference(piece: Piece, imageData: Data?, opacity: Double) throws {
+        piece.referenceImageData = imageData
+        piece.referenceOpacity = opacity
+        piece.updatedAt = Date()
+        try context.save()
+    }
+
     // MARK: - Single-frame shims (V1 API, delegates to sequence methods)
 
     /// Loads a Frame for the given piece. Delegates to `loadFrames` which handles all
@@ -141,6 +152,8 @@ final class PieceRepository {
                                                    activeFrameIndex: source.activeFrameIndex,
                                                    fps: source.fps)
         copy.thumbnail = piece.thumbnail
+        copy.referenceImageData = piece.referenceImageData
+        copy.referenceOpacity = piece.referenceOpacity
         if let original = piece.name, !original.isEmpty {
             copy.name = "\(original) copy"
         } else {

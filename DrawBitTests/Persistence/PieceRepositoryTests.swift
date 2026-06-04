@@ -92,4 +92,29 @@ final class PieceRepositoryTests: XCTestCase {
         XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(piece.frameData),
                       "Loading a V1 blob should re-save as a V2 sequence")
     }
+
+    func testSaveReferenceRoundTrips() throws {
+        let piece = try repo.createPiece(size: .s16)
+        let data = Data([1, 2, 3, 4, 5])
+        try repo.saveReference(piece: piece, imageData: data, opacity: 0.5)
+
+        let loaded = try XCTUnwrap(try repo.allPieces().first { $0.id == piece.id })
+        XCTAssertEqual(loaded.referenceImageData, data)
+        XCTAssertEqual(loaded.referenceOpacity, 0.5, accuracy: 0.0001)
+    }
+
+    func testSaveReferenceNilClearsImage() throws {
+        let piece = try repo.createPiece(size: .s16)
+        try repo.saveReference(piece: piece, imageData: Data([7, 7]), opacity: 0.4)
+        try repo.saveReference(piece: piece, imageData: nil, opacity: 0.4)
+        XCTAssertNil(piece.referenceImageData)
+    }
+
+    func testDuplicateCopiesReference() throws {
+        let piece = try repo.createPiece(size: .s16)
+        try repo.saveReference(piece: piece, imageData: Data([9, 9]), opacity: 0.6)
+        let dup = try repo.duplicate(piece: piece)
+        XCTAssertEqual(dup.referenceImageData, Data([9, 9]))
+        XCTAssertEqual(dup.referenceOpacity, 0.6, accuracy: 0.0001)
+    }
 }
