@@ -23,6 +23,15 @@ final class Piece {
     var createdAt: Date
     var updatedAt: Date
 
+    /// Optional tracing reference photo, stored as a size-capped JPEG (see
+    /// `ReferenceImageProcessor`). Display-only: never composited, never exported.
+    /// External storage keeps the row light. Nil = no reference.
+    @Attribute(.externalStorage) var referenceImageData: Data?
+
+    /// Fade applied to the reference photo behind the canvas, 0...1. Persisted so a
+    /// piece reopens as the user left it. Default chosen for a readable lightbox look.
+    var referenceOpacity: Double = 0.35
+
     var size: CanvasSize {
         get { CanvasSize(rawValue: sizeRaw) ?? .s32 }
         set { sizeRaw = newValue.rawValue }

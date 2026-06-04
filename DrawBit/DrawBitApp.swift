@@ -25,12 +25,34 @@ struct DrawBitApp: App {
         let inMemory = ProcessInfo.processInfo.arguments.contains("-UITest-reset")
         let schema = Schema(versionedSchema: DrawBitSchemaV1.self)
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
-        // SchemaMigrationPlan is wired even with zero stages today — the moment
-        // a schema-changing V2 is added, the container reload becomes safe
-        // without an extra ship-day scramble. See `DrawBitSchema.swift`.
-        return try! ModelContainer(for: schema,
-                                   migrationPlan: DrawBitMigrationPlan.self,
-                                   configurations: [config])
+        // The single declared schema (V1) tracks the live model, which now carries the
+        // reference-photo fields. Adding optional/defaulted attributes is handled by
+        // SwiftData's inferred lightweight migration when an older on-disk store is
+        // opened — no extra VersionedSchema or stage is needed. The plan stays wired
+        // (empty stages) so a future reshaping migration has a home. See `DrawBitSchema.swift`.
+        func build() throws -> ModelContainer {
+            try ModelContainer(for: schema,
+                               migrationPlan: DrawBitMigrationPlan.self,
+                               configurations: [config])
+        }
+        do {
+            return try build()
+        } catch {
+            // The on-disk store can't be opened or migrated — e.g. it was written by an
+            // incompatible build (common during development) or a migration failed on a
+            // device. Crashing on launch would brick the app. Instead, move the store
+            // ASIDE (never delete — it stays recoverable) and start fresh. In-memory
+            // stores can't reach this path, so a failure there is genuinely fatal.
+            guard !inMemory else {
+                fatalError("In-memory model store failed to initialize: \(error)")
+            }
+            StoreRecovery.moveStoreAside(at: config.url)
+            do {
+                return try build()
+            } catch {
+                fatalError("DrawBit could not open or recreate its data store: \(error)")
+            }
+        }
     }()
 
     var body: some Scene {

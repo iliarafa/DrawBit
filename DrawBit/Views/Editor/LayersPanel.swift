@@ -5,6 +5,9 @@ struct LayersPanel: View {
     let isPresented: Bool
     let onRenameLayer: (UUID, String) -> Void
     let onStructuralChange: () -> Void
+    let onReferenceImport: (Data) -> Void
+    let onReferenceRemove: () -> Void
+    let onReferenceOpacityCommit: () -> Void
     let onDismiss: () -> Void
 
     @State private var confirmDeleteLayerID: UUID?
@@ -122,6 +125,13 @@ struct LayersPanel: View {
                         }
                         Button("Cancel", role: .cancel) { confirmDeleteLayerID = nil }
                     }
+                    Divider().overlay(Color.white.opacity(0.08))
+                    ReferenceRow(
+                        state: state,
+                        onImport: onReferenceImport,
+                        onRemove: onReferenceRemove,
+                        onOpacityCommit: onReferenceOpacityCommit
+                    )
                 }
                 .frame(maxWidth: .infinity)
                 .frame(width: 360)

@@ -265,6 +265,26 @@ These are the rules the implementation must uphold so pixel-art output is crisp 
 
 Layers · animation frames · selection / marquee · symmetry · palette import / PICO-8 style fixed palettes · pressure-sensitive alpha · dithering brushes · rectangle / line / shape tools · iCloud sync · iPhone layout · Mac Catalyst · onboarding or tutorials · in-app purchases · any network calls.
 
+## Reference photo (tracing)
+
+*Added post-v1 (2026-06-04).* A piece may carry one **reference photo** for tracing. It
+is a display-only, dimmed backdrop rendered behind the canvas — it is **not** a `Layer`:
+it never flows through `PixelGrid`/`Compositor` and never appears in any export, so the
+"alpha is 0 or 255" and "topmost opaque wins" invariants are untouched.
+
+- Stored on `Piece` as a size-capped JPEG (`referenceImageData`, ≤1024px longest edge via
+  `ReferenceImageProcessor`, pinned to sRGB) plus a fade value (`referenceOpacity`).
+- Rendered smooth (`.interpolation(.high)`, aspect-fit) at the back of the canvas
+  `ZStack`, following the view transform and hidden during playback — mirroring the
+  onion-skin overlay.
+- Controlled from a pinned "Reference" row at the bottom of the Layers panel: thumbnail,
+  show/hide, fade slider, and add/replace/remove (system `PhotosPicker`).
+- Add/replace/remove/fade are not undoable (they behave like a setting).
+- Persistence uses inferred lightweight migration on the single existing schema (no new
+  `VersionedSchema`); see `DrawBitSchema.swift`.
+
+Full design: `docs/superpowers/specs/2026-06-03-reference-photo-design.md`.
+
 ## Open questions
 
 None remaining — all decisions captured above.
