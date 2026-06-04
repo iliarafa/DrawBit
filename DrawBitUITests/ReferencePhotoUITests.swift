@@ -26,9 +26,10 @@ final class ReferencePhotoUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["ReferenceRow"].waitForExistence(timeout: 15))
 
         // The empty-state picker affordance is present. PhotosPicker doesn't propagate
-        // .accessibilityIdentifier through the UIKit bridge, so the button is matched
-        // by its .accessibilityLabel("Reference-pick") instead.
-        XCTAssertTrue(app.buttons["Reference-pick"].waitForExistence(timeout: 15))
+        // .accessibilityIdentifier through the UIKit bridge, so the button is matched by
+        // its human-readable .accessibilityLabel, which is "Add reference photo" while no
+        // reference exists (it becomes "Replace reference photo" once one is set).
+        XCTAssertTrue(app.buttons["Add reference photo"].waitForExistence(timeout: 15))
 
         // With no reference yet, the remove/toggle controls are absent.
         XCTAssertFalse(app.buttons["Reference-remove"].waitForExistence(timeout: 1))
