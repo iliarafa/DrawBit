@@ -19,6 +19,10 @@ struct GalleryView: View {
 
     private let columns = [GridItem(.adaptive(minimum: 120), spacing: 12)]
 
+    /// Uniform inset for the gallery's edge-anchored tiles (the "+" cell at
+    /// top-left and the FM tile at bottom-left) so they sit as a balanced pair.
+    private let edgeInset: CGFloat = 30
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -37,26 +41,30 @@ struct GalleryView: View {
                             thumbnailCell(for: piece)
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 28)
-                    .padding(.bottom, 24)
+                    .padding(edgeInset)
                 }
                 .scrollContentBackground(.hidden)
             }
             .background(Color(white: 0.10).ignoresSafeArea())
-            // FM is pinned to the bottom-left of the gallery viewport as a
-            // fixed overlay rather than a grid cell. The 120pt square matches
-            // a grid tile so it visually echoes the row above; the leading
-            // and bottom paddings match the grid's own paddings so the FM
-            // tile aligns with the leftmost column and rests at the same
-            // bottom offset. Inline play/pause and the body-tap-to-push-
+            // FM is pinned to the bottom-RIGHT of the gallery viewport as a
+            // fixed overlay rather than a grid cell, placing it diagonally
+            // opposite the "+" tile (top-left of the grid) so the two
+            // edge-anchored tiles balance the empty space across the screen.
+            // The 120pt square matches a grid tile; the trailing and bottom
+            // paddings reuse `edgeInset` so it mirrors the grid's own margins.
+            // The tile sits in a full-screen, safe-area-ignoring frame so its
+            // `edgeInset` padding is measured from the PHYSICAL screen edges on
+            // both the trailing and bottom sides — otherwise the bottom gap
+            // would stack on top of the home-indicator safe area and read as
+            // ~double the side gap. Inline play/pause and the body-tap-to-push-
             // `FMScreen` behaviour are unchanged.
-            .overlay(alignment: .bottomLeading) {
+            .overlay {
                 FMTile()
                     .frame(width: 120, height: 120)
                     .onTapGesture { showingFM = true }
-                    .padding(.leading, 20)
-                    .padding(.bottom, 24)
+                    .padding(edgeInset)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .ignoresSafeArea()
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showingNewSheet) {
