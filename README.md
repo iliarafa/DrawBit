@@ -1,6 +1,6 @@
 # DrawBit
 
-A native iPad pixel-art studio: draw on fixed-size canvases with layers, build frame-by-frame animations, listen to a built-in chiptune station while you work, and export PNGs, animated GIF/APNG, or sprite sheets. Fully offline, no accounts.
+A native iPad pixel-art studio: draw on fixed-size canvases with layers, build frame-by-frame animations, listen to a built-in ambient-music station while you work, and export PNGs, animated GIF/APNG, or sprite sheets. Fully offline, no accounts.
 
 ## Features
 
@@ -9,7 +9,7 @@ A native iPad pixel-art studio: draw on fixed-size canvases with layers, build f
 - **Layers:** up to 16 per frame — add, duplicate, delete, reorder (drag), rename, plus per-layer visibility and lock. Composited with straight-alpha.
 - **Reference photo (tracing):** attach one photo per piece, shown dimmed and smooth behind the canvas to trace over on a new layer. Display-only — never composited or exported. Adjustable fade, show/hide, and add / replace / remove from the Layers panel.
 - **Frame-by-frame animation:** up to 60 frames with a timeline strip — add blank/duplicate frames, reorder, rename, delete, scrub, and play back at 4 / 8 / 12 / 24 / 30 / 60 fps with optional onion-skinning.
-- **DrawBit FM:** a built-in looping audio station pinned to the gallery footer (play / pause / next / previous), with background-audio playback so it keeps going across navigation.
+- **DrawBit FM:** a built-in looping ambient-music station pinned to the gallery footer (play / pause / next / previous), with background-audio playback so it keeps going across navigation.
 - **Color picker + recent colors:** full-spectrum picker with a recent-colors palette (last 23).
 - **Gallery-first UI:** thumbnails of your pieces; tap to edit, long-press for Rename / Duplicate / Delete.
 - **Procreate-style canvas transform:** two-finger pan + pinch-zoom + rotation (scale clamped to 0.25×–40×, rotation snaps to 0° within ~4°, two-finger double-tap resets).
