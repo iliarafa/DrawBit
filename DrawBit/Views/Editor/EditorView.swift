@@ -78,6 +78,17 @@ struct EditorView: View {
                     saveCurrentFrame()
                 },
                 onStructuralChange: { saveCurrentFrame() },
+                onReferenceImport: { rawData in
+                    if let processed = ReferenceImageProcessor.process(rawData) {
+                        state.setReference(imageData: processed)
+                        saveReference()
+                    }
+                },
+                onReferenceRemove: {
+                    state.setReference(imageData: nil)
+                    saveReference()
+                },
+                onReferenceOpacityCommit: { saveReference() },
                 onDismiss: { showingLayersPanel = false }
             )
         }
