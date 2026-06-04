@@ -41,7 +41,14 @@ struct ReferenceRow: View {
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
+                // PhotosPicker inherits the parent VStack's accessibilityIdentifier unless
+                // we explicitly give it its own element with a distinct identifier. Using
+                // .accessibilityIdentifier alone on PhotosPicker doesn't override the parent's
+                // inherited identifier in XCUITest. Combining with .accessibilityLabel and
+                // .accessibilityAddTraits forces a clean, standalone accessibility element.
+                .accessibilityLabel("Reference-pick")
                 .accessibilityIdentifier("Reference-pick")
+                .accessibilityAddTraits(.isButton)
                 if hasReference {
                     Button(role: .destructive) { confirmRemove = true } label: {
                         Image(systemName: "trash")
