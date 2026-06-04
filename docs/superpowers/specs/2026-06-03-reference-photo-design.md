@@ -59,16 +59,21 @@ var referenceOpacity: Double                                 // 0...1, default 0
 
 ### Schema migration
 
-Follow the scaffolding already documented in `DrawBitSchema.swift`:
-
-1. Declare `DrawBitSchemaV2: VersionedSchema` (version `2,0,0`) listing the same models.
-2. Add a `MigrationStage.lightweight(fromVersion: V1, toVersion: V2)` to
-   `DrawBitMigrationPlan` (new optional attributes → lightweight is sufficient).
-3. Append V2 to `schemas`, append the stage to `stages`, and point the `Schema(...)`
-   construction in `DrawBitApp.swift` at the latest version.
+**Inferred lightweight migration, single schema — no new VersionedSchema.** The fields
+(`referenceImageData` optional, `referenceOpacity` defaulted) are purely additive, so
+SwiftData migrates an older on-disk store automatically when it opens the updated live
+model. A second `DrawBitSchemaV2` is deliberately NOT added: `DrawBitSchemaV1` lists the
+*live* model types (not frozen snapshots), so a V2 listing the same live types would
+compute an identical checksum and CoreData aborts with "Duplicate version checksums
+detected" when the on-disk migration plan is validated at launch. `DrawBitSchemaV1` stays
+the single declared schema (now tracking the extended `Piece`), `DrawBitMigrationPlan`
+keeps empty stages, and `DrawBitApp.swift` continues to build the container with V1 +
+the plan. See the expanded doc comment in `DrawBitSchema.swift` for how a future
+*reshaping* migration would first freeze V1 into snapshot types before adding a real V2.
 
 Existing pieces migrate with `referenceImageData == nil` (no reference) and the default
-opacity.
+opacity. `MigrationTests.testOnDiskContainerWithPlanRoundTripsReferenceFields` covers the
+production on-disk construction + round-trip.
 
 ### State (`EditorState`)
 
