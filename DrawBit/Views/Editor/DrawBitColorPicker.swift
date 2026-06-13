@@ -112,15 +112,18 @@ struct DrawBitColorPicker: View {
 
     private var paletteGrid: some View {
         VStack(spacing: 14) {
-            if !olderRecents.isEmpty {
+            if !recentHistory.isEmpty {
                 historySection
             }
             swatchGrid(hexes: Self.db32Hex, columns: 8)
         }
     }
 
-    private var olderRecents: [String] {
-        Array(recentHex.dropFirst(RecentColors.maxSwatches).prefix(16))
+    /// All recent colors visible inside the picker. The toolbar no longer
+    /// surfaces recents (it shows only the active color), so this is the
+    /// single place users see their color history.
+    private var recentHistory: [String] {
+        Array(recentHex.prefix(19))
     }
 
     private var historySection: some View {
@@ -128,7 +131,7 @@ struct DrawBitColorPicker: View {
             Text("HISTORY")
                 .font(.pixel(9))
                 .foregroundStyle(.white.opacity(0.55))
-            swatchGrid(hexes: olderRecents, columns: 8)
+            swatchGrid(hexes: recentHistory, columns: 8)
         }
     }
 

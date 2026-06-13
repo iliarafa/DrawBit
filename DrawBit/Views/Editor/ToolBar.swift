@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// The editor's bottom toolbar: drawing tools, undo/redo, clear, and the recent
-/// colors — all distributed evenly across the full width (each control gets an
-/// equal-width slice), with light dividers marking the groups.
+/// The editor's bottom toolbar: drawing tools, undo/redo, clear, and the active
+/// color swatch — all distributed evenly across the full width (each control
+/// gets an equal-width slice), with light dividers marking the groups. Tapping
+/// the swatch opens the color picker; recent colors live inside the picker.
 struct ToolBar: View {
     let state: EditorState
     @Binding var selectedColor: RGBA
-    @Binding var recentHex: [String]
     var onUndo: () -> Void
     var onRedo: () -> Void
     var onClear: () -> Void
@@ -57,33 +57,12 @@ struct ToolBar: View {
 
             divider
 
-            ForEach(recentHex.prefix(RecentColors.maxSwatches), id: \.self) { hex in
-                SwatchButton(
-                    hex: hex,
-                    isSelected: RGBA(hex: hex) == selectedColor,
-                    action: {
-                        if RGBA(hex: hex) == selectedColor {
-                            onRequestColorPicker()
-                        } else if let c = RGBA(hex: hex) {
-                            selectedColor = c
-                        }
-                    }
-                )
-                .frame(maxWidth: .infinity)
-            }
-
             Button(action: onRequestColorPicker) {
-                Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 26, height: 26)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(Color.white.opacity(0.25), style: .init(lineWidth: 1, dash: [2, 2]))
-                    )
+                colorSwatchLabel(color: selectedColor)
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("AddColor")
+            .accessibilityIdentifier("ColorSwatch")
+            .accessibilityLabel("COLOR")
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
@@ -101,6 +80,28 @@ struct ToolBar: View {
                 .font(.pixel(8))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
+        }
+        .frame(minWidth: 44, minHeight: 44)
+    }
+
+    /// Mirrors `iconLabel`'s 20pt-glyph + 8pt-pixel-label shape, but renders a
+    /// filled rounded square in the current color instead of an SF Symbol. The
+    /// 1pt outline keeps very dark / very light fills legible against the
+    /// near-black toolbar background.
+    private func colorSwatchLabel(color: RGBA) -> some View {
+        VStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color(rgba: color))
+                .frame(width: 22, height: 22)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                )
+            Text("COLOR")
+                .font(.pixel(8))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .foregroundStyle(Color.white.opacity(0.85))
         }
         .frame(minWidth: 44, minHeight: 44)
     }

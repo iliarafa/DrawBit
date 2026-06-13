@@ -82,6 +82,7 @@ struct LayersPanel: View {
                                 .foregroundStyle(dupDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("LayersPanel-duplicate")
                         .disabled(dupDisabled)
 
                         let delDisabled = state.frame.layers.count <= 1 || state.isPlaying
@@ -108,6 +109,7 @@ struct LayersPanel: View {
                                 .foregroundStyle(delDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("LayersPanel-delete")
                         .disabled(delDisabled)
 
                         Spacer()

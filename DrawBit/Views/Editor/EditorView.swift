@@ -232,7 +232,6 @@ struct EditorView: View {
                 get: { state.color },
                 set: { state.color = $0 }
             ),
-            recentHex: $recentHex,
             onUndo: {
                 state.undo()
                 saveCurrentFrame()

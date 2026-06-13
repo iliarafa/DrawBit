@@ -81,9 +81,7 @@ final class LayersPanelUITests: XCTestCase {
         XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 15))
         app.buttons["LAYERS"].tap()
 
-        // Add a second layer via the action bar's + button (LayersPanel-plus).
-        // We use the explicit accessibility identifier to avoid ambiguity with the
-        // "plus" SF symbol that also appears in the RecentColorsStrip.
+        // Add a second layer via the action bar's ADD button (LayersPanel-plus).
         // addLayer names the new layer by count, so the result is "Layer 2".
         XCTAssertTrue(app.buttons["LayersPanel-plus"].waitForExistence(timeout: 15))
         app.buttons["LayersPanel-plus"].tap()
@@ -103,8 +101,8 @@ final class LayersPanelUITests: XCTestCase {
 
         // Delete Layer 2. The tap above made it non-empty, so a confirmation
         // dialog should appear.
-        XCTAssertTrue(app.buttons["trash"].firstMatch.waitForExistence(timeout: 15))
-        app.buttons["trash"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["LayersPanel-delete"].waitForExistence(timeout: 15))
+        app.buttons["LayersPanel-delete"].tap()
 
         // Confirm the delete if the dialog appeared (tap should have made the layer non-empty,
         // but tolerate either path in case CanvasView's tap mapping fell on a transparent pixel).
@@ -133,12 +131,12 @@ final class LayersPanelUITests: XCTestCase {
         app.buttons["LAYERS"].tap()
         XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 15))
 
-        // Add a second layer via doc.on.doc (duplicateActiveLayer). This test covers
-        // the duplicate code path and the persistence round-trip; testAddDrawDeleteFlow
-        // covers the addLayer (LayersPanel-plus) code path separately.
-        // The duplicate creates a layer named "Layer 1 copy".
-        XCTAssertTrue(app.buttons["doc.on.doc"].firstMatch.waitForExistence(timeout: 15))
-        app.buttons["doc.on.doc"].firstMatch.tap()
+        // Add a second layer via the DUPE button (duplicateActiveLayer). This test
+        // covers the duplicate code path and the persistence round-trip;
+        // testAddDrawDeleteFlow covers the addLayer (LayersPanel-plus) code path
+        // separately. The duplicate creates a layer named "Layer 1 copy".
+        XCTAssertTrue(app.buttons["LayersPanel-duplicate"].waitForExistence(timeout: 15))
+        app.buttons["LayersPanel-duplicate"].tap()
         XCTAssertTrue(app.staticTexts["Layer 1 copy"].waitForExistence(timeout: 15))
 
         // Dismiss panel by tapping LAYERS again, then tap canvas to draw on the new layer.
@@ -151,8 +149,8 @@ final class LayersPanelUITests: XCTestCase {
         // confirmation dialog should appear; if for any reason it doesn't,
         // the empty-fast-path will have deleted it without confirmation).
         app.buttons["LAYERS"].tap()
-        XCTAssertTrue(app.buttons["trash"].firstMatch.waitForExistence(timeout: 15))
-        app.buttons["trash"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["LayersPanel-delete"].waitForExistence(timeout: 15))
+        app.buttons["LayersPanel-delete"].tap()
         if app.buttons["Delete"].waitForExistence(timeout: 1) {
             app.buttons["Delete"].tap()
         }
