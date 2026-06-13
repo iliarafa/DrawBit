@@ -55,6 +55,7 @@ struct LayersPanel: View {
 
                     // Action bar — wired in stage 3.
                     HStack(spacing: 12) {
+                        let addDisabled = state.frame.layers.count >= Frame.maxLayers || state.isPlaying
                         Button {
                             state.commitFloatingSelectionIfAny()
                             state.beginStructuralSnapshot()
@@ -62,11 +63,14 @@ struct LayersPanel: View {
                             state.commitStructuralChange()
                             onStructuralChange()
                         } label: {
-                            Image(systemName: "plus")
+                            actionButton(systemImage: "plus", title: "ADD")
+                                .foregroundStyle(addDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
                         }
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier("LayersPanel-plus")
-                        .disabled(state.frame.layers.count >= Frame.maxLayers || state.isPlaying)
+                        .disabled(addDisabled)
 
+                        let dupDisabled = state.frame.layers.count >= Frame.maxLayers || state.isPlaying
                         Button {
                             state.commitFloatingSelectionIfAny()
                             state.beginStructuralSnapshot()
@@ -74,10 +78,13 @@ struct LayersPanel: View {
                             state.commitStructuralChange()
                             onStructuralChange()
                         } label: {
-                            Image(systemName: "doc.on.doc")
+                            actionButton(systemImage: "doc.on.doc", title: "DUPE")
+                                .foregroundStyle(dupDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
                         }
-                        .disabled(state.frame.layers.count >= Frame.maxLayers || state.isPlaying)
+                        .buttonStyle(.plain)
+                        .disabled(dupDisabled)
 
+                        let delDisabled = state.frame.layers.count <= 1 || state.isPlaying
                         Button {
                             // Commit any floating marquee FIRST so the isEmpty check sees
                             // the post-commit layer pixels — without this reorder, a
@@ -97,15 +104,16 @@ struct LayersPanel: View {
                                 confirmDeleteLayerID = active.id
                             }
                         } label: {
-                            Image(systemName: "trash")
+                            actionButton(systemImage: "trash", title: "DELETE")
+                                .foregroundStyle(delDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
                         }
-                        .disabled(state.frame.layers.count <= 1 || state.isPlaying)
+                        .buttonStyle(.plain)
+                        .disabled(delDisabled)
 
                         Spacer()
                     }
-                    .foregroundStyle(.white)
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 6)
                     .confirmationDialog(
                         "Delete this layer?",
                         isPresented: Binding(
@@ -188,6 +196,21 @@ struct LayersPanel: View {
         .environment(\.editMode, editMode == .active ? .constant(.active) : .constant(.inactive))
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+    }
+
+    /// Toolbar-consistent button: SF Symbol over an uppercase pixel-font label.
+    /// Mirrors `ToolBar.iconLabel` / `FramesStrip.stripButton` so the panel's
+    /// action bar matches the rest of the editor chrome.
+    private func actionButton(systemImage: String, title: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: systemImage)
+                .font(.system(size: 20, weight: .regular))
+            Text(title)
+                .font(.pixel(8))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .frame(minWidth: 44, minHeight: 44)
     }
 
     private func performMove(indices: IndexSet, newOffset: Int) {
