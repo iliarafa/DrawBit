@@ -181,7 +181,7 @@ struct EditorView: View {
                     .resizable()
                     .interpolation(.none)
                     .antialiased(false)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 26, height: 26)
                     .frame(width: 44, height: 44)
             }
             .foregroundStyle(showingLayersPanel ? Self.layersActiveGreen : .white)
@@ -214,7 +214,16 @@ struct EditorView: View {
                 commitFloatingMarqueeAndPersist()
                 showingShareSheet = true
             } label: {
-                PixelArtIcon(pattern: Self.shareIcon, size: 22)
+                // Larger inner frame (30 vs the 22 used by LAYERS/ANIMATE) —
+                // the share sprite is drawn at finer pixel detail than the
+                // 11×11 pattern icons, so at 22pt its strokes go sub-point
+                // and read as blurry. 30pt brings strokes back to ~1pt.
+                Image("ShareIcon")
+                    .resizable()
+                    .interpolation(.none)
+                    .antialiased(false)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 30, height: 30)
                     .frame(width: 44, height: 44)
             }
             .disabled(state.isPlaying)
@@ -604,21 +613,5 @@ struct EditorView: View {
         "...........",
     ]
 
-    /// Open-top box with an arrow rising through the gap. Box is 9×7 (rather
-    /// than 9×6) so it doesn't read as visually compressed next to the 9×9
-    /// play triangle.
-    private static let shareIcon: [String] = [
-        ".....#.....",
-        "....###....",
-        "...#####...",
-        ".....#.....",
-        ".###.#.###.",
-        ".#...#...#.",
-        ".#.......#.",
-        ".#.......#.",
-        ".#.......#.",
-        ".#.......#.",
-        ".#########.",
-    ]
 }
 
