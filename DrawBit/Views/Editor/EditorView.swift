@@ -604,15 +604,17 @@ struct EditorView: View {
         "...........",
     ]
 
-    /// Open-top box with an arrow rising through the gap.
+    /// Open-top box with an arrow rising through the gap. Box is 9×7 (rather
+    /// than 9×6) so it doesn't read as visually compressed next to the 9×9
+    /// play triangle.
     private static let shareIcon: [String] = [
         ".....#.....",
         "....###....",
         "...#####...",
         ".....#.....",
-        ".....#.....",
         ".###.#.###.",
         ".#...#...#.",
+        ".#.......#.",
         ".#.......#.",
         ".#.......#.",
         ".#.......#.",
