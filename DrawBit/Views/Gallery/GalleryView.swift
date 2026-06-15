@@ -77,7 +77,8 @@ struct GalleryView: View {
                         // v1: swallow; surface via alert later if needed
                     }
                 }
-                .presentationDetents([.medium])
+                // Height sized for the 7 size rows + nav bar (~48pt × 7 + chrome).
+                .presentationDetents([.height(420)])
                 .presentationCornerRadius(0)
             }
             .navigationDestination(item: $selectedPiece) { piece in

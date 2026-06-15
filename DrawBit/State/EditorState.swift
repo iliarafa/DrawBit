@@ -32,6 +32,11 @@ final class EditorState {
     /// Display-only — never written to pixel storage. Hidden during playback.
     var isOnionSkinEnabled: Bool = false
 
+    /// Mirror strokes across the vertical centerline as the user draws.
+    /// Session-only — resets when the editor closes. Affects pencil / eraser /
+    /// fill / colorSwap; eyedropper and marquee are unaffected.
+    var isMirrorEnabled: Bool = false
+
     var translation: CGSize = .zero
     var scale: CGFloat = 1.0
     var rotation: CGFloat = 0.0

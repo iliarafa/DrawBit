@@ -230,11 +230,15 @@ struct ShareSheet: View {
     /// number to keep the math integer (each source pixel becomes an exact N×N
     /// block on output — see `PNGExporter.swift:24-25`, nearest-neighbour everywhere).
     static func scales(for size: CanvasSize) -> [Int] {
+        // Odd sizes mirror their even neighbour's multipliers — output edges
+        // land within a few % of 128/256/512/1024/2048 (15×64 = 960,
+        // 31×32 = 992, 63×32 = 2016) which is well inside the platform-resize
+        // tolerance that motivated the 1024-px+ default in the first place.
         switch size {
-        case .s16:  [8, 16, 32, 64, 128]   // 128, 256, 512, 1024, 2048
-        case .s32:  [4, 8, 16, 32, 64]     // 128, 256, 512, 1024, 2048
-        case .s64:  [2, 4, 8, 16, 32]      // 128, 256, 512, 1024, 2048
-        case .s128: [1, 2, 4, 8, 16]       // 128, 256, 512, 1024, 2048
+        case .s15, .s16:  [8, 16, 32, 64, 128]   // 128, 256, 512, 1024, 2048
+        case .s31, .s32:  [4, 8, 16, 32, 64]     // 128, 256, 512, 1024, 2048
+        case .s63, .s64:  [2, 4, 8, 16, 32]      // 128, 256, 512, 1024, 2048
+        case .s128:       [1, 2, 4, 8, 16]       // 128, 256, 512, 1024, 2048
         }
     }
 
@@ -247,10 +251,10 @@ struct ShareSheet: View {
     /// bigger-by-default for this reason).
     static func defaultScale(for size: CanvasSize) -> Int {
         switch size {
-        case .s16:  64   // 1024 px
-        case .s32:  32   // 1024 px
-        case .s64:  32   // 2048 px
-        case .s128: 16   // 2048 px
+        case .s15, .s16:  64   // 960 / 1024 px
+        case .s31, .s32:  32   //  992 / 1024 px
+        case .s63, .s64:  32   // 2016 / 2048 px
+        case .s128:       16   // 2048 px
         }
     }
 

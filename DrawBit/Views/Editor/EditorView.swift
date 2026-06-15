@@ -284,12 +284,20 @@ struct EditorView: View {
             return
         }
 
+        // Vertical-centerline mirror. mx == x on the center column of an odd
+        // grid, in which case the mirror call is a no-op duplicate that we
+        // skip so undo doesn't get phantom writes. Both writes live inside
+        // the same `mutateActiveLayerPixels` closure → one stroke snapshot.
+        let mx = state.size.dimension - 1 - x
+        let mirror = state.isMirrorEnabled && mx != x
+
         switch state.tool {
         case .pencil:
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
                 state.revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: (x, y))
                 Pencil.paint(on: &grid, at: (x, y), color: state.color)
+                if mirror { Pencil.paint(on: &grid, at: (mx, y), color: state.color) }
                 data = grid.data
             }
         case .eraser:
@@ -297,12 +305,14 @@ struct EditorView: View {
                 var grid = PixelGrid(data: data, size: state.size)
                 state.revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: (x, y))
                 Eraser.erase(on: &grid, at: (x, y))
+                if mirror { Eraser.erase(on: &grid, at: (mx, y)) }
                 data = grid.data
             }
         case .fill:
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
                 Fill.fill(on: &grid, at: (x, y), with: state.color)
+                if mirror { Fill.fill(on: &grid, at: (mx, y), with: state.color) }
                 data = grid.data
             }
         case .colorSwap:
@@ -310,9 +320,17 @@ struct EditorView: View {
             // Transparent pixels are skipped to avoid "tap empty area = paint everything".
             let picked = state.activeLayerPixelGrid.pixel(x: x, y: y)
             guard picked.a > 0, picked != state.color else { return }
+            // Mirror-sample BEFORE the first swap mutates the grid — otherwise
+            // the second sample would see post-swap pixels.
+            let mirrorPicked: RGBA? = {
+                guard mirror else { return nil }
+                let p = state.activeLayerPixelGrid.pixel(x: mx, y: y)
+                return (p.a > 0 && p != state.color) ? p : nil
+            }()
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
                 ColorSwap.swap(on: &grid, from: picked, to: state.color)
+                if let mp = mirrorPicked { ColorSwap.swap(on: &grid, from: mp, to: state.color) }
                 data = grid.data
             }
         case .eyedropper:

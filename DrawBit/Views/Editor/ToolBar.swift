@@ -25,6 +25,19 @@ struct ToolBar: View {
                 .frame(maxWidth: .infinity)
             }
 
+            // MIRROR — stroke-modifier toggle. Lives next to the tools because
+            // it changes how every tool draws.
+            Button {
+                state.isMirrorEnabled.toggle()
+            } label: {
+                iconLabel(systemImage: "arrow.left.and.right", title: "Mirror")
+                    .foregroundStyle(state.isMirrorEnabled ? Color.white : Color.white.opacity(0.55))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("Mirror")
+            .accessibilityLabel("Mirror")
+            .frame(maxWidth: .infinity)
+
             divider
 
             Button(action: onUndo) {

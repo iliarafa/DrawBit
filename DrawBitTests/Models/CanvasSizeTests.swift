@@ -3,12 +3,15 @@ import XCTest
 
 final class CanvasSizeTests: XCTestCase {
     func testAllCasesExist() {
-        XCTAssertEqual(CanvasSize.allCases, [.s16, .s32, .s64, .s128])
+        XCTAssertEqual(CanvasSize.allCases, [.s15, .s16, .s31, .s32, .s63, .s64, .s128])
     }
 
     func testDimensionMatchesRaw() {
+        XCTAssertEqual(CanvasSize.s15.dimension, 15)
         XCTAssertEqual(CanvasSize.s16.dimension, 16)
+        XCTAssertEqual(CanvasSize.s31.dimension, 31)
         XCTAssertEqual(CanvasSize.s32.dimension, 32)
+        XCTAssertEqual(CanvasSize.s63.dimension, 63)
         XCTAssertEqual(CanvasSize.s64.dimension, 64)
         XCTAssertEqual(CanvasSize.s128.dimension, 128)
     }
