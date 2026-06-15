@@ -11,7 +11,6 @@ struct LayersPanel: View {
     let onDismiss: () -> Void
 
     @State private var confirmDeleteLayerID: UUID?
-    @State private var editMode: EditMode = .inactive
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -26,19 +25,6 @@ struct LayersPanel: View {
                     HStack {
                         Text("LAYERS").font(.pixel(11)).foregroundStyle(.white.opacity(0.85))
                         Spacer()
-                        Button {
-                            if UITestSupport.isRunning {
-                                editMode = (editMode == .active) ? .inactive : .active
-                            } else {
-                                withAnimation(.easeInOut(duration: 0.18)) {
-                                    editMode = (editMode == .active) ? .inactive : .active
-                                }
-                            }
-                        } label: {
-                            Text(editMode == .active ? "DONE" : "EDIT")
-                                .font(.pixel(11))
-                        }
-                        .foregroundStyle(.white.opacity(0.85))
                         Button {
                             onDismiss()
                         } label: {
@@ -150,54 +136,54 @@ struct LayersPanel: View {
             }
         }
         .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.18), value: isPresented)
-        .onChange(of: isPresented) { _, nowPresented in
-            if !nowPresented {
-                editMode = .inactive
-            }
-        }
     }
 
     // MARK: - Layer list
 
+    /// `ScrollView + LazyVStack` instead of `List` — SwiftUI `List` rows
+    /// intercept `.dropDestination` events at the cell level, so drops over a
+    /// row never fire and the dragged row springs back. The FramesStrip uses
+    /// the same pattern for its drag-to-reorder.
     private var layerList: some View {
-        List {
-            ForEach(state.frame.layers.reversed(), id: \.id) { layer in
-                LayerRow(
-                    layer: layer,
-                    size: state.size,
-                    isActive: layer.id == state.frame.activeLayerID,
-                    onTap: {
-                        state.commitFloatingSelectionIfAny()
-                        state.frame.setActive(id: layer.id)
-                        onStructuralChange()
-                    },
-                    onToggleVisible: {
-                        state.commitFloatingSelectionIfAny()
-                        state.beginStructuralSnapshot()
-                        state.frame.setVisible(id: layer.id, to: !layer.isVisible)
-                        state.commitStructuralChange()
-                        onStructuralChange()
-                    },
-                    onToggleLocked: {
-                        state.commitFloatingSelectionIfAny()
-                        state.beginStructuralSnapshot()
-                        state.frame.setLocked(id: layer.id, to: !layer.isLocked)
-                        state.commitStructuralChange()
-                        onStructuralChange()
-                    },
-                    isPulsing: state.lockPulseLayerID == layer.id,
-                    onRename: { newName in
-                        onRenameLayer(layer.id, newName)
-                    }
-                )
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
+        let count = state.frame.layers.count
+        return ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(Array(state.frame.layers.reversed().enumerated()), id: \.element.id) { displayIndex, layer in
+                    LayerRow(
+                        layer: layer,
+                        size: state.size,
+                        isActive: layer.id == state.frame.activeLayerID,
+                        onTap: {
+                            state.commitFloatingSelectionIfAny()
+                            state.frame.setActive(id: layer.id)
+                            onStructuralChange()
+                        },
+                        onToggleVisible: {
+                            state.commitFloatingSelectionIfAny()
+                            state.beginStructuralSnapshot()
+                            state.frame.setVisible(id: layer.id, to: !layer.isVisible)
+                            state.commitStructuralChange()
+                            onStructuralChange()
+                        },
+                        onToggleLocked: {
+                            state.commitFloatingSelectionIfAny()
+                            state.beginStructuralSnapshot()
+                            state.frame.setLocked(id: layer.id, to: !layer.isLocked)
+                            state.commitStructuralChange()
+                            onStructuralChange()
+                        },
+                        isPulsing: state.lockPulseLayerID == layer.id,
+                        onRename: { newName in
+                            onRenameLayer(layer.id, newName)
+                        },
+                        displayIndex: displayIndex,
+                        layerCount: count,
+                        onMoveByDisplayIndex: { from, to in performMove(displayFrom: from, displayTo: to) }
+                    )
+                }
             }
-            .onMove(perform: editMode == .active ? performMove : nil)
         }
-        .environment(\.editMode, editMode == .active ? .constant(.active) : .constant(.inactive))
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Toolbar-consistent button: SF Symbol over an uppercase pixel-font label.
@@ -215,11 +201,15 @@ struct LayersPanel: View {
         .frame(minWidth: 44, minHeight: 44)
     }
 
-    private func performMove(indices: IndexSet, newOffset: Int) {
-        guard let displayedFrom = indices.first else { return }
+    /// Drop-on-target reorder: the moved layer takes the target row's display slot.
+    /// Display order is the model layers reversed, so model index = count − 1 − display index.
+    private func performMove(displayFrom: Int, displayTo: Int) {
         let count = state.frame.layers.count
-        guard let modelTo = Frame.modelTargetIndex(displayedFrom: displayedFrom, newOffset: newOffset, count: count) else { return }
-        let modelFrom = count - 1 - displayedFrom
+        guard displayFrom != displayTo,
+              (0..<count).contains(displayFrom),
+              (0..<count).contains(displayTo) else { return }
+        let modelFrom = count - 1 - displayFrom
+        let modelTo = count - 1 - displayTo
         let id = state.frame.layers[modelFrom].id
 
         state.commitFloatingSelectionIfAny()

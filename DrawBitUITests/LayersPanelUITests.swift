@@ -25,8 +25,9 @@ final class LayersPanelUITests: XCTestCase {
         // The name is rendered as Text(layer.name) inside a List cell; look in cells if top-level lookup fails.
         XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 15))
 
-        // Long-press to enter rename mode.
-        app.staticTexts["Layer 1"].press(forDuration: 0.8)
+        // Tap the inline Rename (pencil) button on the row to enter rename mode.
+        XCTAssertTrue(app.buttons["Rename"].firstMatch.waitForExistence(timeout: 15))
+        app.buttons["Rename"].firstMatch.tap()
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         // Tap to establish keyboard focus, then select all existing text and replace with new name.
@@ -172,6 +173,41 @@ final class LayersPanelUITests: XCTestCase {
         app.buttons["LAYERS"].tap()
         XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 15))
         XCTAssertFalse(app.staticTexts["Layer 1 copy"].exists)
+    }
+
+    /// Layers reorder no longer requires entering an Edit mode: dragging a row
+    /// works inline like the FramesStrip does. This guards against the EDIT
+    /// button being re-added as a reorder gate.
+    func testReorderHasNoEditModeGate() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        // Fresh 32×32 piece.
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-32"].tap()
+
+        // Open the layers panel.
+        XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 15))
+        app.buttons["LAYERS"].tap()
+        XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 15))
+
+        // The EDIT button must not exist anywhere in the panel — it was removed
+        // along with the EditMode gating in favor of direct drag-to-reorder.
+        XCTAssertFalse(app.buttons["EDIT"].waitForExistence(timeout: 1),
+                       "EDIT button should be gone — reorder is now direct drag")
+
+        // DUPE creates "Layer 1 copy" — basic panel actions still work.
+        XCTAssertTrue(app.buttons["LayersPanel-duplicate"].waitForExistence(timeout: 15))
+        app.buttons["LayersPanel-duplicate"].tap()
+        XCTAssertTrue(app.staticTexts["Layer 1 copy"].waitForExistence(timeout: 15))
+
+        // The inline Rename (pencil) button still works.
+        XCTAssertTrue(app.buttons["Rename"].firstMatch.waitForExistence(timeout: 15))
+        app.buttons["Rename"].firstMatch.tap()
+        XCTAssertTrue(app.textFields.firstMatch.waitForExistence(timeout: 15))
     }
 
     func testVisibilityAndLockTogglesPersist() {
