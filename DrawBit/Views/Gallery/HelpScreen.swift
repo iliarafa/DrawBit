@@ -22,6 +22,10 @@ struct HelpScreen: View {
     /// full row; tapping again (or another tile) collapses / switches.
     @State private var expanded: String?
 
+    /// Shared tile height for both the collapsed and expanded states, so tapping a
+    /// tile changes only its width — the row never grows or shrinks vertically.
+    private static let tileHeight: CGFloat = 176
+
     private enum HelpIcon {
         case symbol(String)
         case pixel([String])
@@ -119,7 +123,7 @@ struct HelpScreen: View {
                 .accessibilityIdentifier(topic.id)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 120)
+        .frame(height: Self.tileHeight)
         .padding(.horizontal, 16)
         .background(Color(white: 0.07))
         .overlay(
@@ -141,10 +145,9 @@ struct HelpScreen: View {
             .multilineTextAlignment(.center)
             .lineSpacing(10)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 120)
-            .padding(.vertical, 28)
             .padding(.horizontal, 28)
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.tileHeight)
             .background(Color(white: 0.07))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
