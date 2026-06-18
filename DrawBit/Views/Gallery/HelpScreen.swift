@@ -171,11 +171,7 @@ struct HelpScreen: View {
         .frame(maxWidth: .infinity)
         .frame(height: Self.tileHeight)
         .padding(.horizontal, 16)
-        .background(Color(white: 0.07))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
-        )
+        .background(Color(white: 0.10))
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
         .onTapGesture { toggle(topic.id) }
@@ -193,11 +189,7 @@ struct HelpScreen: View {
             .padding(.horizontal, 28)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: Self.tileHeight)
-            .background(Color(white: 0.07))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.toolSelected, lineWidth: 1)
-            )
+            .background(Color(white: 0.10))
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
             .onTapGesture { toggle(topic.id) }
