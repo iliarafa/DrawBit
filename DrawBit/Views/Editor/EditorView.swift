@@ -200,7 +200,7 @@ struct EditorView: View {
                     showTimeline = true
                 }
             } label: {
-                PixelArtIcon(pattern: Self.animateIcon, size: 22)
+                PixelArtIcon(pattern: PixelArtIcon.playTriangle, size: 22)
                     .frame(width: 44, height: 44)
             }
             .foregroundStyle(showTimeline ? Self.animateActiveGreen : .white)
@@ -214,16 +214,10 @@ struct EditorView: View {
                 commitFloatingMarqueeAndPersist()
                 showingShareSheet = true
             } label: {
-                // Larger inner frame (30 vs the 22 used by LAYERS/ANIMATE) —
-                // the share sprite is drawn at finer pixel detail than the
-                // 11×11 pattern icons, so at 22pt its strokes go sub-point
-                // and read as blurry. 30pt brings strokes back to ~1pt.
-                Image("ShareIcon")
-                    .resizable()
-                    .interpolation(.none)
-                    .antialiased(false)
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 30, height: 30)
+                // Vector glyph drawn to match the LAYERS icon's stroke weight, at the
+                // same 26pt size. Inherits the white tint via the Canvas .foreground.
+                ShareGlyph()
+                    .frame(width: 26, height: 26)
                     .frame(width: 44, height: 44)
             }
             .disabled(state.isPlaying)
@@ -616,20 +610,49 @@ struct EditorView: View {
     /// emerald that reads as a clearly different state from ANIMATE's lime.
     private static let layersActiveGreen = Color(red: 0.20, green: 0.60, blue: 0.35)
 
-    /// Right-pointing play triangle.
-    private static let animateIcon: [String] = [
-        "...........",
-        ".#.........",
-        ".###.......",
-        ".#####.....",
-        ".#######...",
-        ".#########.",
-        ".#######...",
-        ".#####.....",
-        ".###.......",
-        ".#.........",
-        "...........",
-    ]
+}
 
+/// Top-bar SHARE glyph — a thin open-top box with a solid up-arrow, drawn to match the
+/// LAYERS icon's stroke weight (≈1.2pt at 26pt). A vector (scalable, crisp) that inherits
+/// the surrounding `foregroundStyle` via the Canvas `.foreground`, replacing the heavier
+/// ShareIcon PNG.
+private struct ShareGlyph: View {
+    var body: some View {
+        Canvas { ctx, sz in
+            let s = min(sz.width, sz.height)
+            let cx = s / 2
+            let style = StrokeStyle(lineWidth: s * 0.05, lineCap: .square, lineJoin: .miter)
+
+            // Open-top box: left wall → bottom → right wall, plus two short top stubs
+            // leaving a gap for the arrow shaft.
+            let bx0 = s * 0.18, bx1 = s * 0.82
+            let bt = s * 0.42, bb = s * 0.94
+            let stub = s * 0.16
+            var box = Path()
+            box.move(to: CGPoint(x: bx0, y: bt))
+            box.addLine(to: CGPoint(x: bx0, y: bb))
+            box.addLine(to: CGPoint(x: bx1, y: bb))
+            box.addLine(to: CGPoint(x: bx1, y: bt))
+            box.move(to: CGPoint(x: bx1, y: bt))
+            box.addLine(to: CGPoint(x: bx1 - stub, y: bt))
+            box.move(to: CGPoint(x: bx0, y: bt))
+            box.addLine(to: CGPoint(x: bx0 + stub, y: bt))
+            ctx.stroke(box, with: .foreground, style: style)
+
+            // Arrow shaft (runs from just under the head down into the box).
+            var shaft = Path()
+            shaft.move(to: CGPoint(x: cx, y: s * 0.28))
+            shaft.addLine(to: CGPoint(x: cx, y: s * 0.64))
+            ctx.stroke(shaft, with: .foreground, style: style)
+
+            // Solid up-arrowhead.
+            var head = Path()
+            head.move(to: CGPoint(x: cx, y: s * 0.06))
+            head.addLine(to: CGPoint(x: cx - s * 0.20, y: s * 0.30))
+            head.addLine(to: CGPoint(x: cx + s * 0.20, y: s * 0.30))
+            head.closeSubpath()
+            ctx.fill(head, with: .foreground)
+        }
+    }
 }
 

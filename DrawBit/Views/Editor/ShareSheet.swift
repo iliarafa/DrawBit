@@ -28,7 +28,7 @@ struct ShareSheet: View {
             switch self {
             case .png:         "PNG"
             case .gif:         "GIF"
-            case .apng:        "MP4"
+            case .apng:        "APNG"
             case .spriteSheet: "Sprite"
             }
         }

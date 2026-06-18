@@ -190,6 +190,22 @@ struct PixelArtIcon: View {
     let pattern: [String]
     let size: CGFloat
 
+    /// The editor's ANIMATE play triangle (11×11). Shared so the HELP page's
+    /// ANIMATION tile shows the exact same sprite the user taps above the canvas.
+    static let playTriangle: [String] = [
+        "...........",
+        ".#.........",
+        ".###.......",
+        ".#####.....",
+        ".#######...",
+        ".#########.",
+        ".#######...",
+        ".#####.....",
+        ".###.......",
+        ".#.........",
+        "...........",
+    ]
+
     var body: some View {
         Canvas { ctx, sz in
             let cols = pattern.first?.count ?? 0
