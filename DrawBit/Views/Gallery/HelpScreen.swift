@@ -4,10 +4,12 @@ import SwiftUI
 /// `info` button in the `GALLERY` header. Pure static content — no environment
 /// dependencies.
 ///
-/// Layout is a 2-column grid of icon tiles, one per topic, vertically centered
-/// between the back chip and a version footer. Each tile is a button: tapping it
-/// swaps its label in place from the topic title to the topic's instructions
-/// (and back). The ANIMATION tile reuses the editor's ANIMATE play sprite
+/// Layout is a 2-column grid of compact icon+title tiles, vertically centered
+/// between the back chip and a version footer. Tapping a tile extends it to span
+/// the full row (its row-mate gives way) and reveals that topic's instructions in
+/// big, well-spaced text — icon and title hidden so the copy gets the whole width.
+/// Single-selection: tapping again, or another tile, collapses / switches. The
+/// ANIMATION tile reuses the editor's ANIMATE play sprite
 /// (`PixelArtIcon.playTriangle`) so it reads as the same control.
 ///
 /// Each section's accessibility identifier lives on its title `Text` (shown by
@@ -16,7 +18,9 @@ import SwiftUI
 /// queryable as `staticTexts`.
 struct HelpScreen: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var expanded: Set<String> = []
+    /// The single expanded topic, if any. Tapping a tile extends it to span the
+    /// full row; tapping again (or another tile) collapses / switches.
+    @State private var expanded: String?
 
     private enum HelpIcon {
         case symbol(String)
@@ -78,54 +82,77 @@ struct HelpScreen: View {
     private var topicGrid: some View {
         Grid(horizontalSpacing: 16, verticalSpacing: 16) {
             ForEach(Array(stride(from: 0, to: Self.topics.count, by: 2)), id: \.self) { start in
+                let a = Self.topics[start]
+                let b = start + 1 < Self.topics.count ? Self.topics[start + 1] : nil
                 GridRow {
-                    tile(Self.topics[start])
-                    if start + 1 < Self.topics.count {
-                        tile(Self.topics[start + 1])
+                    if expanded == a.id {
+                        expandedTile(a).gridCellColumns(2)
+                    } else if let b, expanded == b.id {
+                        expandedTile(b).gridCellColumns(2)
+                    } else {
+                        collapsedTile(a)
+                        if let b { collapsedTile(b) }
                     }
                 }
             }
         }
     }
 
-    /// One topic tile. Default: icon over the title. Tapped: icon over the
-    /// instructions (the title `Text` is swapped out). Fixed height so the swap
-    /// never reflows the grid. The active tile picks up the `toolSelected` accent.
-    private func tile(_ topic: HelpTopic) -> some View {
-        let isOpen = expanded.contains(topic.id)
-        return VStack(spacing: 12) {
-            icon(topic.icon, tinted: isOpen)
+    /// Toggle the expanded topic, animating the half↔full width change. Animation
+    /// is disabled under UI test (per the app's animation-gating convention).
+    private func toggle(_ id: String) {
+        let anim: Animation? = UITestSupport.isRunning ? nil : .easeInOut(duration: 0.25)
+        withAnimation(anim) {
+            expanded = (expanded == id) ? nil : id
+        }
+    }
 
-            if isOpen {
-                Text(topic.body)
-                    .font(.pixel(8))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .minimumScaleFactor(0.7)
-            } else {
-                Text(topic.title)
-                    .font(.pixel(11))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .accessibilityIdentifier(topic.id)
-            }
+    /// Compact resting tile: icon over the title. Tapping extends it to a full row.
+    private func collapsedTile(_ topic: HelpTopic) -> some View {
+        VStack(spacing: 12) {
+            icon(topic.icon, tinted: false)
+            Text(topic.title)
+                .font(.pixel(11))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .accessibilityIdentifier(topic.id)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 168)
+        .frame(height: 120)
         .padding(.horizontal, 16)
         .background(Color(white: 0.07))
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(isOpen ? Color.toolSelected : Color.white.opacity(0.12),
-                        lineWidth: isOpen ? 1 : 0.5)
+                .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
         )
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
-        .onTapGesture {
-            if isOpen { expanded.remove(topic.id) } else { expanded.insert(topic.id) }
-        }
+        .onTapGesture { toggle(topic.id) }
+        .transition(.opacity)
+    }
+
+    /// Full-row expanded state: the instructions only, in big well-spaced text —
+    /// the icon and title give way so the copy gets the whole width.
+    private func expandedTile(_ topic: HelpTopic) -> some View {
+        Text(topic.body)
+            .font(.pixel(13))
+            .foregroundStyle(.white.opacity(0.9))
+            .multilineTextAlignment(.center)
+            .lineSpacing(10)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 120)
+            .padding(.vertical, 28)
+            .padding(.horizontal, 28)
+            .background(Color(white: 0.07))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.toolSelected, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+            .onTapGesture { toggle(topic.id) }
     }
 
     @ViewBuilder
