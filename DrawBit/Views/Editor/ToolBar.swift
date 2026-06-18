@@ -16,10 +16,11 @@ struct ToolBar: View {
         HStack(spacing: 0) {
             ForEach(Tool.allCases, id: \.self) { tool in
                 Button {
+                    SelectionFeedback.shared.fire()
                     state.setTool(tool)
                 } label: {
                     iconLabel(systemImage: tool.sfSymbol, title: tool.displayName)
-                        .foregroundStyle(state.tool == tool ? Color.white : Color.white.opacity(0.55))
+                        .foregroundStyle(state.tool == tool ? Color.toolSelected : Color.white.opacity(0.55))
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
@@ -28,10 +29,11 @@ struct ToolBar: View {
             // MIRROR — stroke-modifier toggle. Lives next to the tools because
             // it changes how every tool draws.
             Button {
+                SelectionFeedback.shared.fire()
                 state.isMirrorEnabled.toggle()
             } label: {
                 iconLabel(systemImage: "arrow.left.and.right", title: "Mirror")
-                    .foregroundStyle(state.isMirrorEnabled ? Color.white : Color.white.opacity(0.55))
+                    .foregroundStyle(state.isMirrorEnabled ? Color.toolSelected : Color.white.opacity(0.55))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("Mirror")
@@ -79,6 +81,7 @@ struct ToolBar: View {
             .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
+        .onAppear { SelectionFeedback.shared.prepare() }
     }
 
     private var divider: some View {
