@@ -91,7 +91,7 @@ struct ToolBar: View {
     private func iconLabel(systemImage: String, title: String) -> some View {
         VStack(spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: 20, weight: .regular))
+                .font(.system(size: 24, weight: .regular))
             Text(title.uppercased())
                 .font(.pixel(8))
                 .lineLimit(1)

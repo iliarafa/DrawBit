@@ -13,7 +13,7 @@ struct FrameRow: View {
     /// Index-based reorder (from, to).
     let onMove: (Int, Int) -> Void
 
-    private static let edge: CGFloat = 46
+    private static let edge: CGFloat = 72
 
     /// Show the name overlay only when the user actually named the frame —
     /// suppress the auto-generated "Frame N" names.
@@ -71,7 +71,7 @@ struct FrameRow: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 Text("\(index + 1)")
-                    .font(.pixel(7))
+                    .font(.pixel(8))
                     .padding(.horizontal, 3)
                     .padding(.vertical, 2)
                     .background(isActive ? Color.white : Color.black.opacity(0.7))
@@ -90,7 +90,7 @@ struct FrameRow: View {
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
                 Text(frame.name.uppercased())
-                    .font(.pixel(6))
+                    .font(.pixel(7))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 1)

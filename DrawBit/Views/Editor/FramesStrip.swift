@@ -61,7 +61,7 @@ struct FramesStrip: View {
 
             // Frames
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: 16) {
                     ForEach(Array(state.frames.enumerated()), id: \.element.id) { index, frame in
                         if renamingFrameID == frame.id {
                             TextField("Frame name", text: $renameText)
@@ -123,8 +123,10 @@ struct FramesStrip: View {
             .accessibilityLabel("Add blank frame")
         }
         .padding(.horizontal, 18)
-        .frame(height: 60)
-        .background(Color.black.opacity(0.4))
+        .frame(height: 88)
+        // No background of its own: the strip inherits the editor's Color(white: 0.10),
+        // identical to the canvas and tool strip, and has no dividers above or below — so
+        // it blends in as one continuous surface.
     }
 
     /// Dark, pixel-font replacement for a native fps `Menu` (which renders with
@@ -166,7 +168,7 @@ struct FramesStrip: View {
     }
 
     private var divider: some View {
-        Divider().frame(height: 36).overlay(Color.white.opacity(0.15))
+        Divider().frame(height: 52).overlay(Color.white.opacity(0.15))
     }
 
     private var onionColor: Color {
@@ -177,9 +179,9 @@ struct FramesStrip: View {
     /// Toolbar-consistent button: SF Symbol over an uppercase pixel-font label.
     /// Mirrors `ToolBar.iconLabel`.
     private func stripButton(systemImage: String, title: String) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             Image(systemName: systemImage)
-                .font(.system(size: 20, weight: .regular))
+                .font(.system(size: 24, weight: .regular))
             Text(title.uppercased())
                 .font(.pixel(8))
                 .lineLimit(1)

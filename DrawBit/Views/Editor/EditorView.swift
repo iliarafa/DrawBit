@@ -45,9 +45,9 @@ struct EditorView: View {
                     onTap: { x, y in handleTap(x: x, y: y) }
                 )
                 .allowsHitTesting(!state.isPlaying)
-                Divider().overlay(Color.white.opacity(0.08))
-                // The slot is always 60pt so toggling ANIMATE never resizes the
-                // canvas above. When hidden, the slot is just transparent.
+                // No dividers around the animation strip and it shares the Color(white: 0.10)
+                // background, so canvas → strip → tool strip read as one continuous surface.
+                // The slot stays a fixed 88pt so toggling ANIMATE never resizes the canvas.
                 Group {
                     if showTimeline {
                         FramesStrip(
@@ -64,7 +64,7 @@ struct EditorView: View {
                         Color.clear
                     }
                 }
-                .frame(height: 60)
+                .frame(height: 88)
                 bottomBar
             }
             LayersPanel(
@@ -256,7 +256,7 @@ struct EditorView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
         .frame(height: 72)
-        .background(Color(white: 0.09))
+        .background(Color(white: 0.10))
     }
 
     // MARK: - Lock-pulse feedback
