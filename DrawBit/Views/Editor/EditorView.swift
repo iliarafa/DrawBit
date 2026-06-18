@@ -616,7 +616,9 @@ struct EditorView: View {
 /// LAYERS icon's stroke weight (≈1.2pt at 26pt). A vector (scalable, crisp) that inherits
 /// the surrounding `foregroundStyle` via the Canvas `.foreground`, replacing the heavier
 /// ShareIcon PNG.
-private struct ShareGlyph: View {
+/// The top-bar SHARE/export glyph. Internal (not file-private) so the HELP page's
+/// EXPORT tile can reuse the exact same sprite the editor's share button shows.
+struct ShareGlyph: View {
     var body: some View {
         Canvas { ctx, sz in
             let s = min(sz.width, sz.height)

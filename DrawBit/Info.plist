@@ -27,6 +27,7 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>PressStart2P-Regular.ttf</string>
+		<string>VT323-Regular.ttf</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

@@ -22,13 +22,52 @@ struct HelpScreen: View {
     /// full row; tapping again (or another tile) collapses / switches.
     @State private var expanded: String?
 
-    /// Shared tile height for both the collapsed and expanded states, so tapping a
-    /// tile changes only its width — the row never grows or shrinks vertically.
+    /// Shared tile height for both the collapsed and expanded states. The expanded
+    /// container is the same height, placed over the tapped tile's row.
     private static let tileHeight: CGFloat = 176
+    /// Vertical gap between grid rows — also the row pitch (tileHeight + rowGap) used to
+    /// offset the expanded overlay onto the right row.
+    private static let rowGap: CGFloat = 16
+
+    /// A grid for the CANVAS tile — three vertical and three horizontal lines at
+    /// slightly uneven spacing (graph-paper, not the keypad-like 3×3 dots).
+    private static let gridLines: [String] = [
+        ".#...#..#..",
+        ".#...#..#..",
+        "###########",
+        ".#...#..#..",
+        ".#...#..#..",
+        "###########",
+        ".#...#..#..",
+        ".#...#..#..",
+        ".#...#..#..",
+        "###########",
+        ".#...#..#..",
+    ]
+
+    /// Two beamed eighth notes (♫) for the DRAWBIT FM tile — a pixel sprite (like
+    /// the ANIMATION tile) so it matches the app's pixel aesthetic. Help-page only.
+    private static let eighthNotes: [String] = [
+        "...........",
+        "...######..",
+        "...######..",
+        "...#....#..",
+        "...#....#..",
+        "...#....#..",
+        "...#....#..",
+        "...#....#..",
+        ".###..###..",
+        ".##...##...",
+        "...........",
+    ]
 
     private enum HelpIcon {
         case symbol(String)
         case pixel([String])
+        /// A template image asset (e.g. the editor's "LayersIcon").
+        case asset(String)
+        /// The editor's vector share/export glyph, reused verbatim.
+        case shareGlyph
     }
 
     private struct HelpTopic: Identifiable {
@@ -41,17 +80,17 @@ struct HelpScreen: View {
 
     private static let topics: [HelpTopic] = [
         HelpTopic(id: "Help.section.tools", icon: .symbol("pencil.tip"), title: "TOOLS",
-                  body: "Pencil, eraser, fill, swap, pick, laso. Tap a tool in the bottom bar to switch."),
-        HelpTopic(id: "Help.section.canvas", icon: .symbol("square.grid.3x3"), title: "CANVAS",
+                  body: "Pencil, eraser, fill, swap, pick, laso — tap one in the bottom bar to switch. Mirror toggles symmetry, reflecting every stroke across the vertical centre."),
+        HelpTopic(id: "Help.section.canvas", icon: .pixel(Self.gridLines), title: "CANVAS",
                   body: "Pinch to zoom, two-finger drag to pan or rotate. Pixels never move — exports stay upright and crisp."),
-        HelpTopic(id: "Help.section.layers", icon: .symbol("square.stack.3d.up.fill"), title: "LAYERS",
+        HelpTopic(id: "Help.section.layers", icon: .asset("LayersIcon"), title: "LAYERS",
                   body: "Tap LAYERS in the editor top bar to add, hide, or lock. Press and drag a layer by its thumbnail to reorder. The top layer sits above the canvas."),
         HelpTopic(id: "Help.section.animation", icon: .pixel(PixelArtIcon.playTriangle), title: "ANIMATION",
-                  body: "Tap ANIMATE for the frames strip. Each frame keeps its own layers. Play, pick FPS, onion-skin to align."),
-        HelpTopic(id: "Help.section.export", icon: .symbol("square.and.arrow.up"), title: "EXPORT",
+                  body: "Tap ANIMATE for the frames strip — each frame keeps its own layers. Onion skin fades the previous frame to help you align. Pick FPS for playback speed (4, 8, 12, 24, 30, 60), then Play."),
+        HelpTopic(id: "Help.section.export", icon: .shareGlyph, title: "EXPORT",
                   body: "PNG: one still frame. GIF: animation, plays anywhere but only 256 colours. APNG: animation in full colour. Sprite: every frame in one image. Then pick a scale and share."),
-        HelpTopic(id: "Help.section.fm", icon: .symbol("dot.radiowaves.left.and.right"), title: "DRAWBIT FM",
-                  body: "The tile at the bottom-left of the gallery plays a bundled station. Tap it to open the track list."),
+        HelpTopic(id: "Help.section.fm", icon: .pixel(Self.eighthNotes), title: "DRAWBIT FM",
+                  body: "A dedicated radio station playing original music composed by members of the development team. Tap the tile at the bottom-right of the gallery to tune in."),
     ]
 
     var body: some View {
@@ -84,28 +123,35 @@ struct HelpScreen: View {
     // MARK: - Grid
 
     private var topicGrid: some View {
-        Grid(horizontalSpacing: 16, verticalSpacing: 16) {
+        Grid(horizontalSpacing: 16, verticalSpacing: Self.rowGap) {
             ForEach(Array(stride(from: 0, to: Self.topics.count, by: 2)), id: \.self) { start in
                 let a = Self.topics[start]
                 let b = start + 1 < Self.topics.count ? Self.topics[start + 1] : nil
                 GridRow {
+                    // The instructions assemble from pixel blocks on open (insertion);
+                    // closing or switching away is an instant cut (removal = identity), so
+                    // the next open's dissolve gets the full spotlight.
                     if expanded == a.id {
                         expandedTile(a).gridCellColumns(2)
+                            .transition(.openDissolve).id("exp-\(a.id)")
                     } else if let b, expanded == b.id {
                         expandedTile(b).gridCellColumns(2)
+                            .transition(.openDissolve).id("exp-\(b.id)")
                     } else {
-                        collapsedTile(a)
-                        if let b { collapsedTile(b) }
+                        collapsedTile(a).transition(.identity).id("col-\(a.id)")
+                        if let b {
+                            collapsedTile(b).transition(.identity).id("col-\(b.id)")
+                        }
                     }
                 }
             }
         }
     }
 
-    /// Toggle the expanded topic, animating the half↔full width change. Animation
-    /// is disabled under UI test (per the app's animation-gating convention).
+    /// Toggle the expanded topic. The pixel-dissolve transition only fires inside an
+    /// animation transaction, so a `nil` animation under UI test makes it instant.
     private func toggle(_ id: String) {
-        let anim: Animation? = UITestSupport.isRunning ? nil : .easeInOut(duration: 0.25)
+        let anim: Animation? = UITestSupport.isRunning ? nil : .easeOut(duration: 0.55)
         withAnimation(anim) {
             expanded = (expanded == id) ? nil : id
         }
@@ -133,20 +179,19 @@ struct HelpScreen: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
         .onTapGesture { toggle(topic.id) }
-        .transition(.opacity)
     }
 
     /// Full-row expanded state: the instructions only, in big well-spaced text —
     /// the icon and title give way so the copy gets the whole width.
     private func expandedTile(_ topic: HelpTopic) -> some View {
         Text(topic.body)
-            .font(.pixel(13))
+            .font(.pixelBody(20))
             .foregroundStyle(.white.opacity(0.9))
-            .multilineTextAlignment(.center)
-            .lineSpacing(10)
+            .multilineTextAlignment(.leading)
+            .lineSpacing(4)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 28)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: Self.tileHeight)
             .background(Color(white: 0.07))
             .overlay(
@@ -161,17 +206,24 @@ struct HelpScreen: View {
     @ViewBuilder
     private func icon(_ icon: HelpIcon, tinted: Bool) -> some View {
         let color = tinted ? Color.toolSelected : Color.white.opacity(0.9)
-        switch icon {
-        case .symbol(let name):
-            Image(systemName: name)
-                .font(.system(size: 34, weight: .regular))
-                .foregroundStyle(color)
-                .frame(height: 40)
-        case .pixel(let pattern):
-            PixelArtIcon(pattern: pattern, size: 34)
-                .foregroundStyle(color)
-                .frame(height: 40)
+        // LAYERS/EXPORT/FM carry internal margin (the sprite fills only part of its box),
+        // so they get larger render sizes to read at the same visual size as TOOLS /
+        // CANVAS / ANIMATION, which fill their frames.
+        Group {
+            switch icon {
+            case .symbol(let name):
+                Image(systemName: name).font(.system(size: 34, weight: .regular))
+            case .pixel(let pattern):
+                PixelArtIcon(pattern: pattern, size: pattern == Self.eighthNotes ? 42 : 34)
+            case .asset(let name):
+                Image(name).resizable().interpolation(.none).antialiased(false)
+                    .frame(width: 42, height: 42)
+            case .shareGlyph:
+                ShareGlyph().frame(width: 40, height: 40)
+            }
         }
+        .foregroundStyle(color)
+        .frame(height: 44)
     }
 
     // MARK: - Chrome
@@ -205,5 +257,58 @@ struct HelpScreen: View {
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+}
+
+/// A pixel-block reveal mask. Fills every cell whose stable pseudo-random threshold is
+/// ≤ `progress`, so animating `progress` 0→1 makes the masked view assemble from scattered
+/// ~14pt blocks (and 1→0 dissolves it away). The threshold is a hash of the cell's grid
+/// position, so the scatter is random-looking but deterministic frame-to-frame.
+private struct PixelDissolve: Shape {
+    var progress: CGFloat
+    var cell: CGFloat = 14
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        if progress <= 0 { return path }
+        if progress >= 1 { path.addRect(rect); return path }
+        let cols = Int(ceil(rect.width / cell))
+        let rows = Int(ceil(rect.height / cell))
+        for row in 0..<rows {
+            for col in 0..<cols {
+                let h = sin(Double(col) * 12.9898 + Double(row) * 78.233) * 43758.5453
+                let threshold = CGFloat(h - h.rounded(.down))
+                if threshold <= progress {
+                    path.addRect(CGRect(x: CGFloat(col) * cell, y: CGFloat(row) * cell,
+                                        width: cell, height: cell))
+                }
+            }
+        }
+        return path
+    }
+}
+
+/// Animatable wrapper so the dissolve interpolates as a transition. SwiftUI tweens
+/// `progress` between the transition's active (0) and identity (1) states.
+private struct PixelDissolveModifier: ViewModifier, Animatable {
+    var progress: CGFloat
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+    func body(content: Content) -> some View {
+        content.mask(PixelDissolve(progress: progress).fill(style: FillStyle(antialiased: false)))
+    }
+}
+
+private extension AnyTransition {
+    /// Materialise the view from pixel blocks on insert; cut instantly on removal — so
+    /// closing/switching is an instant snap and only the opening dissolve is animated.
+    static var openDissolve: AnyTransition {
+        .asymmetric(
+            insertion: .modifier(active: PixelDissolveModifier(progress: 0),
+                                 identity: PixelDissolveModifier(progress: 1)),
+            removal: .identity
+        )
     }
 }

@@ -33,6 +33,7 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
         UIAppFonts:
           - PressStart2P-Regular.ttf
+          - VT323-Regular.ttf
         UIBackgroundModes:
           - audio
         NSPhotoLibraryAddUsageDescription: DrawBit needs permission to save your exported PNG to Photos.
