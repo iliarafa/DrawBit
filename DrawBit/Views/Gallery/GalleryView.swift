@@ -17,6 +17,28 @@ struct GalleryView: View {
     @State private var renameDraft: String = ""
     @State private var deleteTarget: Piece?
 
+    /// When true (only when arriving from the launch sequence), the gallery plays a
+    /// one-time staggered intro: each of its four elements pops in as a whole, in
+    /// order — GALLERY title, the "i", the works grid, then DRAWBIT FM.
+    let playIntro: Bool
+
+    @State private var showTitle: Bool
+    @State private var showInfo: Bool
+    @State private var showWorks: Bool
+    @State private var showFM: Bool
+    @State private var didRunIntro = false
+
+    init(playIntro: Bool = false) {
+        self.playIntro = playIntro
+        // Start hidden only when the intro will play; otherwise fully shown so normal
+        // entries (and UI tests) render complete on the first frame and stay queryable.
+        let shown = !playIntro
+        _showTitle = State(initialValue: shown)
+        _showInfo = State(initialValue: shown)
+        _showWorks = State(initialValue: shown)
+        _showFM = State(initialValue: shown)
+    }
+
     private let columns = [GridItem(.adaptive(minimum: 120), spacing: 12)]
 
     /// Uniform inset for the gallery's edge-anchored tiles (the "+" cell at
@@ -44,6 +66,7 @@ struct GalleryView: View {
                     .padding(edgeInset)
                 }
                 .scrollContentBackground(.hidden)
+                .opacity(showWorks ? 1 : 0)
             }
             .background(Color(white: 0.10).ignoresSafeArea())
             // FM is pinned to the bottom-RIGHT of the gallery viewport as a
@@ -65,8 +88,10 @@ struct GalleryView: View {
                     .padding(edgeInset)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     .ignoresSafeArea()
+                    .opacity(showFM ? 1 : 0)
             }
             .toolbar(.hidden, for: .navigationBar)
+            .onAppear { runIntro() }
             .sheet(isPresented: $showingNewSheet) {
                 NewPieceSheet { size in
                     do {
@@ -147,6 +172,7 @@ struct GalleryView: View {
                 .font(.pixel(20))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
+                .opacity(showTitle ? 1 : 0)
 
             Button {
                 showingHelp = true
@@ -163,6 +189,7 @@ struct GalleryView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("Help.button")
             .accessibilityLabel("Help")
+            .opacity(showInfo ? 1 : 0)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 22)
@@ -186,6 +213,20 @@ struct GalleryView: View {
     private func duplicate(_ piece: Piece) {
         let repo = PieceRepository(context: modelContext)
         _ = try? repo.duplicate(piece: piece)
+    }
+
+    /// One-time staggered intro: pop the four elements in, in order, once the
+    /// launch sequence has handed off to the gallery. Each appears as a whole (one
+    /// "pixel" placed); the gap between moves is the only timing. Runs once and only
+    /// for the launch path — `playIntro` is false on normal entries and under UI test.
+    private func runIntro() {
+        guard playIntro, !UITestSupport.isRunning, !didRunIntro else { return }
+        didRunIntro = true
+        let gap = 0.22
+        DispatchQueue.main.asyncAfter(deadline: .now() + gap * 1) { showTitle = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + gap * 2) { showInfo = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + gap * 3) { showWorks = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + gap * 4) { showFM = true }
     }
 }
 
