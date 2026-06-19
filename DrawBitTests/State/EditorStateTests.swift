@@ -235,4 +235,48 @@ final class EditorStateTests: XCTestCase {
         return EditorState(pieceID: UUID(), size: .s32,
                            frames: [f1, f2], activeFrameIndex: 0, fps: 12)
     }
+
+    // MARK: - Per-frame undo (regression: undo on a non-first frame)
+
+    private func makeStateWithThreeFrames() -> EditorState {
+        let pixels = Data(count: CanvasSize.s16.byteCount)
+        // Cascade: every frame shares the same layer UUID but has a unique frame id.
+        let l = Layer(id: UUID(), name: "L", pixels: pixels)
+        let f1 = Frame(name: "F1", layers: [l], activeLayerID: l.id)
+        let f2 = Frame(name: "F2", layers: [l], activeLayerID: l.id)
+        let f3 = Frame(name: "F3", layers: [l], activeLayerID: l.id)
+        return EditorState(pieceID: UUID(), size: .s16,
+                           frames: [f1, f2, f3], activeFrameIndex: 0, fps: 12)
+    }
+
+    /// Drawing on frame 2 then undoing must revert frame 2 — not frame 0. Layer UUIDs
+    /// are shared across frames (the cascade), so an undo entry keyed only by layer id
+    /// resolves to frame 0 and corrupts the wrong frame. Regression for "undo on frame 5
+    /// undoes frame 1 instead."
+    func testUndoOnNonFirstFrameRevertsThatFrameOnly() {
+        let state = makeStateWithThreeFrames()
+        state.setActiveFrame(index: 2)
+        let baseline = state.frames[0].layers[0].pixels   // all-transparent, shared baseline
+        let offset = (5 * 16 + 5) * 4
+
+        state.beginStrokeSnapshot()
+        state.mutateActiveLayerPixels { data in
+            data[offset] = 0; data[offset+1] = 255; data[offset+2] = 0; data[offset+3] = 255
+        }
+        state.commitStroke()
+
+        XCTAssertEqual(state.frames[2].layers[0].pixels[offset+1], 255, "stroke painted on frame 2")
+        XCTAssertEqual(state.frames[0].layers[0].pixels, baseline, "frame 0 untouched by the stroke")
+
+        state.undo()
+
+        XCTAssertEqual(state.frames[2].layers[0].pixels, baseline, "undo reverts frame 2")
+        XCTAssertEqual(state.frames[0].layers[0].pixels, baseline, "undo must not corrupt frame 0")
+        XCTAssertEqual(state.activeFrameIndex, 2, "active frame follows the undone change")
+
+        state.redo()
+
+        XCTAssertEqual(state.frames[2].layers[0].pixels[offset+1], 255, "redo repaints frame 2")
+        XCTAssertEqual(state.frames[0].layers[0].pixels, baseline, "redo must not touch frame 0")
+    }
 }
