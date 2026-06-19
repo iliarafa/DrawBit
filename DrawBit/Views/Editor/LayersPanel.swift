@@ -102,24 +102,28 @@ struct LayersPanel: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .confirmationDialog(
-                        "Delete this layer?",
-                        isPresented: Binding(
-                            get: { confirmDeleteLayerID != nil },
-                            set: { if !$0 { confirmDeleteLayerID = nil } }
-                        )
-                    ) {
-                        Button("Delete", role: .destructive) {
-                            if let id = confirmDeleteLayerID {
-                                state.commitFloatingSelectionIfAny()
-                                state.beginStructuralSnapshot()
-                                state.frame.removeLayer(id: id)
-                                state.commitStructuralChange()
-                                onStructuralChange()
+                    .sheet(isPresented: Binding(
+                        get: { confirmDeleteLayerID != nil },
+                        set: { if !$0 { confirmDeleteLayerID = nil } }
+                    )) {
+                        ConfirmDialogSheet(
+                            title: "DELETE LAYER?",
+                            confirmLabel: "DELETE",
+                            onCancel: { confirmDeleteLayerID = nil },
+                            onConfirm: {
+                                if let id = confirmDeleteLayerID {
+                                    state.commitFloatingSelectionIfAny()
+                                    state.beginStructuralSnapshot()
+                                    state.frame.removeLayer(id: id)
+                                    state.commitStructuralChange()
+                                    onStructuralChange()
+                                }
+                                confirmDeleteLayerID = nil
                             }
-                            confirmDeleteLayerID = nil
-                        }
-                        Button("Cancel", role: .cancel) { confirmDeleteLayerID = nil }
+                        )
+                        .presentationDetents([.height(200)])
+                        .presentationCornerRadius(0)
+                        .presentationBackground(Color(white: 0.10))
                     }
                     Divider().overlay(Color.white.opacity(0.08))
                     ReferenceRow(

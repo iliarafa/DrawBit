@@ -15,6 +15,7 @@ struct FramesStrip: View {
 
     @State private var renamingFrameID: UUID?
     @State private var renameText: String = ""
+    @FocusState private var renameFieldFocused: Bool
     @State private var showingFPSMenu = false
 
     private static let fpsChoices = [4, 8, 12, 24, 30, 60]
@@ -64,11 +65,25 @@ struct FramesStrip: View {
                 HStack(spacing: 16) {
                     ForEach(Array(state.frames.enumerated()), id: \.element.id) { index, frame in
                         if renamingFrameID == frame.id {
+                            // Dark, pixel-font inline field matching LayerRow's rename
+                            // treatment — no native `.roundedBorder` white box in the strip.
                             TextField("Frame name", text: $renameText)
-                                .textFieldStyle(.roundedBorder)
+                                .font(.pixel(11))
+                                .foregroundStyle(.white)
+                                .tint(.white)
+                                .focused($renameFieldFocused)
                                 .frame(width: 100)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color(white: 0.16))
+                                        .overlay(RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.white.opacity(0.25), lineWidth: 1))
+                                )
                                 .onSubmit { commitRename() }
                                 .submitLabel(.done)
+                                .onAppear { renameFieldFocused = true }
                         } else {
                             FrameRow(
                                 frame: frame,

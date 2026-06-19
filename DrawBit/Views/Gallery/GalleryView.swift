@@ -80,6 +80,7 @@ struct GalleryView: View {
                 // Height sized for the 7 size rows + nav bar (~48pt × 7 + chrome).
                 .presentationDetents([.height(420)])
                 .presentationCornerRadius(0)
+                .presentationBackground(Color(white: 0.10))
             }
             .navigationDestination(item: $selectedPiece) { piece in
                 EditorView(piece: piece)
@@ -107,6 +108,7 @@ struct GalleryView: View {
                 )
                 .presentationDetents([.height(220)])
                 .presentationCornerRadius(0)
+                .presentationBackground(Color(white: 0.10))
             }
             .sheet(isPresented: Binding(
                 get: { deleteTarget != nil },
@@ -124,6 +126,7 @@ struct GalleryView: View {
                 )
                 .presentationDetents([.height(200)])
                 .presentationCornerRadius(0)
+                .presentationBackground(Color(white: 0.10))
             }
         }
     }
