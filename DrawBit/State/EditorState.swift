@@ -63,7 +63,7 @@ final class EditorState {
     private var dragAnchor: (Int, Int)?
 
     enum UndoEntry {
-        case layerPixels(layerID: UUID, before: Data)
+        case layerPixels(frameID: UUID, layerID: UUID, before: Data)
         case frameStructure(before: Frame)            // legacy from layers v2 — used for in-frame structural changes; will be retired in a future stage if obsolete.
         /// Full-sequence snapshot. Memory cost at the cap is real:
         /// 60 frames × 16 layers × 256×256 RGBA = 240 MB per snapshot, × 50 = 12 GB undo stack.
@@ -79,6 +79,10 @@ final class EditorState {
     private var redoStack: [UndoEntry] = []
     private var preStrokeSnapshot: Data?
     private var preStrokeLayerID: UUID?
+    /// The frame the stroke is being drawn on. Captured at snapshot time because
+    /// layer UUIDs are shared across all frames (the cascade), so a layer id alone
+    /// can't identify which frame the undo belongs to.
+    private var preStrokeFrameID: UUID?
     private var preStructuralSnapshot: Frame?
     private var preSequenceSnapshot: (frames: [Frame], activeFrameIndex: Int)?
 
@@ -157,14 +161,17 @@ final class EditorState {
     func beginStrokeSnapshot() {
         preStrokeSnapshot = frame.activeLayer.pixels
         preStrokeLayerID = frame.activeLayerID
+        preStrokeFrameID = frame.id
         pixelPerfectBuffer.reset()
     }
 
     func commitStroke() {
-        guard let snap = preStrokeSnapshot, let layerID = preStrokeLayerID else { return }
-        push(.layerPixels(layerID: layerID, before: snap))
+        guard let snap = preStrokeSnapshot, let layerID = preStrokeLayerID,
+              let frameID = preStrokeFrameID else { return }
+        push(.layerPixels(frameID: frameID, layerID: layerID, before: snap))
         preStrokeSnapshot = nil
         preStrokeLayerID = nil
+        preStrokeFrameID = nil
         pixelPerfectBuffer.reset()
     }
 
@@ -181,6 +188,7 @@ final class EditorState {
         }
         preStrokeSnapshot = nil
         preStrokeLayerID = nil
+        preStrokeFrameID = nil
         pixelPerfectBuffer.reset()
     }
 
@@ -272,17 +280,20 @@ final class EditorState {
         if selection != nil { commitMarquee() }
         guard let entry = undoStack.popLast() else { return }
         switch entry {
-        case .layerPixels(let layerID, let before):
-            guard let frameIdx = frames.firstIndex(where: { $0.layers.contains { $0.id == layerID } }),
+        case .layerPixels(let frameID, let layerID, let before):
+            // Resolve by frame id, not layer id: layer UUIDs are shared across every
+            // frame (the cascade), so a layer-id search always lands on frame 0.
+            guard let frameIdx = frames.firstIndex(where: { $0.id == frameID }),
                   let layerIdx = frames[frameIdx].layers.firstIndex(where: { $0.id == layerID }) else { return }
             let after = frames[frameIdx].layers[layerIdx].pixels
-            redoStack.append(.layerPixels(layerID: layerID, before: after))
+            redoStack.append(.layerPixels(frameID: frameID, layerID: layerID, before: after))
             var layers = frames[frameIdx].layers
             layers[layerIdx].pixels = before
             frames[frameIdx] = Frame(id: frames[frameIdx].id,
                                      name: frames[frameIdx].name,
                                      layers: layers,
                                      activeLayerID: frames[frameIdx].activeLayerID)
+            activeFrameIndex = frameIdx   // show the frame that actually changed
         case .frameStructure(let before):
             redoStack.append(.frameStructure(before: frame))
             frame = before
@@ -297,17 +308,18 @@ final class EditorState {
         if selection != nil { commitMarquee() }
         guard let entry = redoStack.popLast() else { return }
         switch entry {
-        case .layerPixels(let layerID, let before):
-            guard let frameIdx = frames.firstIndex(where: { $0.layers.contains { $0.id == layerID } }),
+        case .layerPixels(let frameID, let layerID, let before):
+            guard let frameIdx = frames.firstIndex(where: { $0.id == frameID }),
                   let layerIdx = frames[frameIdx].layers.firstIndex(where: { $0.id == layerID }) else { return }
             let after = frames[frameIdx].layers[layerIdx].pixels
-            undoStack.append(.layerPixels(layerID: layerID, before: after))
+            undoStack.append(.layerPixels(frameID: frameID, layerID: layerID, before: after))
             var layers = frames[frameIdx].layers
             layers[layerIdx].pixels = before
             frames[frameIdx] = Frame(id: frames[frameIdx].id,
                                      name: frames[frameIdx].name,
                                      layers: layers,
                                      activeLayerID: frames[frameIdx].activeLayerID)
+            activeFrameIndex = frameIdx   // show the frame that actually changed
         case .frameStructure(let before):
             undoStack.append(.frameStructure(before: frame))
             frame = before
