@@ -23,6 +23,10 @@ struct LandingView: View {
                                value: pressStartVisible)
             }
         }
+        // Center the title on the FULL screen (not the safe area) so it sits at the
+        // same spot whether or not the status bar is showing — the launch sequence
+        // shows the status bar, and without this the title would jump on tap.
+        .ignoresSafeArea()
         .contentShape(Rectangle())
         .onTapGesture { onStart() }
         .statusBarHidden(true)
