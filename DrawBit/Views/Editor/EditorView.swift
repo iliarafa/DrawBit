@@ -105,6 +105,7 @@ struct EditorView: View {
             )
             .presentationDetents([.large])
             .presentationCornerRadius(0)
+            .presentationBackground(Color(white: 0.10))
         }
         .onChange(of: showingSystemColorPicker) { _, isShowing in
             if !isShowing {
@@ -115,6 +116,7 @@ struct EditorView: View {
             ShareSheet(piece: piece, frameCount: state.frames.count)
                 .presentationDetents([.height(360)])
                 .presentationCornerRadius(0)
+                .presentationBackground(Color(white: 0.10))
         }
         .onAppear {
             let repo = PieceRepository(context: modelContext)
@@ -141,17 +143,20 @@ struct EditorView: View {
             }
             saveCurrentFrame()
         }
-        .confirmationDialog(
-            "Delete Frame?",
-            isPresented: $showingDeleteFrameConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                deleteActiveFrame()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This frame has content. Delete it from the sequence?")
+        .sheet(isPresented: $showingDeleteFrameConfirm) {
+            ConfirmDialogSheet(
+                title: "DELETE FRAME?",
+                message: "This frame has content. Delete it from the sequence?",
+                confirmLabel: "DELETE",
+                onCancel: { showingDeleteFrameConfirm = false },
+                onConfirm: {
+                    showingDeleteFrameConfirm = false
+                    deleteActiveFrame()
+                }
+            )
+            .presentationDetents([.height(220)])
+            .presentationCornerRadius(0)
+            .presentationBackground(Color(white: 0.10))
         }
     }
 

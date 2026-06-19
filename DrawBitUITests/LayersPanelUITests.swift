@@ -107,8 +107,8 @@ final class LayersPanelUITests: XCTestCase {
 
         // Confirm the delete if the dialog appeared (tap should have made the layer non-empty,
         // but tolerate either path in case CanvasView's tap mapping fell on a transparent pixel).
-        if app.buttons["Delete"].waitForExistence(timeout: 1) {
-            app.buttons["Delete"].tap()
+        if app.buttons["ConfirmDialog.confirm"].waitForExistence(timeout: 1) {
+            app.buttons["ConfirmDialog.confirm"].tap()
         }
 
         // Layer 2 row should be gone; Layer 1 should remain.
@@ -152,8 +152,8 @@ final class LayersPanelUITests: XCTestCase {
         app.buttons["LAYERS"].tap()
         XCTAssertTrue(app.buttons["LayersPanel-delete"].waitForExistence(timeout: 15))
         app.buttons["LayersPanel-delete"].tap()
-        if app.buttons["Delete"].waitForExistence(timeout: 1) {
-            app.buttons["Delete"].tap()
+        if app.buttons["ConfirmDialog.confirm"].waitForExistence(timeout: 1) {
+            app.buttons["ConfirmDialog.confirm"].tap()
         }
         // The duplicate is gone. Layer 1 remains.
         XCTAssertFalse(app.staticTexts["Layer 1 copy"].exists)

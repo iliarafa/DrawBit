@@ -92,9 +92,19 @@ struct ReferenceRow: View {
                 pickerItem = nil
             }
         }
-        .confirmationDialog("Remove reference photo?", isPresented: $confirmRemove) {
-            Button("Remove", role: .destructive) { onRemove() }
-            Button("Cancel", role: .cancel) {}
+        .sheet(isPresented: $confirmRemove) {
+            ConfirmDialogSheet(
+                title: "REMOVE REFERENCE?",
+                confirmLabel: "REMOVE",
+                onCancel: { confirmRemove = false },
+                onConfirm: {
+                    confirmRemove = false
+                    onRemove()
+                }
+            )
+            .presentationDetents([.height(200)])
+            .presentationCornerRadius(0)
+            .presentationBackground(Color(white: 0.10))
         }
     }
 
