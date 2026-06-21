@@ -172,6 +172,7 @@ struct EditorView: View {
                     Text("GALLERY")
                         .font(.pixel(11))
                 }
+                .hoverPop()
             }
             .accessibilityIdentifier("Gallery")
             Spacer()
@@ -188,6 +189,7 @@ struct EditorView: View {
                     .antialiased(false)
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 44)
+                    .hoverPop()
             }
             .foregroundStyle(showingLayersPanel ? Self.layersActiveGreen : .white)
             .disabled(state.isPlaying)
@@ -207,6 +209,7 @@ struct EditorView: View {
             } label: {
                 PixelArtIcon(pattern: PixelArtIcon.playTriangle, size: 22)
                     .frame(width: 44, height: 44)
+                    .hoverPop()
             }
             .foregroundStyle(showTimeline ? Self.animateActiveGreen : .white)
             .disabled(state.isPlaying)
@@ -224,6 +227,7 @@ struct EditorView: View {
                 ShareGlyph()
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 44)
+                    .hoverPop()
             }
             .disabled(state.isPlaying)
             .accessibilityLabel("SHARE")

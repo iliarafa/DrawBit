@@ -27,6 +27,7 @@ struct FramesStrip: View {
                 Button(action: onTogglePlay) {
                     stripButton(systemImage: state.isPlaying ? "pause.fill" : "play.fill",
                                 title: state.isPlaying ? "PAUSE" : "PLAY")
+                        .hoverPop()
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(state.frames.count <= 1 ? Color.white.opacity(0.25) : Color.white)
@@ -38,6 +39,7 @@ struct FramesStrip: View {
                 // take the app font or theme.
                 Button { showingFPSMenu = true } label: {
                     stripButton(systemImage: "speedometer", title: "\(state.fps) FPS")
+                        .hoverPop()
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(state.isPlaying ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
@@ -49,6 +51,7 @@ struct FramesStrip: View {
 
                 Button(action: { state.isOnionSkinEnabled.toggle() }) {
                     stripButton(systemImage: "square.2.layers.3d", title: "ONION")
+                        .hoverPop()
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(onionColor)
@@ -129,6 +132,7 @@ struct FramesStrip: View {
             // Actions
             Button(action: onAddFrame) {
                 stripButton(systemImage: "plus", title: "ADD")
+                    .hoverPop()
             }
             .buttonStyle(.plain)
             .foregroundStyle(state.frames.count >= FrameSequence.frameCap
