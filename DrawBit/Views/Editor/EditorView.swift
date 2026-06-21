@@ -117,7 +117,7 @@ struct EditorView: View {
         }
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(piece: piece, frameCount: state.frames.count)
-                .presentationDetents([.height(360)])
+                .presentationDetents([.height(640)])
                 .presentationCornerRadius(0)
                 .presentationBackground(Color(white: 0.10))
         }
