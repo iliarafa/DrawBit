@@ -60,6 +60,7 @@ struct LayerRow: View {
                         .foregroundStyle(.white.opacity(0.65))
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
+                        .hoverPop()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Rename")
@@ -69,6 +70,7 @@ struct LayerRow: View {
                     .foregroundStyle(.white.opacity(layer.isVisible ? 0.85 : 0.45))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
+                    .hoverPop()
             }
             .buttonStyle(.plain)
             Button { onToggleLocked() } label: {
@@ -76,6 +78,7 @@ struct LayerRow: View {
                     .foregroundStyle(.white.opacity(layer.isLocked ? 0.85 : 0.45))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
+                    .hoverPop()
             }
             .buttonStyle(.plain)
         }
