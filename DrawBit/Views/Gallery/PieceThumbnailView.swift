@@ -29,6 +29,7 @@ struct PieceThumbnailView: View {
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.25), lineWidth: 0.5))
+        .galleryTileLift()
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("PieceThumbnail")
     }
@@ -49,6 +50,7 @@ struct NewPieceTile: View {
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.2), lineWidth: 0.5))
+        .galleryTileLift()
         .contentShape(Rectangle())
         .accessibilityAddTraits(.isButton)
     }
