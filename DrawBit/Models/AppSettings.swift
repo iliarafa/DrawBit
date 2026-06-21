@@ -28,43 +28,28 @@ final class AppSettings {
     }
 
     // MARK: - Custom palette management
+    //
+    // Logic lives on the `[ColorPalette]` extension (ColorPalette.swift) so the picker, which
+    // mutates a live `@Binding<[ColorPalette]>`, shares one implementation. These delegate.
 
-    /// Hex normalized for storage/compare: no leading '#', uppercase.
-    private static func normalizeHex(_ hex: String) -> String {
-        var s = hex
-        if s.hasPrefix("#") { s.removeFirst() }
-        return s.uppercased()
-    }
-
-    /// Creates a new empty palette. A blank name auto-numbers as `PALETTE N` (N = count + 1).
     @discardableResult
     func addCustomPalette(name: String = "") -> ColorPalette {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let finalName = trimmed.isEmpty ? "PALETTE \(customPalettes.count + 1)" : trimmed
-        let palette = ColorPalette(name: finalName)
-        customPalettes.append(palette)
-        return palette
+        customPalettes.addPalette(name: name)
     }
 
     func deleteCustomPalette(id: UUID) {
-        customPalettes.removeAll { $0.id == id }
+        customPalettes.deletePalette(id: id)
     }
 
     func renameCustomPalette(id: UUID, to name: String) {
-        guard let i = customPalettes.firstIndex(where: { $0.id == id }) else { return }
-        customPalettes[i].name = name
+        customPalettes.renamePalette(id: id, to: name)
     }
 
     func addColor(_ hex: String, toPaletteID id: UUID) {
-        guard let i = customPalettes.firstIndex(where: { $0.id == id }) else { return }
-        let norm = Self.normalizeHex(hex)
-        guard !customPalettes[i].colors.contains(where: { $0.caseInsensitiveCompare(norm) == .orderedSame }) else { return }
-        customPalettes[i].colors.append(norm)
+        customPalettes.addColor(hex, toPaletteID: id)
     }
 
     func removeColor(_ hex: String, fromPaletteID id: UUID) {
-        guard let i = customPalettes.firstIndex(where: { $0.id == id }) else { return }
-        let norm = Self.normalizeHex(hex)
-        customPalettes[i].colors.removeAll { $0.caseInsensitiveCompare(norm) == .orderedSame }
+        customPalettes.removeColor(hex, fromPaletteID: id)
     }
 }

@@ -8,6 +8,7 @@ struct EditorView: View {
     @State private var state: EditorState
     @State private var pencilAvailability = PencilAvailability()
     @State private var recentHex: [String] = []
+    @State private var customPalettes: [ColorPalette] = []
     @State private var showingSystemColorPicker = false
     @State private var showingShareSheet = false
     @State private var showingLayersPanel = false
@@ -101,7 +102,9 @@ struct EditorView: View {
                     set: { state.color = $0 }
                 ),
                 onDismiss: { showingSystemColorPicker = false },
-                recentHex: recentHex
+                recentHex: recentHex,
+                customPalettes: $customPalettes,
+                pieceColors: { PaletteExtractor.colors(in: state.frame, size: state.size) }
             )
             .presentationDetents([.large])
             .presentationCornerRadius(0)
@@ -122,9 +125,11 @@ struct EditorView: View {
             let repo = PieceRepository(context: modelContext)
             if let settings = try? repo.appSettings() {
                 recentHex = settings.recentColors
+                customPalettes = settings.customPalettes
             }
             showTimeline = state.frames.count > 1
         }
+        .onChange(of: customPalettes) { _, _ in persistCustomPalettes() }
         .onDisappear {
             // Stop playback first so the timer doesn't keep mutating state during teardown.
             playback?.stop()
@@ -476,6 +481,16 @@ struct EditorView: View {
         if let settings = try? repo.appSettings() {
             settings.addRecentColor(hex)
             recentHex = settings.recentColors
+            try? modelContext.save()
+        }
+    }
+
+    /// Writes the live custom-palette list back to AppSettings. Mirrors `addRecent`'s seam:
+    /// all SwiftData stays here, never in the picker.
+    private func persistCustomPalettes() {
+        let repo = PieceRepository(context: modelContext)
+        if let settings = try? repo.appSettings() {
+            settings.customPalettes = customPalettes
             try? modelContext.save()
         }
     }

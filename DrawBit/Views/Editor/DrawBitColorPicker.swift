@@ -4,6 +4,11 @@ struct DrawBitColorPicker: View {
     @Binding var color: RGBA
     var onDismiss: () -> Void
     var recentHex: [String] = []
+    /// Live binding to the user's global custom palettes. The picker mutates this directly
+    /// (via the shared `[ColorPalette]` ops); EditorView persists it through PieceRepository.
+    @Binding var customPalettes: [ColorPalette]
+    /// Lazily yields the distinct colors used in the current piece, for "FROM PIECE".
+    var pieceColors: () -> [String] = { [] }
 
     private enum Tab: String, CaseIterable, Identifiable {
         case grid = "GRID"
@@ -17,12 +22,14 @@ struct DrawBitColorPicker: View {
     @State private var brightness: Double = 1.0
     @FocusState private var hexFocused: Bool
 
-    private static let db32Hex: [String] = [
-        "000000", "222034", "45283c", "663931", "8f563b", "df7126", "d9a066", "eec39a",
-        "fbf236", "99e550", "6abe30", "37946e", "4b692f", "524b24", "323c39", "3f3f74",
-        "306082", "5b6ee1", "639bff", "5fcde4", "cbdbfc", "ffffff", "9badb7", "847e87",
-        "696a6a", "595652", "76428a", "ac3232", "d95763", "d77bba", "8f974a", "8a6f30",
-    ]
+    // Palette-browser state
+    @State private var selectedPaletteID: UUID = BuiltInPalettes.db32.id
+    @State private var showingSelector = false   // inline themed chooser (replaces the grid area)
+    @State private var editing = false           // focused edit panel for a custom palette
+    @State private var renameDraft = ""
+
+    /// Stable id for the synthesized read-only RECENT palette.
+    private static let recentPaletteID = UUID(uuidString: "0B17A1D0-0000-4000-A000-0000000000FF")!
 
     var body: some View {
         VStack(spacing: 18) {
@@ -30,7 +37,7 @@ struct DrawBitColorPicker: View {
             tabPicker
             Group {
                 switch tab {
-                case .grid: paletteGrid
+                case .grid: paletteBrowser
                 case .spectrum: spectrumView
                 case .sliders: slidersView
                 }
@@ -44,6 +51,8 @@ struct DrawBitColorPicker: View {
         .onAppear {
             hexDraft = color.hex.replacingOccurrences(of: "#", with: "")
             brightness = currentHSB().brightness
+            // Open on RECENT when there's history, else DB32.
+            if let recent = recentPalette { selectedPaletteID = recent.id }
         }
     }
 
@@ -108,54 +117,200 @@ struct DrawBitColorPicker: View {
         )
     }
 
-    // MARK: - Grid tab (DB32 palette + user history)
+    // MARK: - Palette browser (GRID tab)
+    //
+    // Calm by design: the default view shows ONLY a palette name + its swatches. Switching is an
+    // inline themed chooser; all management (create/rename/delete/add/remove) is hidden behind the
+    // pencil's edit panel. Built-ins and RECENT are read-only.
 
-    private var paletteGrid: some View {
-        VStack(spacing: 14) {
-            if !recentHistory.isEmpty {
-                historySection
+    /// Synthesized read-only palette of recent colors; omitted when there's no history.
+    private var recentPalette: ColorPalette? {
+        recentHex.isEmpty ? nil : ColorPalette(id: Self.recentPaletteID, name: "RECENT", colors: recentHex)
+    }
+
+    /// One ordered list: RECENT → built-ins → custom.
+    private var selectablePalettes: [ColorPalette] {
+        (recentPalette.map { [$0] } ?? []) + BuiltInPalettes.all + customPalettes
+    }
+
+    private var selectedPalette: ColorPalette {
+        selectablePalettes.first { $0.id == selectedPaletteID }
+            ?? selectablePalettes.first
+            ?? BuiltInPalettes.db32
+    }
+
+    private var isSelectedCustom: Bool {
+        customPalettes.contains { $0.id == selectedPaletteID }
+    }
+
+    @ViewBuilder
+    private var paletteBrowser: some View {
+        if editing && isSelectedCustom {
+            editPanel
+        } else if showingSelector {
+            selectorList
+        } else {
+            VStack(spacing: 14) {
+                selectorRow
+                paletteSwatches(selectedPalette, removeMode: false)
             }
-            swatchGrid(hexes: Self.db32Hex, columns: 8)
         }
     }
 
-    /// All recent colors visible inside the picker. The toolbar no longer
-    /// surfaces recents (it shows only the active color), so this is the
-    /// single place users see their color history.
-    private var recentHistory: [String] {
-        Array(recentHex.prefix(19))
-    }
+    private var selectorRow: some View {
+        HStack(spacing: 10) {
+            Button { showingSelector = true } label: {
+                HStack(spacing: 8) {
+                    Text(selectedPalette.name)
+                        .font(.pixel(12))
+                        .foregroundStyle(.white)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.08)))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.18), lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+            .hoverPop()
+            .accessibilityIdentifier("PaletteSelector")
 
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("HISTORY")
-                .font(.pixel(9))
-                .foregroundStyle(.white.opacity(0.55))
-            swatchGrid(hexes: recentHistory, columns: 8)
+            Spacer()
+
+            if isSelectedCustom {
+                Button {
+                    renameDraft = selectedPalette.name
+                    editing = true
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .frame(width: 34, height: 34)
+                        .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
+                .hoverPop()
+                .accessibilityIdentifier("EditPalette")
+            }
         }
     }
 
-    private func swatchGrid(hexes: [String], columns: Int) -> some View {
-        let rows = Int((Double(hexes.count) / Double(columns)).rounded(.up))
-        return VStack(spacing: 4) {
-            ForEach(0..<rows, id: \.self) { row in
-                HStack(spacing: 4) {
-                    ForEach(0..<columns, id: \.self) { col in
-                        let i = row * columns + col
-                        if i < hexes.count {
-                            swatch(hex: hexes[i])
-                        } else {
-                            Color.clear.aspectRatio(1, contentMode: .fit)
-                        }
-                    }
+    // MARK: Inline chooser
+
+    private var selectorList: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("PALETTES")
+                    .font(.pixel(11))
+                    .foregroundStyle(.white.opacity(0.6))
+                Spacer()
+                Button { showingSelector = false } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("CloseSelector")
+            }
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(selectablePalettes) { paletteRow($0) }
+                    newPaletteRow
                 }
             }
         }
     }
 
-    private func swatch(hex: String) -> some View {
+    private func paletteRow(_ p: ColorPalette) -> some View {
+        let isSel = p.id == selectedPaletteID
+        return Button {
+            selectedPaletteID = p.id
+            showingSelector = false
+        } label: {
+            HStack(spacing: 10) {
+                Text(p.name)
+                    .font(.pixel(11))
+                    .foregroundStyle(.white)
+                    .frame(width: 96, alignment: .leading)
+                    .lineLimit(1)
+                miniStrip(p.colors)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(isSel ? .white : .clear)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(isSel ? 0.10 : 0.04)))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("Palette-\(p.name)")
+    }
+
+    private var newPaletteRow: some View {
+        Button {
+            let p = customPalettes.addPalette()
+            selectedPaletteID = p.id
+            renameDraft = p.name
+            showingSelector = false
+            editing = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .bold))
+                Text("NEW PALETTE")
+                    .font(.pixel(11))
+                Spacer()
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .background(RoundedRectangle(cornerRadius: 7).stroke(Color.white.opacity(0.18), style: StrokeStyle(lineWidth: 0.5, dash: [3, 3])))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("NewPalette")
+    }
+
+    private func miniStrip(_ hexes: [String]) -> some View {
+        HStack(spacing: 0) {
+            if hexes.isEmpty {
+                Text("empty")
+                    .font(.pixel(9))
+                    .foregroundStyle(.white.opacity(0.35))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ForEach(Array(hexes.prefix(14).enumerated()), id: \.offset) { _, h in
+                    Rectangle()
+                        .fill(Color(rgba: RGBA(hex: h) ?? .transparent))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 14)
+                }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 3))
+    }
+
+    // MARK: Swatch grid
+
+    private func paletteSwatches(_ p: ColorPalette, removeMode: Bool) -> some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 8)
+        return LazyVGrid(columns: columns, spacing: 4) {
+            ForEach(Array(p.colors.enumerated()), id: \.offset) { _, hex in
+                swatchCell(hex: hex, removeMode: removeMode, paletteID: p.id)
+            }
+            if isSelectedCustom && !removeMode {
+                addCurrentColorTile(paletteID: p.id)
+            }
+        }
+    }
+
+    private func swatchCell(hex: String, removeMode: Bool, paletteID: UUID) -> some View {
         let swatchColor = RGBA(hex: hex) ?? RGBA(r: 0, g: 0, b: 0, a: 255)
-        let isSelected = swatchColor == color
+        let isSelected = !removeMode && swatchColor == color
         return Rectangle()
             .fill(Color(rgba: swatchColor))
             .aspectRatio(1, contentMode: .fit)
@@ -165,14 +320,150 @@ struct DrawBitColorPicker: View {
                     lineWidth: isSelected ? 2 : 0.5
                 )
             )
+            .overlay(removeMode ? removeBadge : nil)
             .hoverPop()
             .contentShape(Rectangle())
             .onTapGesture {
-                color = swatchColor
-                hexDraft = hex.uppercased()
-                brightness = currentHSB().brightness
-                hexFocused = false
+                if removeMode {
+                    customPalettes.removeColor(hex, fromPaletteID: paletteID)
+                } else {
+                    color = swatchColor
+                    hexDraft = hex.replacingOccurrences(of: "#", with: "").uppercased()
+                    brightness = currentHSB().brightness
+                    hexFocused = false
+                }
             }
+    }
+
+    private var removeBadge: some View {
+        Image(systemName: "minus.circle.fill")
+            .font(.system(size: 12))
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.white, Color(red: 0.85, green: 0.2, blue: 0.2))
+            .padding(1)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            .allowsHitTesting(false)
+    }
+
+    private func addCurrentColorTile(paletteID: UUID) -> some View {
+        Button {
+            customPalettes.addColor(color.hex, toPaletteID: paletteID)
+        } label: {
+            Rectangle()
+                .fill(Color.white.opacity(0.06))
+                .aspectRatio(1, contentMode: .fit)
+                .overlay(
+                    Rectangle().stroke(Color.white.opacity(0.3), style: StrokeStyle(lineWidth: 0.5, dash: [2, 2]))
+                )
+                .overlay(
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.7))
+                )
+        }
+        .buttonStyle(.plain)
+        .hoverPop()
+        .accessibilityIdentifier("AddCurrentColor")
+    }
+
+    // MARK: Edit panel (focused; custom palettes only)
+
+    private var editPanel: some View {
+        let p = selectedPalette
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Button {
+                    commitRename()
+                    editing = false
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left").font(.system(size: 12, weight: .bold))
+                        Text("DONE").font(.pixel(11))
+                    }
+                    .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("DonePalette")
+
+                Spacer()
+
+                Button {
+                    deleteSelectedPalette()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trash").font(.system(size: 12))
+                        Text("DELETE").font(.pixel(10))
+                    }
+                    .foregroundStyle(Color(red: 0.9, green: 0.35, blue: 0.35))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("DeletePalette")
+            }
+
+            TextField("", text: $renameDraft)
+                .font(.pixel(14))
+                .foregroundStyle(.white)
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled(true)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(0.08)))
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.2), lineWidth: 0.5))
+                .onSubmit { commitRename() }
+                .accessibilityIdentifier("PaletteName")
+
+            if p.colors.isEmpty {
+                Text("Tap ADD or FROM PIECE to fill this palette.")
+                    .font(.pixel(9))
+                    .foregroundStyle(.white.opacity(0.5))
+            } else {
+                Text("Tap a color to remove it.")
+                    .font(.pixel(9))
+                    .foregroundStyle(.white.opacity(0.5))
+                paletteSwatches(p, removeMode: true)
+            }
+
+            HStack(spacing: 10) {
+                editAction(icon: "plus", title: "ADD CURRENT", id: "AddCurrentColor") {
+                    customPalettes.addColor(color.hex, toPaletteID: p.id)
+                }
+                editAction(icon: "square.on.square", title: "FROM PIECE", id: "FromPiece") {
+                    for hex in pieceColors() {
+                        customPalettes.addColor(hex, toPaletteID: p.id)
+                    }
+                }
+            }
+        }
+    }
+
+    private func editAction(icon: String, title: String, id: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon).font(.system(size: 12, weight: .bold))
+                Text(title).font(.pixel(10))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 11)
+            .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(0.08)))
+            .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color.white.opacity(0.18), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .hoverPop()
+        .accessibilityIdentifier(id)
+    }
+
+    private func commitRename() {
+        let trimmed = renameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        customPalettes.renamePalette(id: selectedPaletteID, to: trimmed)
+    }
+
+    private func deleteSelectedPalette() {
+        let id = selectedPaletteID
+        editing = false
+        selectedPaletteID = recentPalette?.id ?? BuiltInPalettes.db32.id
+        customPalettes.deletePalette(id: id)
     }
 
     // MARK: - Spectrum tab (hue × saturation at current brightness)
@@ -448,8 +739,14 @@ struct DrawBitColorPicker: View {
 #Preview {
     struct Wrapper: View {
         @State var c = RGBA(r: 255, g: 80, b: 120, a: 255)
+        @State var palettes: [ColorPalette] = []
         var body: some View {
-            DrawBitColorPicker(color: $c, onDismiss: {})
+            DrawBitColorPicker(
+                color: $c,
+                onDismiss: {},
+                recentHex: ["#FF5078", "#5B6EE1", "#99E550"],
+                customPalettes: $palettes
+            )
         }
     }
     return Wrapper()
