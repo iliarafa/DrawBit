@@ -62,6 +62,7 @@ struct FMTile: View {
             RoundedRectangle(cornerRadius: 6)
                 .stroke(Color.white.opacity(0.18), lineWidth: 0.5)
         )
+        .galleryTileLift()
         .contentShape(Rectangle())
         // NB: don't collapse the tile into a single accessibility element with
         // `.contain` here — it interferes with the parent `.onTapGesture` set
