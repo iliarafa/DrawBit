@@ -46,6 +46,7 @@ struct FrameRow: View {
                 frame: frame, index: index, frameCount: frameCount, showsCustomName: showsCustomName,
                 onDuplicate: onDuplicate, onRename: onRename, onDelete: onDelete, onMove: onMove
             ))
+            .hoverPop()
     }
 
     // MARK: - Layers

@@ -51,6 +51,7 @@ struct LayersPanel: View {
                         } label: {
                             actionButton(systemImage: "plus", title: "ADD")
                                 .foregroundStyle(addDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
+                                .hoverPop()
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("LayersPanel-plus")
@@ -66,6 +67,7 @@ struct LayersPanel: View {
                         } label: {
                             actionButton(systemImage: "doc.on.doc", title: "DUPE")
                                 .foregroundStyle(dupDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
+                                .hoverPop()
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("LayersPanel-duplicate")
@@ -93,6 +95,7 @@ struct LayersPanel: View {
                         } label: {
                             actionButton(systemImage: "trash", title: "DELETE")
                                 .foregroundStyle(delDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
+                                .hoverPop()
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("LayersPanel-delete")

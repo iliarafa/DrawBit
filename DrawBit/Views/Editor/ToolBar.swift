@@ -21,6 +21,7 @@ struct ToolBar: View {
                 } label: {
                     iconLabel(systemImage: tool.sfSymbol, title: tool.displayName)
                         .foregroundStyle(state.tool == tool ? Color.toolSelected : Color.white.opacity(0.55))
+                        .hoverPop()
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
@@ -34,6 +35,7 @@ struct ToolBar: View {
             } label: {
                 iconLabel(systemImage: "arrow.left.and.right", title: "Mirror")
                     .foregroundStyle(state.isMirrorEnabled ? Color.toolSelected : Color.white.opacity(0.55))
+                    .hoverPop()
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("Mirror")
@@ -45,6 +47,7 @@ struct ToolBar: View {
             Button(action: onUndo) {
                 iconLabel(systemImage: "arrow.uturn.backward", title: "Undo")
                     .foregroundStyle(state.canUndo ? Color.white.opacity(0.85) : Color.white.opacity(0.25))
+                    .hoverPop()
             }
             .buttonStyle(.plain)
             .disabled(!state.canUndo)
@@ -54,6 +57,7 @@ struct ToolBar: View {
             Button(action: onRedo) {
                 iconLabel(systemImage: "arrow.uturn.forward", title: "Redo")
                     .foregroundStyle(state.canRedo ? Color.white.opacity(0.85) : Color.white.opacity(0.25))
+                    .hoverPop()
             }
             .buttonStyle(.plain)
             .disabled(!state.canRedo)
@@ -65,6 +69,7 @@ struct ToolBar: View {
             Button(action: onClear) {
                 iconLabel(systemImage: "trash", title: "Clear")
                     .foregroundStyle(Color.white.opacity(0.85))
+                    .hoverPop()
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("Clear")
@@ -74,6 +79,7 @@ struct ToolBar: View {
 
             Button(action: onRequestColorPicker) {
                 colorSwatchLabel(color: selectedColor)
+                    .hoverPop()
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("ColorSwatch")
