@@ -5,7 +5,7 @@ Both features below are merged and **pushed** to `origin/main`. Handoff commit: 
 ## Next session — queued tasks
 These two were explicitly queued by the user for next time. Both need scoping/brainstorming before building — the one-word titles are the user's; the notes below are starting guesses, not settled scope.
 1. **Palettes.** Likely: saved / user-defined color palettes in the color picker. Today the swatches are a fixed hardcoded set — see `swatch(hex:)` in `DrawBit/Views/Editor/DrawBitColorPicker.swift` — with no way to save or build custom palettes. Confirm what the user wants (custom palettes? import? per-piece vs. global?) before designing.
-2. **Share box format.** Revisit the share/export sheet. Entry point is `showingShareSheet` + the share glyph in `DrawBit/Views/Editor/EditorView.swift`; export produces GIF/APNG/PNG. Clarify whether "format" means the sheet's visual layout/format, or the export file-format options — ask before building.
+2. **Share box format → the sheet LAYOUT.** Confirmed by the user: this is about the share sheet's *visual layout/format*, NOT the export file-format options. Revisit how the share sheet is laid out. Entry point is `showingShareSheet` + the share glyph in `DrawBit/Views/Editor/EditorView.swift` (the sheet itself is the share/export view it presents). Brainstorm the new layout with the user before building.
 
 ## Pending ideas / things to judge next
 - **Push `main` to origin.** Both features are local-only by the user's choice. Nothing is on the remote yet.
