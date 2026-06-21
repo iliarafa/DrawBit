@@ -1,7 +1,11 @@
 # Handoff — Apple Pencil hover pop + gallery tile lift (2026-06-20)
 
-Both features below are merged to local `main` but **NOT pushed**. Latest commit: `248bb2f`.
-`origin/main` is still at `9b1b059` — `git push` when ready (two merges ahead).
+Both features below are merged and **pushed** to `origin/main`. Handoff commit: `5b7afa0`; features at `9b644a9` (hover) and `248bb2f` (tile lift).
+
+## Next session — queued tasks
+These two were explicitly queued by the user for next time. Both need scoping/brainstorming before building — the one-word titles are the user's; the notes below are starting guesses, not settled scope.
+1. **Palettes.** Likely: saved / user-defined color palettes in the color picker. Today the swatches are a fixed hardcoded set — see `swatch(hex:)` in `DrawBit/Views/Editor/DrawBitColorPicker.swift` — with no way to save or build custom palettes. Confirm what the user wants (custom palettes? import? per-piece vs. global?) before designing.
+2. **Share box format.** Revisit the share/export sheet. Entry point is `showingShareSheet` + the share glyph in `DrawBit/Views/Editor/EditorView.swift`; export produces GIF/APNG/PNG. Clarify whether "format" means the sheet's visual layout/format, or the export file-format options — ask before building.
 
 ## Pending ideas / things to judge next
 - **Push `main` to origin.** Both features are local-only by the user's choice. Nothing is on the remote yet.
