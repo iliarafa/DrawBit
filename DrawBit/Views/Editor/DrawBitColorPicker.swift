@@ -165,6 +165,7 @@ struct DrawBitColorPicker: View {
                     lineWidth: isSelected ? 2 : 0.5
                 )
             )
+            .hoverPop()
             .contentShape(Rectangle())
             .onTapGesture {
                 color = swatchColor
