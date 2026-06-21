@@ -34,6 +34,7 @@ struct ReferenceRow: View {
                             .foregroundStyle(.white.opacity(state.isReferenceVisible ? 0.85 : 0.45))
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
+                            .hoverPop()
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("Reference-toggle")
@@ -43,6 +44,7 @@ struct ReferenceRow: View {
                         .foregroundStyle(.white.opacity(0.85))
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
+                        .hoverPop()
                 }
                 // PhotosPicker doesn't expose its own standalone accessibility element to
                 // XCUITest unless we force one: setting only `.accessibilityIdentifier` lets
@@ -59,6 +61,7 @@ struct ReferenceRow: View {
                             .foregroundStyle(.white.opacity(0.85))
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
+                            .hoverPop()
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("Reference-remove")
