@@ -21,13 +21,22 @@ import UniformTypeIdentifiers
 /// **Nearest-neighbor:** `interpolationQuality = .none` and antialiasing off on
 /// the upscale context.
 enum SpriteSheetExporter {
+    /// Best-fit square-ish grid for `count` frames. Shared with the export-sheet preview so the
+    /// preview layout matches the written sheet exactly. Square canvas → `aspectRatio = 1`:
+    /// `columns = clamp(round(sqrt(N)), 1, N)`, `rows = ceil(N / columns)`.
+    static func grid(count: Int) -> (columns: Int, rows: Int) {
+        guard count > 0 else { return (1, 1) }
+        let columns = max(1, min(count, Int(Double(count).squareRoot().rounded())))
+        let rows = (count + columns - 1) / columns
+        return (columns, rows)
+    }
+
     static func export(frames: [Frame], size: CanvasSize, scale: Int) -> Data? {
         guard !frames.isEmpty, scale >= 1 else { return nil }
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
 
         let count = frames.count
-        let columns = max(1, min(count, Int((Double(count).squareRoot()).rounded())))
-        let rows = (count + columns - 1) / columns
+        let (columns, rows) = grid(count: count)
         let cellEdge = size.dimension * scale
         let outWidth = cellEdge * columns
         let outHeight = cellEdge * rows

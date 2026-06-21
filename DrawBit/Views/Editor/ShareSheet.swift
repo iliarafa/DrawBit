@@ -13,6 +13,13 @@ struct ShareSheet: View {
     @State private var selectedFormat: ExportFormat
     @State private var isExporting = false
 
+    // Preloaded once for the live preview; reused by `share()` so the piece isn't decoded twice.
+    @State private var frames: [Frame] = []
+    @State private var activeIndex = 0
+    @State private var fps = 12
+
+    private var outputEdge: Int { piece.size.dimension * selectedScale }
+
     /// Output formats. PNG always works (single-frame snapshot of the active frame);
     /// GIF and APNG are animated and require the underlying piece to actually have
     /// multiple frames to be interesting, but exporting a single-frame piece as
@@ -62,91 +69,115 @@ struct ShareSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(white: 0.10).ignoresSafeArea()
-                VStack(alignment: .leading, spacing: 16) {
-                    Spacer(minLength: 0)
+        VStack(spacing: 16) {
+            header
 
-                    Text("FORMAT")
-                        .font(.pixel(11))
-                        .foregroundStyle(.white.opacity(0.55))
+            ExportPreview(
+                frames: frames,
+                activeIndex: activeIndex,
+                size: piece.size,
+                fps: fps,
+                format: selectedFormat,
+                outputEdge: outputEdge
+            )
 
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4),
-                        spacing: 8
-                    ) {
-                        ForEach(ExportFormat.allCases) { f in
-                            formatTile(format: f)
-                        }
-                    }
+            Text(piece.effectiveName)
+                .font(.pixel(11))
+                .foregroundStyle(.white.opacity(0.6))
+                .lineLimit(1)
 
-                    Text("SCALE")
-                        .font(.pixel(11))
-                        .foregroundStyle(.white.opacity(0.55))
-
-                    LazyVGrid(
-                        columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5),
-                        spacing: 8
-                    ) {
-                        ForEach(Self.scales(for: piece.size), id: \.self) { s in
-                            scaleTile(scale: s)
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
+            section(title: "FORMAT", columns: 4) {
+                ForEach(ExportFormat.allCases) { formatTile(format: $0) }
             }
-            .navigationTitle("Export")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
+
+            section(title: "SCALE", columns: 5) {
+                ForEach(Self.scales(for: piece.size), id: \.self) { scaleTile(scale: $0) }
+            }
+
+            Spacer(minLength: 0)
+
+            exportButton
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(white: 0.10).ignoresSafeArea())
+        .onAppear { loadFramesIfNeeded() }
+        .onChange(of: selectedFormat) { _, newFormat in
+            // Switching to a format with a tighter budget (e.g. PNG → sprite sheet at high
+            // frame counts) can leave `selectedScale` pointing at a now-disabled tile. Snap it
+            // down to the largest tile that still fits so EXPORT never targets a doomed config.
+            if isOverBudget(scale: selectedScale, format: newFormat),
+               let safe = Self.scales(for: piece.size).reversed()
+                   .first(where: { !isOverBudget(scale: $0, format: newFormat) })
+            {
+                selectedScale = safe
+            }
+        }
+    }
+
+    private var header: some View {
+        ZStack {
+            Text("EXPORT")
+                .font(.pixel(14))
+                .foregroundStyle(.white)
+            HStack {
+                Button { dismiss() } label: {
+                    Text("CANCEL")
+                        .font(.pixel(12))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .accessibilityIdentifier("ShareSheet.cancel")
+                Spacer()
+            }
+        }
+    }
+
+    private func section<Content: View>(
+        title: String, columns: Int, @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.pixel(11))
+                .foregroundStyle(.white.opacity(0.55))
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columns),
+                spacing: 8,
+                content: content
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var exportButton: some View {
+        Button {
+            Task { await share() }
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10).fill(Color.white)
+                if isExporting {
+                    ProgressView().tint(.black)
+                } else {
                     Text("EXPORT")
                         .font(.pixel(14))
-                        .foregroundStyle(.white)
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text("CANCEL")
-                            .font(.pixel(12))
-                            .foregroundStyle(.white.opacity(0.8))
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await share() }
-                    } label: {
-                        if isExporting {
-                            ProgressView().tint(.white)
-                        } else {
-                            Text("EXPORT")
-                                .font(.pixel(12))
-                                .foregroundStyle(.white)
-                        }
-                    }
-                    .disabled(isExporting)
-                    .accessibilityIdentifier("ShareSheet.export")
+                        .foregroundStyle(.black)
                 }
             }
-            .toolbarBackground(Color(white: 0.10), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .onChange(of: selectedFormat) { _, newFormat in
-                // Switching to a format with a tighter budget (e.g. PNG → sprite
-                // sheet at high frame counts) can leave `selectedScale` pointing
-                // at a now-disabled tile. Snap it down to the largest tile that
-                // still fits so the EXPORT button never targets a doomed config.
-                if isOverBudget(scale: selectedScale, format: newFormat),
-                   let safe = Self.scales(for: piece.size).reversed()
-                       .first(where: { !isOverBudget(scale: $0, format: newFormat) })
-                {
-                    selectedScale = safe
-                }
-            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isExporting)
+        .accessibilityIdentifier("ShareSheet.export")
+    }
+
+    private func loadFramesIfNeeded() {
+        guard frames.isEmpty else { return }
+        let repo = PieceRepository(context: modelContext)
+        if let loaded = try? repo.loadFrames(piece: piece) {
+            frames = loaded.frames
+            activeIndex = loaded.activeFrameIndex
+            fps = loaded.fps
         }
     }
 
@@ -271,19 +302,22 @@ struct ShareSheet: View {
         let scale = selectedScale
         let format = selectedFormat
 
-        // Load whatever the format needs from the piece. Animated formats walk the
-        // full sequence; PNG only needs the active frame.
-        let repo = PieceRepository(context: modelContext)
-        let activeFrame: Frame
+        // Prefer the frames already loaded for the preview; fall back to a fresh decode if the
+        // export somehow fires before `onAppear` populated them. Animated formats walk the full
+        // sequence; PNG only needs the active frame.
         let allFrames: [Frame]
-        let fps: Int
-        do {
-            let loaded = try repo.loadFrames(piece: piece)
-            activeFrame = loaded.frames[loaded.activeFrameIndex]
+        let activeFrame: Frame
+        let exportFPS: Int
+        if !frames.isEmpty {
+            allFrames = frames
+            activeFrame = frames[activeIndex]
+            exportFPS = fps
+        } else {
+            let repo = PieceRepository(context: modelContext)
+            guard let loaded = try? repo.loadFrames(piece: piece) else { return }
             allFrames = loaded.frames
-            fps = loaded.fps
-        } catch {
-            return
+            activeFrame = loaded.frames[loaded.activeFrameIndex]
+            exportFPS = loaded.fps
         }
 
         let safeName = piece.effectiveName.replacingOccurrences(of: "/", with: "-")
@@ -302,9 +336,9 @@ struct ShareSheet: View {
             case .png:
                 data = PNGExporter.export(frame: activeFrame, size: size, scale: scale)
             case .gif:
-                data = try? GIFExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
+                data = try? GIFExporter.export(frames: allFrames, size: size, scale: scale, fps: exportFPS)
             case .apng:
-                data = try? APNGExporter.export(frames: allFrames, size: size, scale: scale, fps: fps)
+                data = try? APNGExporter.export(frames: allFrames, size: size, scale: scale, fps: exportFPS)
             case .spriteSheet:
                 data = SpriteSheetExporter.export(frames: allFrames, size: size, scale: scale)
             }
