@@ -15,11 +15,7 @@ struct ConfirmDialogSheet: View {
     var onCancel: () -> Void
     var onConfirm: () -> Void
 
-    /// Shared with the gallery's `DeletePieceSheet` "delete" red so destructive
-    /// actions read identically everywhere.
-    private static let destructiveRed = Color(red: 217.0 / 255.0, green: 87.0 / 255.0, blue: 99.0 / 255.0)
-
-    private var accentColor: Color { isDestructive ? Self.destructiveRed : .white }
+    private var accentColor: Color { isDestructive ? Color.destructive : .white }
 
     var body: some View {
         ZStack {

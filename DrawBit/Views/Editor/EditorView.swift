@@ -56,7 +56,6 @@ struct EditorView: View {
                             onAddFrame: addBlankFrameAfter,
                             onDuplicateFrame: duplicateActiveFrame,
                             onReorderFrame: { moveFrame(fromIndex: $0, toIndex: $1) },
-                            onRenameFrame: renameFrame,
                             onActivateFrame: setActiveFrameAndPersistIfDirty,
                             onTogglePlay: togglePlay,
                             onDeleteFrame: deleteActiveFrameWithConfirmIfNeeded
@@ -579,12 +578,6 @@ struct EditorView: View {
         let activeID = state.frames[state.activeFrameIndex].id
         mutateFrameSequence { frames in
             FrameSequence.removeFrame(activeID, in: &frames)
-        }
-    }
-
-    func renameFrame(id: UUID, to name: String) {
-        mutateFrameSequence { frames in
-            FrameSequence.setName(frameID: id, to: name, in: &frames)
         }
     }
 

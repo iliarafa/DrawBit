@@ -197,17 +197,16 @@ struct GalleryView: View {
 
     @ViewBuilder
     private func thumbnailCell(for piece: Piece) -> some View {
-        PieceThumbnailView(piece: piece)
-            .onTapGesture { selectedPiece = piece }
-            .contextMenu {
-                Button("Rename") {
-                    renameTarget = piece
-                    renameDraft = piece.name ?? ""
-                }
-                Button("Duplicate") { duplicate(piece) }
-                Divider()
-                Button("Delete", role: .destructive) { deleteTarget = piece }
-            }
+        PieceCell(
+            piece: piece,
+            onOpen: { selectedPiece = piece },
+            onRename: {
+                renameTarget = piece
+                renameDraft = piece.name ?? ""
+            },
+            onDuplicate: { duplicate(piece) },
+            onDelete: { deleteTarget = piece }
+        )
     }
 
     private func duplicate(_ piece: Piece) {
@@ -269,5 +268,80 @@ struct PixelArtIcon: View {
             }
         }
         .frame(width: size, height: size)
+    }
+}
+
+/// A gallery piece tile with its own themed long-press menu (Rename / Duplicate /
+/// Delete). Gallery tiles have no drag gesture, so — unlike the animation frames,
+/// where `.draggable` swallows the long press — a custom themed popover works here,
+/// replacing the unthemeable native `.contextMenu`. Styled to match `FramesStrip.fpsMenu`.
+private struct PieceCell: View {
+    let piece: Piece
+    let onOpen: () -> Void
+    let onRename: () -> Void
+    let onDuplicate: () -> Void
+    let onDelete: () -> Void
+
+    @State private var showingMenu = false
+
+    var body: some View {
+        PieceThumbnailView(piece: piece)
+            .onTapGesture { onOpen() }
+            .highPriorityGesture(
+                LongPressGesture(minimumDuration: 0.4, maximumDistance: 10)
+                    .onEnded { _ in showingMenu = true }
+            )
+            .popover(isPresented: $showingMenu) { menu }
+            // VoiceOver can't long-press, so keep the actions reachable via the rotor.
+            .accessibilityAction(named: "Rename") { onRename() }
+            .accessibilityAction(named: "Duplicate") { onDuplicate() }
+            .accessibilityAction(named: "Delete") { onDelete() }
+    }
+
+    private var menu: some View {
+        VStack(spacing: 0) {
+            row("RENAME", systemImage: "pencil", id: "PieceMenu.rename", action: onRename)
+            divider
+            row("DUPLICATE", systemImage: "plus.square.on.square", id: "PieceMenu.duplicate", action: onDuplicate)
+            divider
+            row("DELETE", systemImage: "trash", id: "PieceMenu.delete", destructive: true, action: onDelete)
+        }
+        .frame(width: 184)
+        .background(Color(white: 0.12))
+        .presentationCompactAdaptation(.popover)
+        .presentationBackground(Color(white: 0.12))
+    }
+
+    private var divider: some View {
+        Divider().overlay(Color.white.opacity(0.12))
+    }
+
+    private func row(_ title: String,
+                     systemImage: String,
+                     id: String,
+                     destructive: Bool = false,
+                     action: @escaping () -> Void) -> some View {
+        Button {
+            // Dismiss the popover first; the Rename/Delete actions then present their
+            // own sheets from the gallery (Duplicate is instant).
+            showingMenu = false
+            action()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .bold))
+                    .frame(width: 16)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.pixel(10))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(destructive ? Color.destructive : .white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(id)
     }
 }

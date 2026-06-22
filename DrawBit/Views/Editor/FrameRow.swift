@@ -8,18 +8,11 @@ struct FrameRow: View {
     let frameCount: Int
     let onTap: () -> Void
     let onDuplicate: () -> Void
-    let onRename: () -> Void
     let onDelete: () -> Void
     /// Index-based reorder (from, to).
     let onMove: (Int, Int) -> Void
 
     private static let edge: CGFloat = 72
-
-    /// Show the name overlay only when the user actually named the frame —
-    /// suppress the auto-generated "Frame N" names.
-    private var showsCustomName: Bool {
-        frame.name.range(of: #"^Frame \d+$"#, options: .regularExpression) == nil
-    }
 
     var body: some View {
         thumbnail
@@ -31,7 +24,6 @@ struct FrameRow: View {
             )
             .contentShape(Rectangle())
             .onTapGesture { onTap() }
-            .contextMenu { contextMenuItems }
             .draggable("\(index)") {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.white.opacity(0.2))
@@ -43,9 +35,14 @@ struct FrameRow: View {
                 return true
             }
             .modifier(FrameRowAccessibility(
-                frame: frame, index: index, frameCount: frameCount, showsCustomName: showsCustomName,
-                onDuplicate: onDuplicate, onRename: onRename, onDelete: onDelete, onMove: onMove
+                frame: frame, index: index, frameCount: frameCount,
+                onDuplicate: onDuplicate, onDelete: onDelete, onMove: onMove
             ))
+            // The action glyphs are overlaid *after* the accessibility collapse so each
+            // stays its own element — both VoiceOver-reachable and XCUITest-queryable.
+            // (A themed long-press popup can't coexist with `.draggable` reorder, so
+            // Duplicate/Delete are direct on-frame affordances instead of a menu.)
+            .overlay(actionBadges)
             .hoverPop()
     }
 
@@ -64,7 +61,6 @@ struct FrameRow: View {
             }
 
             numberBadge
-            nameOverlay
         }
     }
 
@@ -85,28 +81,54 @@ struct FrameRow: View {
         }
     }
 
+    /// On-frame action glyphs, shown only on the selected frame (the number badge owns
+    /// top-left, these sit top-right). Duplicate is always available; Delete hides on
+    /// the last remaining frame. Monochrome to match the strip; the destructive confirm
+    /// for Delete lives upstream.
     @ViewBuilder
-    private var nameOverlay: some View {
-        if showsCustomName {
+    private var actionBadges: some View {
+        if isActive {
             VStack(spacing: 0) {
+                HStack(spacing: 2) {
+                    Spacer(minLength: 0)
+                    // NB: identifiers must NOT start with "FrameRow." — the animation UI
+                    // tests enumerate frame rows via `BEGINSWITH 'FrameRow.'`, and a
+                    // collision pollutes that list.
+                    badgeButton(systemImage: "plus.square.on.square",
+                                label: "Duplicate frame",
+                                identifier: "FrameDuplicateButton",
+                                action: onDuplicate)
+                    if frameCount > 1 {
+                        badgeButton(systemImage: "xmark",
+                                    label: "Delete frame",
+                                    identifier: "FrameDeleteButton",
+                                    action: onDelete)
+                    }
+                }
                 Spacer(minLength: 0)
-                Text(frame.name.uppercased())
-                    .font(.pixel(7))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 1)
-                    .background(Color.black.opacity(0.6))
-                    .foregroundStyle(.white)
             }
         }
     }
 
-    @ViewBuilder
-    private var contextMenuItems: some View {
-        Button { onDuplicate() } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
-        Button { onRename() } label: { Label("Rename", systemImage: "pencil") }
-        Button(role: .destructive) { onDelete() } label: { Label("Delete", systemImage: "trash") }
-            .disabled(frameCount <= 1)
+    private func badgeButton(systemImage: String,
+                             label: String,
+                             identifier: String,
+                             action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.white)
+                .padding(4)
+                .background(Color.black.opacity(0.7))
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+                // Pad the hit target out beyond the visible chip.
+                .padding(.vertical, 4)
+                .padding(.horizontal, 1)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+        .accessibilityLabel(label)
     }
 }
 
@@ -117,9 +139,7 @@ private struct FrameRowAccessibility: ViewModifier {
     let frame: Frame
     let index: Int
     let frameCount: Int
-    let showsCustomName: Bool
     let onDuplicate: () -> Void
-    let onRename: () -> Void
     let onDelete: () -> Void
     let onMove: (Int, Int) -> Void
 
@@ -127,10 +147,9 @@ private struct FrameRowAccessibility: ViewModifier {
         content
             .accessibilityElement(children: .ignore)
             .accessibilityIdentifier("FrameRow.\(frame.id.uuidString)")
-            .accessibilityLabel(showsCustomName ? "Frame \(index + 1), \(frame.name)" : "Frame \(index + 1)")
+            .accessibilityLabel("Frame \(index + 1)")
             .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "Duplicate") { onDuplicate() }
-            .accessibilityAction(named: "Rename") { onRename() }
             .accessibilityAction(named: "Delete") { if frameCount > 1 { onDelete() } }
             .accessibilityAction(named: "Move left") { if index > 0 { onMove(index, index - 1) } }
             .accessibilityAction(named: "Move right") { if index < frameCount - 1 { onMove(index, index + 1) } }

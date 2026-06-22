@@ -8,14 +8,10 @@ struct FramesStrip: View {
     let onDuplicateFrame: () -> Void
     /// Index-based reorder (from, to) used by FrameRow drag-and-drop.
     let onReorderFrame: (Int, Int) -> Void
-    let onRenameFrame: (UUID, String) -> Void
     let onActivateFrame: (Int) -> Void
     let onTogglePlay: () -> Void
     let onDeleteFrame: () -> Void
 
-    @State private var renamingFrameID: UUID?
-    @State private var renameText: String = ""
-    @FocusState private var renameFieldFocused: Bool
     @State private var showingFPSMenu = false
 
     private static let fpsChoices = [4, 8, 12, 24, 30, 60]
@@ -67,60 +63,31 @@ struct FramesStrip: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     ForEach(Array(state.frames.enumerated()), id: \.element.id) { index, frame in
-                        if renamingFrameID == frame.id {
-                            // Dark, pixel-font inline field matching LayerRow's rename
-                            // treatment — no native `.roundedBorder` white box in the strip.
-                            TextField("Frame name", text: $renameText)
-                                .font(.pixel(11))
-                                .foregroundStyle(.white)
-                                .tint(.white)
-                                .focused($renameFieldFocused)
-                                .frame(width: 100)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(Color(white: 0.16))
-                                        .overlay(RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.white.opacity(0.25), lineWidth: 1))
-                                )
-                                .onSubmit { commitRename() }
-                                .submitLabel(.done)
-                                .onAppear { renameFieldFocused = true }
-                        } else {
-                            FrameRow(
-                                frame: frame,
-                                size: state.size,
-                                index: index,
-                                isActive: frame.id == state.frames[state.activeFrameIndex].id,
-                                frameCount: state.frames.count,
-                                onTap: {
-                                    if renamingFrameID != nil && renamingFrameID != frame.id {
-                                        commitRename()
-                                    }
-                                    if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
-                                        onActivateFrame(idx)
-                                    }
-                                },
-                                onDuplicate: {
-                                    if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
-                                        onActivateFrame(idx)
-                                    }
-                                    onDuplicateFrame()
-                                },
-                                onRename: {
-                                    renamingFrameID = frame.id
-                                    renameText = frame.name
-                                },
-                                onDelete: {
-                                    if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
-                                        onActivateFrame(idx)
-                                    }
-                                    onDeleteFrame()
-                                },
-                                onMove: { from, to in onReorderFrame(from, to) }
-                            )
-                        }
+                        FrameRow(
+                            frame: frame,
+                            size: state.size,
+                            index: index,
+                            isActive: frame.id == state.frames[state.activeFrameIndex].id,
+                            frameCount: state.frames.count,
+                            onTap: {
+                                if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
+                                    onActivateFrame(idx)
+                                }
+                            },
+                            onDuplicate: {
+                                if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
+                                    onActivateFrame(idx)
+                                }
+                                onDuplicateFrame()
+                            },
+                            onDelete: {
+                                if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
+                                    onActivateFrame(idx)
+                                }
+                                onDeleteFrame()
+                            },
+                            onMove: { from, to in onReorderFrame(from, to) }
+                        )
                     }
                 }
                 .padding(.horizontal, 4)
@@ -207,17 +174,5 @@ struct FramesStrip: View {
                 .fixedSize(horizontal: true, vertical: false)
         }
         .frame(minWidth: 44, minHeight: 44)
-    }
-
-    private func commitRename() {
-        guard let id = renamingFrameID else { return }
-        let trimmed = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty,
-           let current = state.frames.first(where: { $0.id == id }),
-           trimmed != current.name {
-            onRenameFrame(id, trimmed)
-        }
-        renamingFrameID = nil
-        renameText = ""
     }
 }

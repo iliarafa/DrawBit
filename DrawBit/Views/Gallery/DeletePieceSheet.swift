@@ -4,7 +4,7 @@ struct DeletePieceSheet: View {
     var onCancel: () -> Void
     var onDelete: () -> Void
 
-    private static let destructiveRed = Color(red: 217.0/255.0, green: 87.0/255.0, blue: 99.0/255.0)
+    private static let destructiveRed = Color.destructive
 
     var body: some View {
         ZStack {

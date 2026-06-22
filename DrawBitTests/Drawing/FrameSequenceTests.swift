@@ -94,12 +94,6 @@ final class FrameSequenceTests: XCTestCase {
         XCTAssertEqual(frames.map(\.name), ["F2", "F3", "F1"])
     }
 
-    func testSetName() {
-        var frames = makeFrames(["F1"])
-        FrameSequence.setName(frameID: frames[0].id, to: "Idle", in: &frames)
-        XCTAssertEqual(frames[0].name, "Idle")
-    }
-
     func testCapEnforcedAtModelLevel() {
         var frames = makeFrames((1...60).map { "F\($0)" })
         let newID = FrameSequence.addFrameAfter(frameID: frames.last!.id, in: &frames)

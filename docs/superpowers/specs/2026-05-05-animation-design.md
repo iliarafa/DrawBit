@@ -38,7 +38,7 @@ The data-model name `Frame` was chosen during the Layers v2 work with this featu
 A `Frame` already exists from Layers v2 with `layers: [Layer]` and `activeLayerID: UUID`. For animation, each `Frame` additionally carries:
 
 - A stable `id: UUID` — needed for stable references from undo entries, scrub state, and any future per-frame metadata.
-- A user-editable `name: String` — defaults to `"Frame N"` where N is the next unused integer for that Piece. Frames are sometimes renamed (e.g., "Pose A", "Pose B"); the name is shown on hover/long-press in the strip.
+- A `name: String` — defaults to `"Frame N"` where N is the next unused integer for that Piece. The name backs auto-numbering for Add/Duplicate only; it is **not** user-editable and is not shown in the strip (per-frame rename was removed 2026-06-22 — frames are positional, identified by their index badge).
 
 Layer metadata (name, visibility, lock) is kept **synchronized across all frames in a Piece** — every frame's `layers` array has the same UUIDs in the same order, with the same `name`/`isVisible`/`isLocked`. Only the per-layer `pixels: Data` differs frame to frame. The frame-sequence API (below) is the only seam that mutates layers, and it always cascades layer metadata changes across every frame.
 
@@ -65,10 +65,9 @@ The Piece holds a `frames: [Frame]` array, ordered by playback order: index 0 is
 From the timeline strip:
 
 - **Add** a new frame after the active frame. New frame is a **duplicate of the active frame** (every layer's pixels are copied). The new frame becomes active. Auto-named `"Frame N"` where N is the next unused integer.
-- **Duplicate** the active frame (explicit duplicate button, alongside Add). Same behavior as Add.
-- **Delete** the active frame (with `.confirmationDialog` if it has any non-transparent pixels in any layer; auto-confirm if every layer is empty). After deletion, the previous frame becomes active (or the next one, if the deleted frame was the first).
-- **Reorder** by drag-and-drop in EDIT mode (mirroring the Layers v2 pattern of EDIT/DONE toggle to avoid drag/long-press gesture conflict).
-- **Rename** by long-press on the frame thumbnail (inline text field).
+- **Duplicate** and **Delete** the active frame via small monochrome glyphs shown **only on the selected frame** (top-right corner — the number badge owns top-left): a duplicate icon (⧉) and a delete **×**. Duplicate is always available; Delete is hidden on the last remaining frame. Both are direct on-frame affordances, **not** a popup menu — a themed long-press popup can't coexist with the `.draggable` reorder gesture (the drag-lift recognizer swallows the long press), so the actions live on the frame instead. Delete confirms via `.confirmationDialog` if the frame has any non-transparent pixels in any layer; auto-confirms if every layer is empty. After deletion, the previous frame becomes active (or the next one, if the deleted frame was the first). Duplicate has the same behavior as Add.
+- **Reorder** by drag-and-drop on the frame thumbnails.
+- _(Per-frame rename and the per-frame context menu were both removed 2026-06-22.)_
 - **Tap any frame** to make it active (auto-commits any floating marquee first).
 
 ### Layer-level operations cascade across frames

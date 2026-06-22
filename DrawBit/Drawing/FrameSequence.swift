@@ -62,11 +62,6 @@ enum FrameSequence {
         frames.insert(frame, at: to)
     }
 
-    static func setName(frameID: UUID, to name: String, in frames: inout [Frame]) {
-        guard let idx = frames.firstIndex(where: { $0.id == frameID }) else { return }
-        frames[idx].name = name
-    }
-
     // MARK: - Naming (frame)
 
     /// Returns "Frame N" where N is the lowest unused integer. Existing frames named

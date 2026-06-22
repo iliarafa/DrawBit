@@ -267,6 +267,96 @@ final class AnimationStripUITests: XCTestCase {
         // only verifies the button inserts a frame.
     }
 
+    func testDuplicateBadgeOnSelectedFrameAddsCopy() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-32"].tap()
+
+        let animate = app.buttons["Animate"]
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
+        animate.tap()
+
+        let frameRowsPredicate = NSPredicate(format: "identifier BEGINSWITH 'FrameRow.'")
+        let frameButtons = app.buttons.matching(frameRowsPredicate)
+        var rowCount = frameButtons.count
+        for _ in 0..<50 where rowCount < 2 {
+            Thread.sleep(forTimeInterval: 0.1)
+            rowCount = frameButtons.count
+        }
+        XCTAssertGreaterThanOrEqual(rowCount, 2, "ANIMATE must seed a 2nd frame")
+        let countBefore = frameButtons.count
+
+        // The duplicate glyph is shown only on the selected frame — exactly one.
+        let duplicate = app.buttons["FrameDuplicateButton"]
+        XCTAssertTrue(duplicate.waitForExistence(timeout: 15),
+                      "Selected frame must show a duplicate glyph")
+        XCTAssertEqual(app.buttons.matching(identifier: "FrameDuplicateButton").count, 1,
+                       "Only the selected frame shows the duplicate glyph — not every frame")
+
+        duplicate.tap()
+        var grew = false
+        for _ in 0..<50 {
+            if frameButtons.count > countBefore { grew = true; break }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertTrue(grew, "Tapping the duplicate glyph must insert a copy of the frame")
+    }
+
+    func testDeleteBadgeOnSelectedFrameRemovesIt() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-32"].tap()
+
+        // ANIMATE reveals the strip and seeds a 2nd frame (total: 2). The active
+        // frame becomes the new one, so exactly one delete × is shown.
+        let animate = app.buttons["Animate"]
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
+        animate.tap()
+
+        let add = app.buttons["FramesStrip.add"]
+        XCTAssertTrue(add.waitForExistence(timeout: 15))
+
+        let frameRowsPredicate = NSPredicate(format: "identifier BEGINSWITH 'FrameRow.'")
+        let frameButtons = app.buttons.matching(frameRowsPredicate)
+        var rowCount = frameButtons.count
+        for _ in 0..<50 where rowCount < 2 {
+            Thread.sleep(forTimeInterval: 0.1)
+            rowCount = frameButtons.count
+        }
+        XCTAssertGreaterThanOrEqual(rowCount, 2, "ANIMATE must seed a 2nd frame")
+
+        // The delete × is shown only on the selected frame, so with 2 frames there
+        // must be exactly one — never one per frame.
+        let deleteBadge = app.buttons["FrameDeleteButton"]
+        XCTAssertTrue(deleteBadge.waitForExistence(timeout: 15),
+                      "Selected frame must show a delete × once there are ≥2 frames")
+        XCTAssertEqual(app.buttons.matching(identifier: "FrameDeleteButton").count, 1,
+                       "Only the selected frame shows the delete × — not every frame")
+
+        // The seeded frame is blank, so delete is immediate (no confirm dialog).
+        deleteBadge.tap()
+        var droppedToOne = false
+        for _ in 0..<50 {
+            if frameButtons.count <= 1 { droppedToOne = true; break }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertTrue(droppedToOne, "Tapping the delete × must remove the frame")
+
+        // Last remaining frame must not show a delete × (guarded by frameCount > 1).
+        XCTAssertFalse(app.buttons["FrameDeleteButton"].waitForExistence(timeout: 1),
+                       "A single-frame sequence must show no delete ×")
+    }
+
     func testFPSPopoverSetsSpeedInOneTap() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
