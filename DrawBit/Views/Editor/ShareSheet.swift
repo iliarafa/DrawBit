@@ -319,8 +319,7 @@ struct ShareSheet: View {
             exportFPS = loaded.fps
         }
 
-        let safeName = piece.effectiveName.replacingOccurrences(of: "/", with: "-")
-        let filename = "\(safeName)-\(scale)x.\(format.fileExtension)"
+        let filename = "drawbit-\(piece.size.dimension)-\(scale)x.\(format.fileExtension)"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
 
         // NOTE: the animated exporters now check `Task.checkCancellation()` between
