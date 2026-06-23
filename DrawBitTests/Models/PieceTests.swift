@@ -29,6 +29,15 @@ final class PieceTests: XCTestCase {
         XCTAssertEqual(piece.size, .s128)
     }
 
+    func testCustomSizeRoundTripsThroughSizeRaw() throws {
+        let piece = Piece(size: CanvasSize(48))
+        XCTAssertEqual(piece.sizeRaw, 48)
+        XCTAssertEqual(piece.size, CanvasSize(48))
+        XCTAssertEqual(piece.size.dimension, 48)
+        let decoded = try FrameCodec.decodeSequence(piece.frameData)
+        XCTAssertEqual(decoded.frames[0].layers[0].pixels.count, CanvasSize(48).byteCount)
+    }
+
     func testNewPieceFrameDataIsV2SequenceWithOneFrame() throws {
         let piece = Piece(size: .s32)
         XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(piece.frameData))

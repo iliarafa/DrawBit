@@ -33,8 +33,8 @@ final class Piece {
     var referenceOpacity: Double = 0.35
 
     var size: CanvasSize {
-        get { CanvasSize(rawValue: sizeRaw) ?? .s32 }
-        set { sizeRaw = newValue.rawValue }
+        get { CanvasSize(sizeRaw) }
+        set { sizeRaw = newValue.dimension }
     }
 
     var effectiveName: String {

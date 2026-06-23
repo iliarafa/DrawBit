@@ -1,7 +1,7 @@
 import XCTest
 
-/// Covers the gallery piece's themed long-press menu (Rename / Duplicate / Delete),
-/// which replaced the native `.contextMenu`.
+/// Covers the gallery piece tile: tap opens the piece; long-press reveals on-tile
+/// Duplicate / Delete chips (Rename was dropped).
 final class GalleryMenuUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
@@ -20,7 +20,7 @@ final class GalleryMenuUITests: XCTestCase {
         XCTAssertTrue(app.buttons["PieceThumbnail"].firstMatch.waitForExistence(timeout: 15))
     }
 
-    func testLongPressOpensThemedMenuAndDuplicates() throws {
+    func testLongPressRevealsIconsAndDuplicates() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
@@ -30,16 +30,14 @@ final class GalleryMenuUITests: XCTestCase {
         let pieces = app.buttons.matching(identifier: "PieceThumbnail")
         XCTAssertEqual(pieces.count, 1, "Exactly one piece to start")
 
-        // Long-press the tile to open the custom popover (gallery tiles have no drag
-        // gesture, so the long press is free to drive the menu).
+        // Long-press reveals the on-tile chips (tiles have no drag gesture).
         pieces.firstMatch.press(forDuration: 0.6)
 
-        let duplicate = app.buttons["PieceMenu.duplicate"]
+        let duplicate = app.buttons["PieceDuplicateButton"]
         XCTAssertTrue(duplicate.waitForExistence(timeout: 15),
-                      "Long-press must open the themed piece menu")
-        // All three actions present.
-        XCTAssertTrue(app.buttons["PieceMenu.rename"].exists)
-        XCTAssertTrue(app.buttons["PieceMenu.delete"].exists)
+                      "Long-press must reveal the Duplicate chip")
+        XCTAssertTrue(app.buttons["PieceDeleteButton"].exists,
+                      "Long-press must reveal the Delete chip")
 
         duplicate.tap()
 
@@ -49,9 +47,12 @@ final class GalleryMenuUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.1)
         }
         XCTAssertTrue(grew, "Duplicate must add a second piece")
+        // Tapping a chip must act in place, not open the editor.
+        XCTAssertTrue(app.buttons["NewButton"].exists,
+                      "Tapping a chip must not navigate into the editor")
     }
 
-    func testDeleteFromMenuOpensConfirmSheetAndRemovesPiece() throws {
+    func testDeleteIconOpensConfirmAndRemovesPiece() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
@@ -62,16 +63,13 @@ final class GalleryMenuUITests: XCTestCase {
 
         pieces.firstMatch.press(forDuration: 0.6)
 
-        let deleteRow = app.buttons["PieceMenu.delete"]
-        XCTAssertTrue(deleteRow.waitForExistence(timeout: 15))
-        deleteRow.tap()
+        let deleteChip = app.buttons["PieceDeleteButton"]
+        XCTAssertTrue(deleteChip.waitForExistence(timeout: 15))
+        deleteChip.tap()
 
-        // The menu must hand off cleanly to the existing themed confirm sheet
-        // (this also proves the popover-dismiss → sheet-present sequence doesn't race).
         XCTAssertTrue(app.staticTexts["DELETE PIECE?"].waitForExistence(timeout: 15),
-                      "Delete row must present the DeletePieceSheet")
+                      "Delete chip must present the DeletePieceSheet")
 
-        // Confirm — the menu popover is gone, so the only "DELETE" button is the sheet's.
         app.buttons["DELETE"].tap()
 
         var removed = false
@@ -82,19 +80,36 @@ final class GalleryMenuUITests: XCTestCase {
         XCTAssertTrue(removed, "Confirming delete must remove the piece")
     }
 
-    func testRenameFromMenuOpensSheet() throws {
+    func testCustomSizeCreatesPiece() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+
+        let field = app.textFields["NewPiece-customField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 15), "Custom size field must exist")
+        field.tap()
+        field.typeText("48")
+
+        app.buttons["NewPiece-customCreate"].tap()
+
+        // A custom-size piece opens straight into the editor.
+        XCTAssertTrue(app.buttons["Animate"].waitForExistence(timeout: 15),
+                      "Creating a custom size must open the editor")
+    }
+
+    func testTapOpensPiece() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
 
         makePieceAndReturnToGallery(app)
-        app.buttons.matching(identifier: "PieceThumbnail").firstMatch.press(forDuration: 0.6)
 
-        let renameRow = app.buttons["PieceMenu.rename"]
-        XCTAssertTrue(renameRow.waitForExistence(timeout: 15))
-        renameRow.tap()
-
-        XCTAssertTrue(app.staticTexts["RENAME"].waitForExistence(timeout: 15),
-                      "Rename row must present the RenamePieceSheet")
+        // A plain tap opens the editor (the ANIMATE control only exists there).
+        app.buttons.matching(identifier: "PieceThumbnail").firstMatch.tap()
+        XCTAssertTrue(app.buttons["Animate"].waitForExistence(timeout: 15),
+                      "Tapping a tile must open the piece in the editor")
     }
 }

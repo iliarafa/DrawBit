@@ -13,9 +13,9 @@ struct GalleryView: View {
     /// True while the help destination is pushed. Same shape as `showingFM`.
     @State private var showingHelp = false
 
-    @State private var renameTarget: Piece?
-    @State private var renameDraft: String = ""
     @State private var deleteTarget: Piece?
+    /// Which tile is currently showing its Duplicate/Delete chips (long-pressed).
+    @State private var selectedTileID: PersistentIdentifier?
 
     /// When true (only when arriving from the launch sequence), the gallery plays a
     /// one-time staggered intro: each of its four elements pops in as a whole, in
@@ -117,25 +117,6 @@ struct GalleryView: View {
                 HelpScreen()
             }
             .sheet(isPresented: Binding(
-                get: { renameTarget != nil },
-                set: { if !$0 { renameTarget = nil } }
-            )) {
-                RenamePieceSheet(
-                    draft: $renameDraft,
-                    onCancel: { renameTarget = nil },
-                    onSave: {
-                        if let target = renameTarget {
-                            let repo = PieceRepository(context: modelContext)
-                            try? repo.rename(piece: target, to: renameDraft)
-                        }
-                        renameTarget = nil
-                    }
-                )
-                .presentationDetents([.height(220)])
-                .presentationCornerRadius(0)
-                .presentationBackground(Color(white: 0.10))
-            }
-            .sheet(isPresented: Binding(
                 get: { deleteTarget != nil },
                 set: { if !$0 { deleteTarget = nil } }
             )) {
@@ -199,10 +180,13 @@ struct GalleryView: View {
     private func thumbnailCell(for piece: Piece) -> some View {
         PieceCell(
             piece: piece,
-            onOpen: { selectedPiece = piece },
-            onRename: {
-                renameTarget = piece
-                renameDraft = piece.name ?? ""
+            isSelected: selectedTileID == piece.persistentModelID,
+            onOpen: {
+                selectedTileID = nil
+                selectedPiece = piece
+            },
+            onToggleSelect: {
+                selectedTileID = selectedTileID == piece.persistentModelID ? nil : piece.persistentModelID
             },
             onDuplicate: { duplicate(piece) },
             onDelete: { deleteTarget = piece }
@@ -277,73 +261,74 @@ struct PixelArtIcon: View {
 /// Delete). Gallery tiles have no drag gesture, so — unlike the animation frames,
 /// where `.draggable` swallows the long press — a custom themed popover works here,
 /// replacing the unthemeable native `.contextMenu`. Styled to match `FramesStrip.fpsMenu`.
+/// A gallery piece tile. Tap opens the piece; long-press reveals on-tile Duplicate /
+/// Delete glyphs (mirroring the animation frames' `FrameRow.actionBadges`) — no menu.
 private struct PieceCell: View {
     let piece: Piece
+    let isSelected: Bool
     let onOpen: () -> Void
-    let onRename: () -> Void
+    let onToggleSelect: () -> Void
     let onDuplicate: () -> Void
     let onDelete: () -> Void
-
-    @State private var showingMenu = false
 
     var body: some View {
         PieceThumbnailView(piece: piece)
             .onTapGesture { onOpen() }
             .highPriorityGesture(
                 LongPressGesture(minimumDuration: 0.4, maximumDistance: 10)
-                    .onEnded { _ in showingMenu = true }
+                    .onEnded { _ in onToggleSelect() }
             )
-            .popover(isPresented: $showingMenu) { menu }
+            .overlay(actionBadges)
             // VoiceOver can't long-press, so keep the actions reachable via the rotor.
-            .accessibilityAction(named: "Rename") { onRename() }
             .accessibilityAction(named: "Duplicate") { onDuplicate() }
             .accessibilityAction(named: "Delete") { onDelete() }
     }
 
-    private var menu: some View {
-        VStack(spacing: 0) {
-            row("RENAME", systemImage: "pencil", id: "PieceMenu.rename", action: onRename)
-            divider
-            row("DUPLICATE", systemImage: "plus.square.on.square", id: "PieceMenu.duplicate", action: onDuplicate)
-            divider
-            row("DELETE", systemImage: "trash", id: "PieceMenu.delete", destructive: true, action: onDelete)
-        }
-        .frame(width: 184)
-        .background(Color(white: 0.12))
-        .presentationCompactAdaptation(.popover)
-        .presentationBackground(Color(white: 0.12))
-    }
-
-    private var divider: some View {
-        Divider().overlay(Color.white.opacity(0.12))
-    }
-
-    private func row(_ title: String,
-                     systemImage: String,
-                     id: String,
-                     destructive: Bool = false,
-                     action: @escaping () -> Void) -> some View {
-        Button {
-            // Dismiss the popover first; the Rename/Delete actions then present their
-            // own sheets from the gallery (Duplicate is instant).
-            showingMenu = false
-            action()
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 12, weight: .bold))
-                    .frame(width: 16)
-                    .accessibilityHidden(true)
-                Text(title)
-                    .font(.pixel(10))
+    /// Duplicate + Delete chips, top-right, shown only when the tile is selected
+    /// (long-pressed). Each is a `Button` so its tap acts and does NOT fall through
+    /// to the tile's open gesture. Delete routes through the upstream confirm sheet.
+    @ViewBuilder
+    private var actionBadges: some View {
+        if isSelected {
+            VStack(spacing: 0) {
+                HStack(spacing: 4) {
+                    Spacer(minLength: 0)
+                    // Identifiers must NOT start with "PieceThumbnail" — the gallery
+                    // tests enumerate tiles by that identifier.
+                    badgeButton(systemImage: "plus.square.on.square",
+                                label: "Duplicate piece",
+                                identifier: "PieceDuplicateButton",
+                                action: onDuplicate)
+                    badgeButton(systemImage: "trash",
+                                label: "Delete piece",
+                                identifier: "PieceDeleteButton",
+                                destructive: true,
+                                action: onDelete)
+                }
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(destructive ? Color.destructive : .white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .contentShape(Rectangle())
+            .padding(6)
+        }
+    }
+
+    private func badgeButton(systemImage: String,
+                             label: String,
+                             identifier: String,
+                             destructive: Bool = false,
+                             action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(destructive ? Color.destructive : .white)
+                .padding(6)
+                .background(Color.black.opacity(0.75))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                // Pad the hit target out beyond the visible chip.
+                .padding(2)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier(id)
+        .accessibilityIdentifier(identifier)
+        .accessibilityLabel(label)
     }
 }

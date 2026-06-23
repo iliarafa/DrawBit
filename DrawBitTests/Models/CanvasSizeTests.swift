@@ -2,8 +2,21 @@ import XCTest
 @testable import DrawBit
 
 final class CanvasSizeTests: XCTestCase {
-    func testAllCasesExist() {
-        XCTAssertEqual(CanvasSize.allCases, [.s15, .s16, .s31, .s32, .s63, .s64, .s128])
+    func testPresetsAreTheFourEvenSquares() {
+        // Odd presets (15/31/63) were dropped from the picker once Custom shipped.
+        XCTAssertEqual(CanvasSize.presets, [.s16, .s32, .s64, .s128])
+    }
+
+    func testCustomDimensionIsHonored() {
+        XCTAssertEqual(CanvasSize(48).dimension, 48)
+        XCTAssertEqual(CanvasSize(48).displayName, "48 × 48")
+        XCTAssertEqual(CanvasSize(48).pixelCount, 48 * 48)
+    }
+
+    func testDimensionClampsToBounds() {
+        XCTAssertEqual(CanvasSize(0).dimension, CanvasSize.minDimension)
+        XCTAssertEqual(CanvasSize(-5).dimension, CanvasSize.minDimension)
+        XCTAssertEqual(CanvasSize(9999).dimension, CanvasSize.maxDimension)
     }
 
     func testDimensionMatchesRaw() {

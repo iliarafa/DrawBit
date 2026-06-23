@@ -9,7 +9,8 @@ final class SingleFrameNonRegressionTests: XCTestCase {
     /// The export path itself is unchanged, so any divergence here would mean
     /// the V2 codec is corrupting frame data.
     func testSingleFrameSingleLayerPNGByteIdentity() throws {
-        for size in CanvasSize.allCases {
+        // Cover all historical preset sizes plus a custom (non-preset) square.
+        for size in [CanvasSize.s15, .s16, .s31, .s32, .s63, .s64, .s128, CanvasSize(48)] {
             for scale in [1, 2, 4, 8] {
                 let pixels = Self.makeFixturePixels(size: size)
                 let layer = Layer(name: "Layer 1", pixels: pixels)

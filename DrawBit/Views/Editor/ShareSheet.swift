@@ -261,16 +261,14 @@ struct ShareSheet: View {
     /// number to keep the math integer (each source pixel becomes an exact N×N
     /// block on output — see `PNGExporter.swift:24-25`, nearest-neighbour everywhere).
     static func scales(for size: CanvasSize) -> [Int] {
-        // Odd sizes mirror their even neighbour's multipliers — output edges
-        // land within a few % of 128/256/512/1024/2048 (15×64 = 960,
-        // 31×32 = 992, 63×32 = 2016) which is well inside the platform-resize
-        // tolerance that motivated the 1024-px+ default in the first place.
-        switch size {
-        case .s15, .s16:  [8, 16, 32, 64, 128]   // 128, 256, 512, 1024, 2048
-        case .s31, .s32:  [4, 8, 16, 32, 64]     // 128, 256, 512, 1024, 2048
-        case .s63, .s64:  [2, 4, 8, 16, 32]      // 128, 256, 512, 1024, 2048
-        case .s128:       [1, 2, 4, 8, 16]       // 128, 256, 512, 1024, 2048
-        }
+        // A power-of-two ladder anchored so output edges land near
+        // 128/256/512/1024/2048 px. `k` is the smallest multiplier (~128 / dimension),
+        // and the five scales are k·{1,2,4,8,16}. Integer floor keeps each source pixel
+        // an exact block on output (nearest-neighbour everywhere). This reproduces the
+        // old per-preset table exactly (16→[8,16,32,64,128] … 128→[1,2,4,8,16]) and
+        // generalises to any custom square (48→[2,4,8,16,32], 8→[16,32,64,128,256]).
+        let k = max(1, 128 / size.dimension)
+        return [1, 2, 4, 8, 16].map { k * $0 }
     }
 
     /// Default lands at 1024–2048 px output regardless of canvas. iOS Photos
@@ -281,12 +279,13 @@ struct ShareSheet: View {
     /// nearest-neighbour magnification (every dedicated pixel-art app ships
     /// bigger-by-default for this reason).
     static func defaultScale(for size: CanvasSize) -> Int {
-        switch size {
-        case .s15, .s16:  64   // 960 / 1024 px
-        case .s31, .s32:  32   //  992 / 1024 px
-        case .s63, .s64:  32   // 2016 / 2048 px
-        case .s128:       16   // 2048 px
-        }
+        // Small canvases default to ~1024 px output, larger ones to ~2048 px (bigger
+        // sources can afford—and benefit from—the crisper larger export). Pick the
+        // scale whose output edge lands closest to that target. Reproduces the old
+        // per-preset defaults (16→64, 32→32, 64→32, 128→16) and generalises.
+        let d = size.dimension
+        let target = d <= 32 ? 1024 : 2048
+        return scales(for: size).min(by: { abs($0 * d - target) < abs($1 * d - target) }) ?? 1
     }
 
     private func share() async {

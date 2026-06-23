@@ -122,12 +122,6 @@ final class PieceRepository {
         if dirty { try context.save() }
     }
 
-    func rename(piece: Piece, to name: String?) throws {
-        piece.name = (name?.isEmpty ?? true) ? nil : name
-        piece.updatedAt = Date()
-        try context.save()
-    }
-
     /// Duplicates a piece, rebuilding every frame with fresh layer UUIDs so the duplicate's
     /// layers don't share IDs with the source. Preserves the full frame sequence.
     func duplicate(piece: Piece) throws -> Piece {
