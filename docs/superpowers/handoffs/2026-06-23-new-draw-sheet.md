@@ -4,16 +4,18 @@
 on the simulator, but it went through many iterations and the final feel is perceptual — needs a device
 eyeball + small tuning. Details at the bottom.
 
-## ⚠️ State of the repo — UNCOMMITTED WORK
-- Branch `main`, HEAD `68a684e` (last session's handoff). **The New Draw work below is NOT committed yet.**
-- Uncommitted (tracked): `DrawBit/Views/Gallery/NewPieceSheet.swift`,
-  `DrawBit/Views/Gallery/GalleryView.swift`, `project.yml`, `DrawBit/Views/Editor/ShareSheet.swift`.
-- Untracked, **leave alone / never `git add -A`**: `alt_logo.PNG`, `dbit.png`, `share.PNG`.
-- Suggested first move next session (or before ending this one): **commit + push** the stack. Suggested
-  grouping: (1) New Draw sheet redesign, (2) iOS 18 deployment bump, (3) export filename.
-- Tests: full suite was **green after the iOS 18 bump** (320 unit + 33 UI). The edits since
-  (CREATE→plain, NEW PIECE→NEW DRAW, `drawbit-…` filename) are build-verified string/label changes with
-  no test impact. `GalleryMenuUITests` (5) cover the sheet's ids and pass.
+## State of the repo — all committed & pushed
+- Branch `main`, in sync with `origin/main`, HEAD `53424f5`. Everything below is shipped.
+- This session's commits (on top of last session's `68a684e`):
+  - `6d5c2b3` chore: raise deployment target to iOS 18
+  - `2ddba54` feat(gallery): redesign New Draw sheet (minimal hero)
+  - `c26cb33` feat(export): branded export filename
+  - `53424f5` docs: this handoff
+- Working tree clean except the usual untracked root images — **leave alone / never `git add -A`**:
+  `alt_logo.PNG`, `dbit.png`, `share.PNG`.
+- Tests: full suite **green** (320 unit + 33 UI) as of the iOS 18 bump; the later string/label edits
+  (CREATE→plain, NEW PIECE→NEW DRAW, `drawbit-…` filename) are build-verified with no test impact.
+  `GalleryMenuUITests` (5) cover the sheet's ids and pass.
 
 ## 🚨 How the user wants you to work (learned the hard way this session)
 This session had a lot of back-and-forth on the sheet. Internalize this:
