@@ -142,17 +142,18 @@ struct NewPieceSheet: View {
     }
 }
 
-/// A pixel-grid square that *grows with the chosen size* — small at the minimum,
-/// filling the frame near the maximum — so the preview reads as "bigger canvas".
-/// The square's side is `sqrt`-mapped across the size range so every step is visible;
-/// the grid keeps a ~constant on-screen cell, so a larger square also shows more cells.
+/// A pixel-grid square that *grows with the chosen size* and shows the *actual
+/// pixels* at low resolution — an 8×8 draws 8 countable cells. As the size rises the
+/// grid densifies until cells hit a ~3pt legibility floor, where the grain plateaus
+/// (`count = min(dimension, side/minCell)`) while the square keeps growing toward
+/// filling the frame — so every size still reads distinctly.
 private struct CanvasPreview: View {
     let dimension: Int
 
     var body: some View {
         Canvas { ctx, size in
             let maxSide = min(size.width, size.height)
-            let minSide = maxSide * 0.26
+            let minSide = maxSide * 0.36
             let lo = sqrt(Double(CanvasSize.minDimension))
             let hi = sqrt(Double(CanvasSize.maxDimension))
             let frac = max(0, min(1, (sqrt(Double(dimension)) - lo) / (hi - lo)))
@@ -162,7 +163,9 @@ private struct CanvasPreview: View {
 
             ctx.fill(Path(rect), with: .color(Color(white: 0.15)))
 
-            let count = max(2, Int((side / 6).rounded()))
+            // Real pixels while they stay ≥ minCell on screen, then a fixed fine grain.
+            let minCell: CGFloat = 3
+            let count = max(2, min(dimension, Int(side / minCell)))
             let cell = side / CGFloat(count)
             var path = Path()
             for i in 0...count {
@@ -171,8 +174,8 @@ private struct CanvasPreview: View {
                 path.move(to: CGPoint(x: x, y: rect.minY)); path.addLine(to: CGPoint(x: x, y: rect.maxY))
                 path.move(to: CGPoint(x: rect.minX, y: y)); path.addLine(to: CGPoint(x: rect.maxX, y: y))
             }
-            ctx.stroke(path, with: .color(.white.opacity(0.12)), lineWidth: 1)
-            ctx.stroke(Path(rect), with: .color(.white.opacity(0.25)), lineWidth: 1)
+            ctx.stroke(path, with: .color(.white.opacity(0.14)), lineWidth: 1)
+            ctx.stroke(Path(rect), with: .color(.white.opacity(0.3)), lineWidth: 1)
         }
     }
 }
