@@ -24,10 +24,11 @@ struct LaunchSequenceView: View {
     /// The gallery's grey page assembles from black as the final beat.
     @State private var pageProgress: CGFloat = 0
 
-    // Tunable beats.
-    private let dissolveOut: Double = 0.5
-    private let dissolveIn: Double = 0.5
-    private let logoHold: Double = 0.4
+    // Tunable beats. Title/logo beats slowed ~1.5× to sit with the intro music's
+    // rhythm; the grey-page assembly (`pageIn`) is left as-is.
+    private let dissolveOut: Double = 0.75
+    private let dissolveIn: Double = 0.75
+    private let logoHold: Double = 0.6
     private let pageIn: Double = 0.5
 
     var body: some View {

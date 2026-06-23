@@ -20,4 +20,14 @@ final class BundledTracksTests: XCTestCase {
         let testBundle = Bundle(for: BundledTracksTests.self)
         XCTAssertEqual(BundledTracks.load(bundle: testBundle), [])
     }
+
+    func testIsStationFileExcludesNonNumericPrefixedAudio() {
+        // Station tracks use a numeric prefix and stay in the playlist.
+        XCTAssertTrue(BundledTracks.isStationFile("01-sunrise.mp3"))
+        XCTAssertTrue(BundledTracks.isStationFile("10-cyber_angel.mp3"))
+        // The intro music (and any other root-bundled audio) is not a station.
+        XCTAssertFalse(BundledTracks.isStationFile("dbfm7.mp3"))
+        XCTAssertFalse(BundledTracks.isStationFile("intro.mp3"))
+        XCTAssertFalse(BundledTracks.isStationFile("click.wav"))
+    }
 }

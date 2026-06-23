@@ -121,6 +121,9 @@ struct EditorView: View {
                 .presentationBackground(Color(white: 0.10))
         }
         .onAppear {
+            // Diving into a piece ends the launch intro so its music doesn't bleed
+            // into the canvas. No-op once the ~17s clip has already finished.
+            IntroAudio.shared.stop()
             let repo = PieceRepository(context: modelContext)
             if let settings = try? repo.appSettings() {
                 recentHex = settings.recentColors

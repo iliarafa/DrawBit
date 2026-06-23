@@ -54,6 +54,9 @@ struct RootView: View {
     /// multi-stage animation would make XCUITest wait, and `LandingScreenTests`
     /// expects the gallery immediately after the tap.
     private func start() {
-        screen = UITestSupport.isRunning ? .gallery : .launching
+        if UITestSupport.isRunning { screen = .gallery; return }
+        // Intro music scores the launch animation; one-shot, only on the real path.
+        IntroAudio.shared.play()
+        screen = .launching
     }
 }

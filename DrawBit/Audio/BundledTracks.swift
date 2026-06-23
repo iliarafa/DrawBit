@@ -21,9 +21,17 @@ enum BundledTracks {
                 }
             }
         }
-        return sortedByFileName(urls).map {
+        let stations = urls.filter { isStationFile($0.lastPathComponent) }
+        return sortedByFileName(stations).map {
             AudioTrack(url: $0, title: prettifyTitle(fileName: $0.lastPathComponent))
         }
+    }
+
+    /// Station files use a numeric prefix ("01-…"); anything else bundled at the
+    /// root — e.g. the intro `dbfm7.mp3`, which xcodegen flattens here too — is NOT
+    /// a station track and must be kept out of the FM playlist.
+    static func isStationFile(_ fileName: String) -> Bool {
+        fileName.first?.isNumber == true
     }
 
     /// Numeric-aware sort by filename so `01-`, `02-`, ..., `10-` order correctly.

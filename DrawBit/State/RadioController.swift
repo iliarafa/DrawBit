@@ -189,6 +189,10 @@ final class RadioController {
     // MARK: - Audio session, interruptions, route changes
 
     private func ensureSessionActive() {
+        // FM is starting — silence the launch intro so the two never overlap. Runs
+        // before the category flips to `.playback`, so the handoff is clean. No-op if
+        // the intro was never played.
+        IntroAudio.shared.stop()
         let session = AVAudioSession.sharedInstance()
         if !sessionConfigured {
             // .playback: DrawBit FM is the app's primary audio — plays over the

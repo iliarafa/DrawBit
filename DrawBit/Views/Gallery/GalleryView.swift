@@ -221,7 +221,9 @@ struct GalleryView: View {
     private func runIntro() {
         guard playIntro, !UITestSupport.isRunning, !didRunIntro else { return }
         didRunIntro = true
-        let gap = 0.22
+        // Build completes at gap*4. Slowed from 0.22 (~0.88s) to breathe with the
+        // intro music — now ~2.38s end to end.
+        let gap = 0.595
         DispatchQueue.main.asyncAfter(deadline: .now() + gap * 1) { showTitle = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + gap * 2) { showInfo = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + gap * 3) { showWorks = true }
