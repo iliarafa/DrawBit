@@ -4,8 +4,8 @@ struct NewPieceSheet: View {
     let onCreate: (CanvasSize) -> Void
     @Environment(\.dismiss) private var dismiss
 
-    /// Single source of truth for the custom dial; the field shows it verbatim while
-    /// typing, `dim` is the clamped value everything downstream uses.
+    /// Single source of truth for the dial; the field shows it verbatim while typing,
+    /// `dim` is the clamped value everything downstream uses.
     @State private var text: String = "32"
     @FocusState private var fieldFocused: Bool
 
@@ -18,82 +18,86 @@ struct NewPieceSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(white: 0.10).ignoresSafeArea()
-                VStack(spacing: 22) {
-                    dialRow
-                    PixelSlider(value: Binding(get: { dim }, set: { setDim($0) }),
-                                range: CanvasSize.minDimension...CanvasSize.maxDimension)
-                    presetChips
-                    createButton
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 22)
-                .padding(.top, 24)
-            }
-            .navigationTitle("New piece")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("NEW PIECE").font(.pixel(14)).foregroundStyle(.white)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: {
-                        Text("CANCEL").font(.pixel(12)).foregroundStyle(.white.opacity(0.8))
-                    }
-                }
-            }
-            .toolbarBackground(Color(white: 0.10), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-        }
-    }
-
-    // MARK: - Preview + number + steppers
-
-    private var dialRow: some View {
-        HStack(spacing: 20) {
+        // A fixed-width padded block; the sheet uses `.presentationSizing(.fitted)`
+        // (set in GalleryView) to hug it, giving an equal margin on all four sides.
+        VStack(spacing: 20) {
+            header
             CanvasPreview(dimension: dim)
-                .frame(width: 84, height: 84)
+                .frame(width: 96, height: 96)
+            numberRow
+            PixelSlider(value: Binding(get: { dim }, set: { setDim($0) }),
+                        range: CanvasSize.minDimension...CanvasSize.maxDimension)
+            presetChips
+            createButton
+        }
+        .frame(width: 320)
+        .padding(20)
+    }
 
-            HStack(spacing: 16) {
-                stepper("−") { setDim(dim - 1) }
-                TextField("", text: $text)
-                    .keyboardType(.numberPad)
-                    .font(.pixel(26))
-                    .foregroundStyle(.white)
-                    .tint(Color.toolSelected)
-                    .multilineTextAlignment(.center)
-                    .frame(minWidth: 72)
-                    .focused($fieldFocused)
-                    .accessibilityIdentifier("NewPiece-dimField")
-                    .onChange(of: fieldFocused) { _, focused in
-                        if !focused { text = String(dim) }   // normalize on blur
-                    }
-                stepper("+") { setDim(dim + 1) }
+    // MARK: - Header (NEW DRAW left, CANCEL right)
+
+    private var header: some View {
+        HStack {
+            Text("NEW DRAW")
+                .font(.pixel(14))
+                .foregroundStyle(.white)
+            Spacer()
+            Button { dismiss() } label: {
+                Text("CANCEL")
+                    .font(.pixel(11))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 8)
+                    .overlay(Rectangle().stroke(Color.white.opacity(0.25), lineWidth: 1))
             }
-            .frame(maxWidth: .infinity)
+            .buttonStyle(.plain)
         }
     }
 
-    private func stepper(_ label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.pixel(16))
+    // MARK: - Big number + steppers (centered)
+
+    private var numberRow: some View {
+        HStack(spacing: 24) {
+            stepper(isPlus: false) { setDim(dim - 1) }
+            TextField("", text: $text)
+                .keyboardType(.numberPad)
+                .font(.pixel(34))
                 .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.25), lineWidth: 1))
-                .contentShape(Rectangle())
+                .tint(Color.toolSelected)
+                .multilineTextAlignment(.center)
+                .frame(width: 120)
+                .focused($fieldFocused)
+                .accessibilityIdentifier("NewPiece-dimField")
+                .onChange(of: fieldFocused) { _, focused in
+                    if !focused { text = String(dim) }   // normalize on blur
+                }
+            stepper(isPlus: true) { setDim(dim + 1) }
+        }
+    }
+
+    /// Steppers draw their +/− as pixel bars rather than font glyphs so both sit
+    /// perfectly centred (Press Start 2P's minus glyph isn't vertically centred).
+    private func stepper(isPlus: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            ZStack {
+                Rectangle().fill(.white).frame(width: 16, height: 3)
+                if isPlus {
+                    Rectangle().fill(.white).frame(width: 3, height: 16)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .overlay(Rectangle().stroke(Color.white.opacity(0.25), lineWidth: 1))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier(label == "+" ? "NewPiece-plus" : "NewPiece-minus")
+        .accessibilityIdentifier(isPlus ? "NewPiece-plus" : "NewPiece-minus")
+        .accessibilityLabel(isPlus ? "Increase size" : "Decrease size")
     }
 
-    // MARK: - Presets
+    // MARK: - Presets (square chips, centered group)
 
     private var presetChips: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             ForEach(CanvasSize.presets) { size in
                 let active = size.dimension == dim
                 Button {
@@ -101,15 +105,14 @@ struct NewPieceSheet: View {
                     dismiss()
                 } label: {
                     Text("\(size.dimension)")
-                        .font(.pixel(12))
+                        .font(.pixel(11))
                         .foregroundStyle(active ? Color.toolSelected : .white.opacity(0.7))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
+                        .padding(.horizontal, 13)
+                        .padding(.vertical, 9)
                         .background(
-                            RoundedRectangle(cornerRadius: 6)
+                            Rectangle()
                                 .fill(active ? Color.toolSelected.opacity(0.14) : .clear)
-                                .overlay(RoundedRectangle(cornerRadius: 6)
-                                    .stroke(active ? Color.toolSelected : .white.opacity(0.2), lineWidth: 1))
+                                .overlay(Rectangle().stroke(active ? Color.toolSelected : .white.opacity(0.2), lineWidth: 1))
                         )
                         .contentShape(Rectangle())
                 }
@@ -124,20 +127,20 @@ struct NewPieceSheet: View {
             onCreate(CanvasSize(dim))
             dismiss()
         } label: {
-            Text("CREATE · \(dim) × \(dim)")
+            Text("CREATE")
                 .font(.pixel(12))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    Rectangle()
                         .fill(Color.toolSelected.opacity(0.16))
-                        .overlay(RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.toolSelected, lineWidth: 1))
+                        .overlay(Rectangle().stroke(Color.toolSelected, lineWidth: 1))
                 )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .padding(.top, 4)
         .accessibilityIdentifier("NewPiece-create")
     }
 }
@@ -180,14 +183,13 @@ private struct CanvasPreview: View {
     }
 }
 
-/// On-brand replacement for the native `Slider` (which can't take the app's flat,
-/// square pixel styling): a thin track, an accent fill, and a square thumb dragged
-/// across `range`.
+/// Flat, square slider: a thin track, an accent fill, and a square thumb dragged
+/// across `range`. End labels in the VT323 body font.
 private struct PixelSlider: View {
     @Binding var value: Int
     let range: ClosedRange<Int>
 
-    private static let thumb: CGFloat = 16
+    private static let thumb: CGFloat = 14
 
     var body: some View {
         VStack(spacing: 5) {
@@ -215,9 +217,9 @@ private struct PixelSlider: View {
             .frame(height: Self.thumb)
 
             HStack {
-                Text("\(range.lowerBound)").font(.pixel(8)).foregroundStyle(.white.opacity(0.4))
+                Text("\(range.lowerBound)").font(.pixelBody(15)).foregroundStyle(.white.opacity(0.45))
                 Spacer()
-                Text("\(range.upperBound)").font(.pixel(8)).foregroundStyle(.white.opacity(0.4))
+                Text("\(range.upperBound)").font(.pixelBody(15)).foregroundStyle(.white.opacity(0.45))
             }
         }
     }

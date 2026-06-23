@@ -102,9 +102,9 @@ struct GalleryView: View {
                         // v1: swallow; surface via alert later if needed
                     }
                 }
-                // Fits the unified size dial (preview + number + slider + chips +
-                // create), with room for the keyboard when the number field is focused.
-                .presentationDetents([.height(440)])
+                // The sheet auto-sizes to the picker's fixed-width padded block, so it
+                // hugs the content with an equal margin on every side (iOS 18+).
+                .presentationSizing(.fitted)
                 .presentationCornerRadius(0)
                 .presentationBackground(Color(white: 0.10))
             }
