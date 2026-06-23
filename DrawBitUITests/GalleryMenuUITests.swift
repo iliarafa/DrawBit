@@ -88,16 +88,35 @@ final class GalleryMenuUITests: XCTestCase {
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
 
-        let field = app.textFields["NewPiece-customField"]
-        XCTAssertTrue(field.waitForExistence(timeout: 15), "Custom size field must exist")
+        let field = app.textFields["NewPiece-dimField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 15), "Size field must exist")
         field.tap()
+        // Clear the existing value, then type a custom size.
+        if let current = field.value as? String {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        }
         field.typeText("48")
 
-        app.buttons["NewPiece-customCreate"].tap()
+        app.buttons["NewPiece-create"].tap()
 
-        // A custom-size piece opens straight into the editor.
+        // The dialed custom size opens straight into the editor.
         XCTAssertTrue(app.buttons["Animate"].waitForExistence(timeout: 15),
                       "Creating a custom size must open the editor")
+    }
+
+    func testStepperNudgesTheSize() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+
+        let field = app.textFields["NewPiece-dimField"]
+        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        XCTAssertEqual(field.value as? String, "32", "Dial starts at 32")
+        app.buttons["NewPiece-plus"].tap()
+        XCTAssertEqual(field.value as? String, "33", "Plus must nudge the size to 33")
     }
 
     func testTapOpensPiece() throws {

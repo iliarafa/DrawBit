@@ -102,8 +102,9 @@ struct GalleryView: View {
                         // v1: swallow; surface via alert later if needed
                     }
                 }
-                // Height sized for the 7 size rows + nav bar (~48pt × 7 + chrome).
-                .presentationDetents([.height(420)])
+                // Fits the unified size dial (preview + number + slider + chips +
+                // create), with room for the keyboard when the number field is focused.
+                .presentationDetents([.height(440)])
                 .presentationCornerRadius(0)
                 .presentationBackground(Color(white: 0.10))
             }
