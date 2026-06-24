@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// Procreate-style "lifted off the canvas" feel for gallery tiles. A literal
-/// black drop shadow is nearly invisible on the near-black gallery background
-/// (no contrast to fall onto), so this pairs a faint light halo with a small
-/// soft dark shadow — the dark-UI way to read as elevation. Tune the two
-/// constants here; every tile that uses `.galleryTileLift()` inherits the change.
+/// Single-source lighting for gallery tiles: the whole gallery is lit by one
+/// overhead light, so every tile casts the same shadow straight down (`x: 0`,
+/// positive `y`) — no horizontal offset, no all-around glow. A plain black shadow
+/// is faint on the near-black gallery background, so the single drop is given a
+/// larger offset/radius to stay clearly visible on its own. Tune the one constant
+/// set here; every tile that uses `.galleryTileLift()` inherits the change.
 ///
 /// No animation, so (unlike `HoverPop`) there is nothing to gate under UI test.
 struct GalleryTileLift: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .shadow(color: .black.opacity(0.55), radius: 4, y: 2)   // soft dark drop
-            .shadow(color: .white.opacity(0.05), radius: 6)         // faint light halo
+            .shadow(color: .black.opacity(0.4), radius: 4, y: 2)   // single overhead light, faint
     }
 }
 

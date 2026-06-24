@@ -2,7 +2,10 @@ import SwiftUI
 
 struct NewPieceSheet: View {
     let onCreate: (CanvasSize) -> Void
-    @Environment(\.dismiss) private var dismiss
+    /// Called when the user dismisses without creating (CANCEL / scrim tap is wired
+    /// by the presenter). Presented as a custom in-gallery overlay rather than a system
+    /// sheet, so there is no `@Environment(\.dismiss)` — the presenter owns close/create.
+    let onCancel: () -> Void
 
     /// Single source of truth for the dial; the field shows it verbatim while typing,
     /// `dim` is the clamped value everything downstream uses.
@@ -42,7 +45,7 @@ struct NewPieceSheet: View {
                 .font(.pixel(14))
                 .foregroundStyle(.white)
             Spacer()
-            Button { dismiss() } label: {
+            Button { onCancel() } label: {
                 Text("CANCEL")
                     .font(.pixel(11))
                     .foregroundStyle(.white.opacity(0.8))
@@ -102,7 +105,6 @@ struct NewPieceSheet: View {
                 let active = size.dimension == dim
                 Button {
                     onCreate(size)
-                    dismiss()
                 } label: {
                     Text("\(size.dimension)")
                         .font(.pixel(11))
@@ -125,7 +127,6 @@ struct NewPieceSheet: View {
     private var createButton: some View {
         Button {
             onCreate(CanvasSize(dim))
-            dismiss()
         } label: {
             Text("CREATE")
                 .font(.pixel(12))

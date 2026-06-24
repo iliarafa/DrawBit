@@ -92,21 +92,40 @@ struct GalleryView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .onAppear { runIntro() }
-            .sheet(isPresented: $showingNewSheet) {
-                NewPieceSheet { size in
-                    do {
-                        let repo = PieceRepository(context: modelContext)
-                        let piece = try repo.createPiece(size: size)
-                        selectedPiece = piece
-                    } catch {
-                        // v1: swallow; surface via alert later if needed
+            // New Draw is a custom in-gallery overlay, NOT a system sheet: a system sheet
+            // brings iOS's own all-around shadow, which can't be redirected to a single
+            // downward cast (`.clear` background renders a light backing on this OS). As an
+            // overlay the card is its own platter casting `.galleryTileLift()` — the same
+            // single overhead-light shadow as the tiles — and the gallery stays visible
+            // (dimmed) behind it. No animation, so nothing to gate under UI test.
+            .overlay {
+                if showingNewSheet {
+                    ZStack {
+                        // Transparent tap-catcher: no dimming — the gallery stays at full
+                        // brightness and the card floats above it, separated only by its
+                        // single downward shadow. `.contentShape` makes the clear layer
+                        // hit-testable so tapping outside the card still dismisses.
+                        Color.clear
+                            .ignoresSafeArea()
+                            .contentShape(Rectangle())
+                            .onTapGesture { showingNewSheet = false }
+                        NewPieceSheet(
+                            onCreate: { size in
+                                showingNewSheet = false
+                                do {
+                                    let repo = PieceRepository(context: modelContext)
+                                    let piece = try repo.createPiece(size: size)
+                                    selectedPiece = piece
+                                } catch {
+                                    // v1: swallow; surface via alert later if needed
+                                }
+                            },
+                            onCancel: { showingNewSheet = false }
+                        )
+                        .background(Color(white: 0.10))
+                        .galleryTileLift()
                     }
                 }
-                // The sheet auto-sizes to the picker's fixed-width padded block, so it
-                // hugs the content with an equal margin on every side (iOS 18+).
-                .presentationSizing(.fitted)
-                .presentationCornerRadius(0)
-                .presentationBackground(Color(white: 0.10))
             }
             .navigationDestination(item: $selectedPiece) { piece in
                 EditorView(piece: piece)
