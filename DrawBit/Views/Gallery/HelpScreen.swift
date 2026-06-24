@@ -61,6 +61,23 @@ struct HelpScreen: View {
         "...........",
     ]
 
+    /// A pixel "image" sprite for the TRACE tile — a square photo frame with a
+    /// small white-square sun (top-left) and a mountain. Drawn as hard pixels so
+    /// it matches the app's aesthetic rather than the SF `photo` symbol's curves.
+    private static let traceImage: [String] = [
+        "###########",
+        "#.........#",
+        "#.##......#",
+        "#.##......#",
+        "#.........#",
+        "#.........#",
+        "#.........#",
+        "#....#....#",
+        "#...###...#",
+        "#..#####..#",
+        "###########",
+    ]
+
     private enum HelpIcon {
         case symbol(String)
         case pixel([String])
@@ -95,7 +112,7 @@ struct HelpScreen: View {
                   body: "Tap + to start a new draw — pick a preset size or set your own from 8 to 256. Then pinch to zoom, two-finger drag to pan or rotate. Pixels never move, so exports stay upright and crisp."),
         HelpTopic(id: "Help.section.layers", icon: .asset("LayersIcon"), title: "LAYERS",
                   body: "Tap LAYERS in the editor top bar to add, hide, or lock. Press and drag a layer by its thumbnail to reorder. The top layer sits above the canvas."),
-        HelpTopic(id: "Help.section.trace", icon: .symbol("photo"), title: "TRACE",
+        HelpTopic(id: "Help.section.trace", icon: .pixel(Self.traceImage), title: "TRACE",
                   body: "Add a photo to trace over from the foot of the Layers panel. It sits dimmed behind your pixels — set its fade, hide it, or remove it any time. It never appears in exports."),
         HelpTopic(id: "Help.section.animation", icon: .pixel(PixelArtIcon.playTriangle), title: "ANIMATION",
                   body: "Tap ANIMATE for the frames strip. Add a blank frame, duplicate, delete, or drag to reorder — each keeps its own layers. ONION fades the previous frame to help you line things up. Pick an FPS, then Play."),
