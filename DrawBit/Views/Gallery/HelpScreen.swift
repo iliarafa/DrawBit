@@ -5,9 +5,9 @@ import SwiftUI
 /// dependencies.
 ///
 /// Layout is a 2-column grid of compact icon+title tiles, vertically centered
-/// between the back chip and a version footer. Tapping a tile extends it to span
-/// the full row (its row-mate gives way) and reveals that topic's instructions in
-/// big, well-spaced text — icon and title hidden so the copy gets the whole width.
+/// between the back chip and a version footer. Tapping a tile reveals that
+/// topic's instructions *in place* — the text replaces the icon+title within the
+/// tile's own footprint; the row-mate stays put (no full-row expansion).
 /// Single-selection: tapping again, or another tile, collapses / switches. The
 /// ANIMATION tile reuses the editor's ANIMATE play sprite
 /// (`PixelArtIcon.playTriangle`) so it reads as the same control.
@@ -175,23 +175,24 @@ struct HelpScreen: View {
                 let a = Self.topics[start]
                 let b = start + 1 < Self.topics.count ? Self.topics[start + 1] : nil
                 GridRow {
-                    // The instructions assemble from pixel blocks on open (insertion);
-                    // closing or switching away is an instant cut (removal = identity), so
-                    // the next open's dissolve gets the full spotlight.
-                    if expanded == a.id {
-                        expandedTile(a).gridCellColumns(2)
-                            .transition(.openDissolve).id("exp-\(a.id)")
-                    } else if let b, expanded == b.id {
-                        expandedTile(b).gridCellColumns(2)
-                            .transition(.openDissolve).id("exp-\(b.id)")
-                    } else {
-                        collapsedTile(a).transition(.identity).id("col-\(a.id)")
-                        if let b {
-                            collapsedTile(b).transition(.identity).id("col-\(b.id)")
-                        }
-                    }
+                    tileCell(a)
+                    if let b { tileCell(b) }
                 }
             }
+        }
+    }
+
+    /// One grid cell: the topic's body text in place when selected, else the
+    /// compact icon+title. Either way it fills exactly one column — no row
+    /// spanning. The body assembles from pixel blocks on open (`openDissolve`);
+    /// collapsing or switching is an instant cut (identity) so the next open's
+    /// dissolve gets the full spotlight.
+    @ViewBuilder
+    private func tileCell(_ topic: HelpTopic) -> some View {
+        if expanded == topic.id {
+            bodyTile(topic).transition(.openDissolve).id("exp-\(topic.id)")
+        } else {
+            collapsedTile(topic).transition(.identity).id("col-\(topic.id)")
         }
     }
 
@@ -225,16 +226,16 @@ struct HelpScreen: View {
         .onTapGesture { toggle(topic.id) }
     }
 
-    /// Full-row expanded state: the instructions only, in big well-spaced text —
-    /// the icon and title give way so the copy gets the whole width.
-    private func expandedTile(_ topic: HelpTopic) -> some View {
+    /// Selected state: the instructions in place of the icon+title, within the
+    /// tile's own single-column footprint (same 176pt box, half-panel width).
+    private func bodyTile(_ topic: HelpTopic) -> some View {
         Text(topic.body)
             .font(.pixelBody(20))
             .foregroundStyle(.white.opacity(0.9))
             .multilineTextAlignment(.leading)
             .lineSpacing(4)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 28)
+            .minimumScaleFactor(0.85)
+            .padding(.horizontal, 20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: Self.tileHeight)
             .background(Color(white: 0.10))
