@@ -90,7 +90,7 @@ struct ShareSheet: View {
                 ForEach(ExportFormat.allCases) { formatTile(format: $0) }
             }
 
-            section(title: "SCALE", columns: 5) {
+            section(title: "SIZE", columns: 5) {
                 ForEach(Self.scales(for: piece.size), id: \.self) { scaleTile(scale: $0) }
             }
 
@@ -223,14 +223,23 @@ struct ShareSheet: View {
                     .stroke(isSelected ? Color.white : Color.white.opacity(0.15),
                             lineWidth: isSelected ? 2 : 0.5)
                 VStack(spacing: 4) {
-                    Text("\(s)×")
+                    // Output is always square, so one number says it all — the actual
+                    // exported edge in px (128…2048), not the source-relative multiplier.
+                    // "TOO BIG" only appears on over-budget tiles, keeping normal tiles
+                    // to a single clean number.
+                    // `verbatim:` to bypass SwiftUI's LocalizedStringKey number
+                    // grouping — we want "1920", not a comma-grouped "1,920".
+                    Text(verbatim: "\(edge)")
                         .font(.pixel(14))
                         .foregroundStyle(.white.opacity(primaryOpacity))
                         .lineLimit(1)
-                    Text(overBudget ? "TOO BIG" : "\(edge)×\(edge)")
-                        .font(.pixel(8))
-                        .foregroundStyle(.white.opacity(secondaryOpacity))
-                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    if overBudget {
+                        Text("TOO BIG")
+                            .font(.pixel(8))
+                            .foregroundStyle(.white.opacity(secondaryOpacity))
+                            .lineLimit(1)
+                    }
                 }
             }
             .frame(maxWidth: .infinity)
