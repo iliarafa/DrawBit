@@ -93,6 +93,22 @@ struct HelpScreen: View {
         ".###########.",
     ]
 
+    /// A pixel info badge for the ABOUT tile — an "i" inside a square frame,
+    /// replacing the SF `info.circle` (the user wanted the circle squared off).
+    private static let aboutInfo: [String] = [
+        "###########",
+        "#.........#",
+        "#.........#",
+        "#....#....#",
+        "#.........#",
+        "#....#....#",
+        "#....#....#",
+        "#....#....#",
+        "#.........#",
+        "#.........#",
+        "###########",
+    ]
+
     private enum HelpIcon {
         case symbol(String)
         case pixel([String])
@@ -135,7 +151,7 @@ struct HelpScreen: View {
                   body: "PNG: one still frame. GIF: animation, plays anywhere but only 256 colours. APNG: animation in full colour. Sprite: every frame in one image. Then pick a scale and share."),
         HelpTopic(id: "Help.section.fm", icon: .pixel(Self.eighthNotes), title: "DRAWBIT FM",
                   body: "A dedicated radio station playing original music composed by members of the development team. Tap the tile at the bottom-right of the gallery to tune in."),
-        HelpTopic(id: "Help.section.about", icon: .symbol("info.circle"), title: "ABOUT",
+        HelpTopic(id: "Help.section.about", icon: .pixel(Self.aboutInfo), title: "ABOUT",
                   body: "Nothing more to say really. We just needed an even number of tiles. Thank you."),
     ]
 
