@@ -26,21 +26,24 @@ struct PixelGrid: Equatable {
         self.size = size
     }
 
+    /// Square-only back-compat alias (== `width`). Non-square callers must use width/height.
     var dimension: Int { size.dimension }
+    var width: Int { size.width }
+    var height: Int { size.height }
 
     func contains(x: Int, y: Int) -> Bool {
-        x >= 0 && y >= 0 && x < dimension && y < dimension
+        x >= 0 && y >= 0 && x < width && y < height
     }
 
     func pixel(x: Int, y: Int) -> RGBA {
         guard contains(x: x, y: y) else { return .transparent }
-        let i = (y * dimension + x) * 4
+        let i = (y * width + x) * 4
         return RGBA(r: data[i], g: data[i + 1], b: data[i + 2], a: data[i + 3])
     }
 
     mutating func setPixel(x: Int, y: Int, color: RGBA) {
         guard contains(x: x, y: y) else { return }
-        let i = (y * dimension + x) * 4
+        let i = (y * width + x) * 4
         data[i] = color.r
         data[i + 1] = color.g
         data[i + 2] = color.b

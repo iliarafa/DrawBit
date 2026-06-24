@@ -36,6 +36,30 @@ final class PixelGridTests: XCTestCase {
         XCTAssertEqual(grid2.pixel(x: 10, y: 20), RGBA(r: 1, g: 2, b: 3, a: 4))
     }
 
+    // MARK: - Non-square (Stage 1)
+
+    func testNonSquareBounds() {
+        let grid = PixelGrid(size: CanvasSize(width: 16, height: 8))
+        XCTAssertTrue(grid.contains(x: 15, y: 7))
+        XCTAssertFalse(grid.contains(x: 16, y: 0))   // width bound
+        XCTAssertFalse(grid.contains(x: 0, y: 8))    // height bound
+    }
+
+    func testNonSquareLastPixelRoundTrips() {
+        var grid = PixelGrid(size: CanvasSize(width: 16, height: 8))
+        grid.setPixel(x: 15, y: 7, color: RGBA(r: 1, g: 2, b: 3, a: 4))
+        XCTAssertEqual(grid.pixel(x: 15, y: 7), RGBA(r: 1, g: 2, b: 3, a: 4))
+    }
+
+    func testNonSquareIndexingUsesWidthStride() {
+        var grid = PixelGrid(size: CanvasSize(width: 16, height: 8))
+        grid.setPixel(x: 0, y: 1, color: RGBA(r: 9, g: 9, b: 9, a: 255))
+        XCTAssertEqual(grid.pixel(x: 0, y: 1), RGBA(r: 9, g: 9, b: 9, a: 255))
+        // If the row stride were height (8) instead of width (16), (0,1) would
+        // alias (8,0). Asserting (8,0) is still empty catches that bug.
+        XCTAssertEqual(grid.pixel(x: 8, y: 0), .transparent)
+    }
+
     func testSlicedDataIsNormalized() {
         var source = PixelGrid(size: .s16)
         source.setPixel(x: 0, y: 0, color: RGBA(r: 1, g: 2, b: 3, a: 4))
