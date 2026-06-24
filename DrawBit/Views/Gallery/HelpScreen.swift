@@ -61,21 +61,22 @@ struct HelpScreen: View {
         "...........",
     ]
 
-    /// A pixel "image" sprite for the TRACE tile — a square photo frame with a
-    /// small white-square sun (top-left) and a mountain. Drawn as hard pixels so
-    /// it matches the app's aesthetic rather than the SF `photo` symbol's curves.
+    /// A pixel "image" sprite for the TRACE tile — a faithful copy of the SF
+    /// `photo` glyph it replaces: a landscape photo frame (13×10, so it renders
+    /// wider than tall), a small white-square sun top-left, and TWO mountains (a
+    /// lower left peak, a taller right peak). Drawn as hard pixels so it matches
+    /// the app's aesthetic rather than the SF symbol's curves.
     private static let traceImage: [String] = [
-        "###########",
-        "#.........#",
-        "#.##......#",
-        "#.##......#",
-        "#.........#",
-        "#.........#",
-        "#.........#",
-        "#....#....#",
-        "#...###...#",
-        "#..#####..#",
-        "###########",
+        "#############",
+        "#...........#",
+        "#.##........#",
+        "#.##........#",
+        "#.......#...#",
+        "#......###..#",
+        "#...#.#####.#",
+        "#..##########",
+        "#.###########",
+        "#############",
     ]
 
     private enum HelpIcon {
