@@ -232,13 +232,15 @@ struct HelpScreen: View {
         let color = tinted ? Color.toolSelected : Color.white.opacity(0.9)
         // LAYERS/EXPORT/FM carry internal margin (the sprite fills only part of its box),
         // so they get larger render sizes to read at the same visual size as TOOLS /
-        // CANVAS / ANIMATION, which fill their frames.
+        // CANVAS / ANIMATION, which fill their frames. TRACE is a wide 13×10 sprite,
+        // so it's rendered a touch larger so its height matches the square glyphs.
         Group {
             switch icon {
             case .symbol(let name):
                 Image(systemName: name).font(.system(size: 34, weight: .regular))
             case .pixel(let pattern):
-                PixelArtIcon(pattern: pattern, size: pattern == Self.eighthNotes ? 42 : 34)
+                PixelArtIcon(pattern: pattern,
+                             size: pattern == Self.eighthNotes ? 42 : (pattern == Self.traceImage ? 40 : 34))
             case .asset(let name):
                 Image(name).resizable().interpolation(.none).antialiased(false)
                     .frame(width: 42, height: 42)
