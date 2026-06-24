@@ -413,7 +413,7 @@ struct DrawBitColorPicker: View {
                 .accessibilityIdentifier("PaletteName")
 
             if p.colors.isEmpty {
-                Text("Tap ADD or FROM PIECE to fill this palette.")
+                Text("Tap ADD or FROM DRAW to fill this palette.")
                     .font(.pixel(9))
                     .foregroundStyle(.white.opacity(0.5))
             } else {
@@ -427,7 +427,7 @@ struct DrawBitColorPicker: View {
                 editAction(icon: "plus", title: "ADD CURRENT", id: "AddCurrentColor") {
                     customPalettes.addColor(color.hex, toPaletteID: p.id)
                 }
-                editAction(icon: "square.on.square", title: "FROM PIECE", id: "FromPiece") {
+                editAction(icon: "square.on.square", title: "FROM DRAW", id: "FromPiece") {
                     for hex in pieceColors() {
                         customPalettes.addColor(hex, toPaletteID: p.id)
                     }

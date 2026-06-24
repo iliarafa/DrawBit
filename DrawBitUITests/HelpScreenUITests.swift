@@ -2,7 +2,7 @@ import XCTest
 
 /// `HelpScreen` is the in-app help reference pushed from the `?` button in
 /// the gallery's `GALLERY` header. These tests verify the button is
-/// discoverable, the screen pushes when tapped, and all six section
+/// discoverable, the screen pushes when tapped, and all ten section
 /// headings render.
 final class HelpScreenUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
@@ -43,19 +43,21 @@ final class HelpScreenUITests: XCTestCase {
     func testAllSectionHeadingsRender() throws {
         let app = launchAndOpenHelp()
 
-        // Six sections in order; their identifiers were set only on the
-        // heading Text views in `HelpScreen`. Tools renders at the top of
-        // the page; the remaining five are below and become visible after
-        // scrolling, but since the screen is a single ScrollView with all
-        // children eagerly laid out (a VStack, not a List), every heading
-        // is in the accessibility tree from the moment the screen appears.
+        // Ten sections; their identifiers were set only on the heading Text
+        // views in `HelpScreen`. The screen lays out every tile eagerly (a
+        // VStack grid, not a List), so every heading is in the accessibility
+        // tree from the moment the screen appears.
         let ids = [
+            "Help.section.gallery",
+            "Help.section.colours",
             "Help.section.tools",
             "Help.section.canvas",
             "Help.section.layers",
+            "Help.section.trace",
             "Help.section.animation",
             "Help.section.export",
             "Help.section.fm",
+            "Help.section.about",
         ]
         for id in ids {
             XCTAssertTrue(app.staticTexts[id].exists,

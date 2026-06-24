@@ -297,11 +297,11 @@ private struct PieceCell: View {
                     // Identifiers must NOT start with "PieceThumbnail" — the gallery
                     // tests enumerate tiles by that identifier.
                     badgeButton(systemImage: "plus.square.on.square",
-                                label: "Duplicate piece",
+                                label: "Duplicate draw",
                                 identifier: "PieceDuplicateButton",
                                 action: onDuplicate)
                     badgeButton(systemImage: "trash",
-                                label: "Delete piece",
+                                label: "Delete draw",
                                 identifier: "PieceDeleteButton",
                                 destructive: true,
                                 action: onDelete)

@@ -67,7 +67,7 @@ final class GalleryMenuUITests: XCTestCase {
         XCTAssertTrue(deleteChip.waitForExistence(timeout: 15))
         deleteChip.tap()
 
-        XCTAssertTrue(app.staticTexts["DELETE PIECE?"].waitForExistence(timeout: 15),
+        XCTAssertTrue(app.staticTexts["DELETE DRAW?"].waitForExistence(timeout: 15),
                       "Delete chip must present the DeletePieceSheet")
 
         app.buttons["DELETE"].tap()

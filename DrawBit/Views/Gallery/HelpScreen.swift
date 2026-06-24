@@ -68,6 +68,12 @@ struct HelpScreen: View {
         case asset(String)
         /// The editor's vector share/export glyph, reused verbatim.
         case shareGlyph
+        /// The COLOURS icon — three square swatches in the logo's red / green /
+        /// blue, the one icon that carries colour so the tile illustrates itself.
+        case colourSwatches
+        /// The GALLERY icon — a 2×2 grid of solid white squares, square corners,
+        /// each the same size as a COLOURS swatch.
+        case galleryGrid
     }
 
     private struct HelpTopic: Identifiable {
@@ -79,18 +85,26 @@ struct HelpScreen: View {
     }
 
     private static let topics: [HelpTopic] = [
+        HelpTopic(id: "Help.section.gallery", icon: .galleryGrid, title: "GALLERY",
+                  body: "Your draws live here. Tap one to open it. Press and hold a tile to duplicate or delete it."),
+        HelpTopic(id: "Help.section.colours", icon: .colourSwatches, title: "COLOURS",
+                  body: "Tap the colour swatch to open the picker. Pick from built-in palettes — DB32, PICO-8, Sweetie 16, Game Boy — or mix your own by hex, spectrum or sliders. Save custom palettes; your recent colours are kept."),
         HelpTopic(id: "Help.section.tools", icon: .symbol("pencil.tip"), title: "TOOLS",
-                  body: "Pencil, eraser, fill, swap, pick, laso — tap one in the bottom bar to switch. Mirror toggles symmetry, reflecting every stroke across the vertical centre."),
+                  body: "Pencil, eraser, fill, swap, pick, laso — tap one in the bottom bar to switch. Mirror reflects every stroke across the vertical centre. Undo and redo sit at the bar's end."),
         HelpTopic(id: "Help.section.canvas", icon: .pixel(Self.gridLines), title: "CANVAS",
-                  body: "Pinch to zoom, two-finger drag to pan or rotate. Pixels never move — exports stay upright and crisp."),
+                  body: "Tap + to start a new draw — pick a preset size or set your own from 8 to 256. Then pinch to zoom, two-finger drag to pan or rotate. Pixels never move, so exports stay upright and crisp."),
         HelpTopic(id: "Help.section.layers", icon: .asset("LayersIcon"), title: "LAYERS",
                   body: "Tap LAYERS in the editor top bar to add, hide, or lock. Press and drag a layer by its thumbnail to reorder. The top layer sits above the canvas."),
+        HelpTopic(id: "Help.section.trace", icon: .symbol("photo"), title: "TRACE",
+                  body: "Add a photo to trace over from the foot of the Layers panel. It sits dimmed behind your pixels — set its fade, hide it, or remove it any time. It never appears in exports."),
         HelpTopic(id: "Help.section.animation", icon: .pixel(PixelArtIcon.playTriangle), title: "ANIMATION",
-                  body: "Tap ANIMATE for the frames strip — each frame keeps its own layers. Onion skin fades the previous frame to help you align. Pick FPS for playback speed (4, 8, 12, 24, 30, 60), then Play."),
+                  body: "Tap ANIMATE for the frames strip. Add a blank frame, duplicate, delete, or drag to reorder — each keeps its own layers. ONION fades the previous frame to help you line things up. Pick an FPS, then Play."),
         HelpTopic(id: "Help.section.export", icon: .shareGlyph, title: "EXPORT",
                   body: "PNG: one still frame. GIF: animation, plays anywhere but only 256 colours. APNG: animation in full colour. Sprite: every frame in one image. Then pick a scale and share."),
         HelpTopic(id: "Help.section.fm", icon: .pixel(Self.eighthNotes), title: "DRAWBIT FM",
                   body: "A dedicated radio station playing original music composed by members of the development team. Tap the tile at the bottom-right of the gallery to tune in."),
+        HelpTopic(id: "Help.section.about", icon: .symbol("info.circle"), title: "ABOUT",
+                  body: "Nothing more to say really. We just needed an even number of tiles. Thank you."),
     ]
 
     var body: some View {
@@ -212,6 +226,10 @@ struct HelpScreen: View {
                     .frame(width: 42, height: 42)
             case .shareGlyph:
                 ShareGlyph().frame(width: 40, height: 40)
+            case .colourSwatches:
+                ColourSwatchesIcon().frame(width: 40, height: 40)
+            case .galleryGrid:
+                GalleryGridIcon().frame(width: 40, height: 40)
             }
         }
         .foregroundStyle(color)
@@ -249,6 +267,54 @@ struct HelpScreen: View {
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    }
+}
+
+/// The COLOURS tile icon: three flat square swatches in the DrawBit logo's
+/// red / green / blue, sat side by side. It is the only icon on the otherwise
+/// monochrome Help screen that carries colour — so the COLOURS tile illustrates
+/// itself. Square corners, no outline: matches the app's pixel aesthetic. The
+/// three swatches mirror the logo's three stripes (values sampled from `AppLogo`).
+private struct ColourSwatchesIcon: View {
+    private static let swatches: [Color] = [
+        Color(red: 1.0,        green: 0.0,         blue: 6.0 / 255),    // #FF0006
+        Color(red: 74.0 / 255, green: 189.0 / 255, blue: 67.0 / 255),  // #4ABD43
+        Color(red: 64.0 / 255, green: 157.0 / 255, blue: 1.0),         // #409DFF
+    ]
+
+    var body: some View {
+        Canvas { ctx, size in
+            let gap = size.width * 0.06
+            let side = (size.width - gap * 2) / 3
+            let y = (size.height - side) / 2
+            for (i, color) in Self.swatches.enumerated() {
+                let x = CGFloat(i) * (side + gap)
+                ctx.fill(Path(CGRect(x: x, y: y, width: side, height: side)), with: .color(color))
+            }
+        }
+    }
+}
+
+/// The GALLERY tile icon: a 2×2 grid of solid white squares. Square corners (the
+/// app's pixel aesthetic) and each square the same size as a `ColourSwatchesIcon`
+/// swatch — `side` and `gap` use the identical fractions so the two icons read
+/// as the same building block.
+private struct GalleryGridIcon: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let gap = size.width * 0.06
+            let side = (size.width - gap * 2) / 3   // matches a COLOURS swatch
+            let block = side * 2 + gap
+            let ox = (size.width - block) / 2
+            let oy = (size.height - block) / 2
+            for row in 0..<2 {
+                for col in 0..<2 {
+                    let x = ox + CGFloat(col) * (side + gap)
+                    let y = oy + CGFloat(row) * (side + gap)
+                    ctx.fill(Path(CGRect(x: x, y: y, width: side, height: side)), with: .color(.white))
+                }
+            }
+        }
     }
 }
 // PixelDissolve / PixelDissolveModifier / AnyTransition.openDissolve now live in

@@ -10,7 +10,7 @@ struct DeletePieceSheet: View {
         ZStack {
             Color(white: 0.10).ignoresSafeArea()
             VStack(spacing: 16) {
-                Text("DELETE PIECE?")
+                Text("DELETE DRAW?")
                     .font(.pixel(16))
                     .foregroundStyle(.white)
                     .padding(.top, 24)

@@ -34,7 +34,7 @@ final class ColorPaletteUITests: XCTestCase {
 
         // Lands in the focused edit panel for the new, empty palette.
         XCTAssertTrue(app.textFields["PaletteName"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["Tap ADD or FROM PIECE to fill this palette."].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Tap ADD or FROM DRAW to fill this palette."].waitForExistence(timeout: 15))
 
         // Add the current color; the empty state gives way to the removable grid.
         app.buttons["AddCurrentColor"].tap()
