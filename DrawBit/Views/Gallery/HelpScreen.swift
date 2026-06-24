@@ -79,6 +79,21 @@ struct HelpScreen: View {
         "#############",
     ]
 
+    /// A pixel toolbox for the TOOLS tile — a carry handle, a lidded box, and a
+    /// front clasp. Hard pixels, replacing the ambiguous SF `pencil.tip` glyph.
+    private static let toolbox: [String] = [
+        "....#####....",
+        "....#...#....",
+        "....#...#....",
+        ".###########.",
+        ".#.........#.",
+        ".###########.",
+        ".#.........#.",
+        ".#...###...#.",
+        ".#.........#.",
+        ".###########.",
+    ]
+
     private enum HelpIcon {
         case symbol(String)
         case pixel([String])
@@ -107,7 +122,7 @@ struct HelpScreen: View {
                   body: "Your draws live here. Tap one to open it. Press and hold a tile to duplicate or delete it."),
         HelpTopic(id: "Help.section.colours", icon: .colourSwatches, title: "COLOURS",
                   body: "Tap the colour swatch to open the picker. Pick from built-in palettes — DB32, PICO-8, Sweetie 16, Game Boy — or mix your own by hex, spectrum or sliders. Save custom palettes; your recent colours are kept."),
-        HelpTopic(id: "Help.section.tools", icon: .symbol("pencil.tip"), title: "TOOLS",
+        HelpTopic(id: "Help.section.tools", icon: .pixel(Self.toolbox), title: "TOOLS",
                   body: "Pencil, eraser, fill, swap, pick, laso — tap one in the bottom bar to switch. Mirror reflects every stroke across the vertical centre. Undo and redo sit at the bar's end."),
         HelpTopic(id: "Help.section.canvas", icon: .pixel(Self.gridLines), title: "CANVAS",
                   body: "Tap + to start a new draw — pick a preset size or set your own from 8 to 256. Then pinch to zoom, two-finger drag to pan or rotate. Pixels never move, so exports stay upright and crisp."),
@@ -205,6 +220,7 @@ struct HelpScreen: View {
         .padding(.horizontal, 16)
         .background(Color(white: 0.10))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+        .hoverPop(scale: 1.08, lift: 4, shadow: false)
         .contentShape(Rectangle())
         .onTapGesture { toggle(topic.id) }
     }
@@ -232,15 +248,16 @@ struct HelpScreen: View {
         let color = tinted ? Color.toolSelected : Color.white.opacity(0.9)
         // LAYERS/EXPORT/FM carry internal margin (the sprite fills only part of its box),
         // so they get larger render sizes to read at the same visual size as TOOLS /
-        // CANVAS / ANIMATION, which fill their frames. TRACE is a wide 13×10 sprite,
-        // so it's rendered a touch larger so its height matches the square glyphs.
+        // CANVAS / ANIMATION, which fill their frames. TRACE and TOOLS are wide,
+        // short sprites, so they're rendered a touch larger to match the others.
         Group {
             switch icon {
             case .symbol(let name):
                 Image(systemName: name).font(.system(size: 34, weight: .regular))
             case .pixel(let pattern):
                 PixelArtIcon(pattern: pattern,
-                             size: pattern == Self.eighthNotes ? 42 : (pattern == Self.traceImage ? 40 : 34))
+                             size: pattern == Self.eighthNotes ? 42
+                                 : ((pattern == Self.traceImage || pattern == Self.toolbox) ? 40 : 34))
             case .asset(let name):
                 Image(name).resizable().interpolation(.none).antialiased(false)
                     .frame(width: 42, height: 42)
