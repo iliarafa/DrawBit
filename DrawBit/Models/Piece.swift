@@ -5,7 +5,13 @@ import SwiftData
 final class Piece {
     @Attribute(.unique) var id: UUID
     var name: String?
+    /// Canvas width in pixels. (Historically the single square dimension; kept under the
+    /// same column name so old square stores migrate without a rename.)
     var sizeRaw: Int
+    /// Canvas height in pixels. Defaulted (`0`) so pre-non-square stores ride inferred
+    /// lightweight migration; `0` is read as "square" ⇒ height = width. New pieces always
+    /// store the real height. Do NOT add a second live `VersionedSchema` (see CLAUDE.md).
+    var heightRaw: Int = 0
 
     /// Versioned blob holding the entire Frame (layers + active layer id) for V1,
     /// and the encoded sequence (DBFR/DBFS) for V2+. External storage keeps the
@@ -33,8 +39,11 @@ final class Piece {
     var referenceOpacity: Double = 0.35
 
     var size: CanvasSize {
-        get { CanvasSize(sizeRaw) }
-        set { sizeRaw = newValue.dimension }
+        get { CanvasSize(width: sizeRaw, height: heightRaw == 0 ? sizeRaw : heightRaw) }
+        set {
+            sizeRaw = newValue.width
+            heightRaw = newValue.height
+        }
     }
 
     var effectiveName: String {
@@ -48,7 +57,8 @@ final class Piece {
         let now = Date()
         self.id = UUID()
         self.name = nil
-        self.sizeRaw = size.rawValue
+        self.sizeRaw = size.width
+        self.heightRaw = size.height
         let layer = Layer(name: "Layer 1", pixels: Data(count: size.byteCount))
         let frame = Frame(name: "Frame 1", layers: [layer], activeLayerID: layer.id)
         self.frameData = FrameCodec.encodeSequence(frames: [frame],

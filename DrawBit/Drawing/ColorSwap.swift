@@ -5,9 +5,8 @@ enum ColorSwap {
     /// Connectivity-agnostic, unlike Fill — affects disjoint regions in one pass.
     static func swap(on grid: inout PixelGrid, from: RGBA, to: RGBA) {
         if from == to { return }
-        let dim = grid.dimension
-        for y in 0..<dim {
-            for x in 0..<dim where grid.pixel(x: x, y: y) == from {
+        for y in 0..<grid.height {
+            for x in 0..<grid.width where grid.pixel(x: x, y: y) == from {
                 grid.setPixel(x: x, y: y, color: to)
             }
         }

@@ -39,6 +39,15 @@ final class PixelRectTests: XCTestCase {
         XCTAssertNil(PixelRect(x: 20, y: 20, width: 4, height: 4).clipped(toCanvasDimension: 16))
     }
 
+    func testClippedToCanvasWidthHeightClipsPerAxis() {
+        // 8 wide × 16 tall: x clips at 8, y clips at 16, independently.
+        let r = PixelRect(x: 6, y: 6, width: 10, height: 10)
+        XCTAssertEqual(
+            r.clipped(toCanvasWidth: 8, height: 16),
+            PixelRect(x: 6, y: 6, width: 2, height: 10)
+        )
+    }
+
     func testTranslated() {
         let r = PixelRect(x: 2, y: 3, width: 4, height: 5)
         XCTAssertEqual(r.translated(dx: 1, dy: -2), PixelRect(x: 3, y: 1, width: 4, height: 5))

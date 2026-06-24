@@ -8,6 +8,17 @@ final class MarqueeTests: XCTestCase {
 
     // MARK: - extractAndCut
 
+    func testExtractReachesBottomOfTallCanvas() {
+        // 8 wide × 16 tall: clipping by a single (width) dimension would drop the
+        // bottom region, so an opaque pixel at y=12 must still be found and cut.
+        var grid = PixelGrid(size: CanvasSize(width: 8, height: 16))
+        grid.setPixel(x: 3, y: 12, color: red)
+        let sel = Marquee.extractAndCut(grid: &grid, rect: PixelRect(x: 0, y: 0, width: 8, height: 16))
+        XCTAssertNotNil(sel)
+        XCTAssertEqual(grid.pixel(x: 3, y: 12), .transparent)
+        XCTAssertEqual(sel?.pixels.pixel(x: 3, y: 12), red)
+    }
+
     func testExtractAndCutCopiesOpaqueAndClearsSource() {
         var grid = PixelGrid(size: .s16)
         grid.setPixel(x: 4, y: 4, color: red)

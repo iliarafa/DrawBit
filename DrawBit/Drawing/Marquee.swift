@@ -10,7 +10,7 @@ enum Marquee {
     /// and clear those same pixels from `grid`. Returns nil if no opaque pixels were found,
     /// in which case `grid` is unchanged.
     static func extractAndCut(grid: inout PixelGrid, rect: PixelRect) -> ExtractedSelection? {
-        guard let clipped = rect.clipped(toCanvasDimension: grid.dimension) else { return nil }
+        guard let clipped = rect.clipped(toCanvasWidth: grid.width, height: grid.height) else { return nil }
         var pixels = PixelGrid(size: grid.size)
         var found = false
         for y in clipped.y..<(clipped.y + clipped.height) {

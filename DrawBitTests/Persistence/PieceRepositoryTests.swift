@@ -24,6 +24,19 @@ final class PieceRepositoryTests: XCTestCase {
         XCTAssertTrue(frame.layers[0].pixels.allSatisfy { $0 == 0 })
     }
 
+    func testNonSquarePiecePersistsBothDimensions() throws {
+        let piece = try repo.createPiece(size: CanvasSize(width: 256, height: 144))
+        let id = piece.id
+        let fetched = try XCTUnwrap(
+            try modelContext.fetch(FetchDescriptor<Piece>(predicate: #Predicate { $0.id == id })).first)
+        XCTAssertEqual(fetched.size.width, 256)
+        XCTAssertEqual(fetched.size.height, 144)
+        XCTAssertFalse(fetched.size.isSquare)
+        // The piece's grid storage must match the non-square byte count.
+        let frame = try repo.loadFrame(piece: fetched)
+        XCTAssertEqual(frame.layers[0].pixels.count, CanvasSize(width: 256, height: 144).byteCount)
+    }
+
     func testSaveUpdatesPixelsAndThumbnail() throws {
         let piece = try repo.createPiece(size: .s16)
         var grid = PixelGrid(size: .s16)

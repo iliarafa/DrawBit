@@ -33,6 +33,16 @@ final class FillTests: XCTestCase {
         XCTAssertEqual(grid.pixel(x: 3, y: 3), red)
     }
 
+    func testFillCoversEntireTallCanvas() {
+        // 8 wide × 16 tall: a width-bounded flood would stop at y=8, leaving the
+        // bottom half unfilled. Fill must reach the true bottom row.
+        var grid = PixelGrid(size: CanvasSize(width: 8, height: 16))
+        let red = RGBA(r: 255, g: 0, b: 0, a: 255)
+        Fill.fill(on: &grid, at: (0, 0), with: red)
+        XCTAssertEqual(grid.pixel(x: 0, y: 15), red)
+        XCTAssertEqual(grid.pixel(x: 7, y: 15), red)
+    }
+
     func testFillStartingOutOfBoundsIsNoOp() {
         var grid = PixelGrid(size: .s16)
         Fill.fill(on: &grid, at: (-1, -1), with: RGBA(r: 1, g: 2, b: 3, a: 255))

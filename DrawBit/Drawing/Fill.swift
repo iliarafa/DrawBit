@@ -7,10 +7,9 @@ enum Fill {
         guard grid.contains(x: start.0, y: start.1) else { return }
         let target = grid.pixel(x: start.0, y: start.1)
         if target == replacement { return }
-        let dim = grid.dimension
         var stack: [(Int, Int)] = [start]
         while let (x, y) = stack.popLast() {
-            guard x >= 0, y >= 0, x < dim, y < dim else { continue }
+            guard grid.contains(x: x, y: y) else { continue }
             if grid.pixel(x: x, y: y) != target { continue }
             grid.setPixel(x: x, y: y, color: replacement)
             stack.append((x + 1, y))

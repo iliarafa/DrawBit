@@ -61,6 +61,14 @@ final class ColorSwapTests: XCTestCase {
         XCTAssertEqual(grid.pixel(x: 8, y: 8), .transparent)
     }
 
+    func testSwapCoversEntireTallCanvas() {
+        // 8 wide × 16 tall: a width-bounded loop only visits the top 8 rows.
+        var grid = PixelGrid(size: CanvasSize(width: 8, height: 16))
+        grid.setPixel(x: 0, y: 15, color: red)
+        ColorSwap.swap(on: &grid, from: red, to: green)
+        XCTAssertEqual(grid.pixel(x: 0, y: 15), green)
+    }
+
     func testSwapToSameColorIsNoOp() {
         var grid = PixelGrid(size: .s16)
         grid.setPixel(x: 3, y: 3, color: red)
