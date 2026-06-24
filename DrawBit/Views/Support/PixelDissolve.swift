@@ -54,13 +54,11 @@ extension View {
 }
 
 extension AnyTransition {
-    /// Materialise the view from pixel blocks on insert; cut instantly on removal — so
-    /// closing/switching is an instant snap and only the opening dissolve is animated.
-    static var openDissolve: AnyTransition {
-        .asymmetric(
-            insertion: .modifier(active: PixelDissolveModifier(progress: 0),
-                                 identity: PixelDissolveModifier(progress: 1)),
-            removal: .identity
-        )
+    /// Pixel-block dissolve in *and* out: the view materialises from scattered
+    /// ~14pt blocks on insert and scatters back out on removal (`.modifier` is
+    /// symmetric — removal runs identity→active, i.e. progress 1→0).
+    static var dissolveInOut: AnyTransition {
+        .modifier(active: PixelDissolveModifier(progress: 0),
+                  identity: PixelDissolveModifier(progress: 1))
     }
 }

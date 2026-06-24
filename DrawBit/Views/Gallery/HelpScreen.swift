@@ -8,7 +8,7 @@ import SwiftUI
 /// between the back chip and a version footer. Tapping a tile reveals that
 /// topic's instructions *in place* — the text replaces the icon+title within the
 /// tile's own footprint; the row-mate stays put (no full-row expansion).
-/// Single-selection: tapping again, or another tile, collapses / switches. The
+/// Each tile toggles independently; open tiles stay open until tapped again. The
 /// ANIMATION tile reuses the editor's ANIMATE play sprite
 /// (`PixelArtIcon.playTriangle`) so it reads as the same control.
 ///
@@ -18,15 +18,14 @@ import SwiftUI
 /// queryable as `staticTexts`.
 struct HelpScreen: View {
     @Environment(\.dismiss) private var dismiss
-    /// The single expanded topic, if any. Tapping a tile extends it to span the
-    /// full row; tapping again (or another tile) collapses / switches.
-    @State private var expanded: String?
+    /// The set of open topics. Each tile toggles independently — opening one
+    /// never closes another; a tile stays open until it's tapped again.
+    @State private var expanded: Set<String> = []
 
-    /// Shared tile height for both the collapsed and expanded states. The expanded
-    /// container is the same height, placed over the tapped tile's row.
+    /// Shared tile height for both the collapsed and open states, so the grid
+    /// keeps its shape no matter how many tiles are open.
     private static let tileHeight: CGFloat = 176
-    /// Vertical gap between grid rows — also the row pitch (tileHeight + rowGap) used to
-    /// offset the expanded overlay onto the right row.
+    /// Vertical gap between grid rows.
     private static let rowGap: CGFloat = 16
 
     /// A grid for the CANVAS tile — three vertical and three horizontal lines at
@@ -184,13 +183,16 @@ struct HelpScreen: View {
 
     /// One grid cell: the topic's body text in place when selected, else the
     /// compact icon+title. Either way it fills exactly one column — no row
-    /// spanning. The body assembles from pixel blocks on open (`openDissolve`);
-    /// collapsing or switching is an instant cut (identity) so the next open's
-    /// dissolve gets the full spotlight.
+    /// spanning. The body assembles from pixel blocks on open and scatters back
+    /// out on close (`dissolveInOut`); the collapsed icon swaps instantly.
+    ///
+    /// `zIndex(1)` keeps the body *above* the collapsed icon during the
+    /// transition — otherwise the icon (opaque, inserted instantly on close)
+    /// would occlude the dissolving body and the close would look like a cut.
     @ViewBuilder
     private func tileCell(_ topic: HelpTopic) -> some View {
-        if expanded == topic.id {
-            bodyTile(topic).transition(.openDissolve).id("exp-\(topic.id)")
+        if expanded.contains(topic.id) {
+            bodyTile(topic).transition(.dissolveInOut).zIndex(1).id("exp-\(topic.id)")
         } else {
             collapsedTile(topic).transition(.identity).id("col-\(topic.id)")
         }
@@ -201,7 +203,7 @@ struct HelpScreen: View {
     private func toggle(_ id: String) {
         let anim: Animation? = UITestSupport.isRunning ? nil : .easeOut(duration: 0.55)
         withAnimation(anim) {
-            expanded = (expanded == id) ? nil : id
+            if expanded.contains(id) { expanded.remove(id) } else { expanded.insert(id) }
         }
     }
 
@@ -355,5 +357,5 @@ private struct GalleryGridIcon: View {
         }
     }
 }
-// PixelDissolve / PixelDissolveModifier / AnyTransition.openDissolve now live in
+// PixelDissolve / PixelDissolveModifier / AnyTransition.dissolveInOut now live in
 // DrawBit/Views/Support/PixelDissolve.swift so the launch intro can reuse them.
