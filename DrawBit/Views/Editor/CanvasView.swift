@@ -65,7 +65,7 @@ struct CanvasView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let edge = baseEdge(in: geo)
+            let base = baseSize(in: geo)
             ZStack {
                 if state.isReferenceVisible,
                    !state.isPlaying,
@@ -74,7 +74,7 @@ struct CanvasView: View {
                         .resizable()
                         .interpolation(.high)
                         .scaledToFit()
-                        .frame(width: edge, height: edge)
+                        .frame(width: base.width, height: base.height)
                         .opacity(state.referenceOpacity)
                         .scaleEffect(state.scale)
                         .rotationEffect(.radians(state.rotation))
@@ -89,7 +89,7 @@ struct CanvasView: View {
                         .resizable()
                         .interpolation(.none)
                         .antialiased(false)
-                        .frame(width: edge, height: edge)
+                        .frame(width: base.width, height: base.height)
                         .opacity(0.3)
                         .scaleEffect(state.scale)
                         .rotationEffect(.radians(state.rotation))
@@ -101,43 +101,47 @@ struct CanvasView: View {
                         .resizable()
                         .interpolation(.none)
                         .antialiased(false)
-                        .frame(width: edge, height: edge)
+                        .frame(width: base.width, height: base.height)
                         .scaleEffect(state.scale)
                         .rotationEffect(.radians(state.rotation))
                         .offset(state.translation)
                 }
                 Canvas { ctx, size in
-                    let dim = state.size.dimension
-                    let cell = size.width / CGFloat(dim)
+                    let w = state.size.width
+                    let h = state.size.height
+                    let cell = size.width / CGFloat(w)   // square cells
                     var path = Path()
-                    for i in 0...dim {
+                    for i in 0...w {                       // vertical gridlines
                         let p = CGFloat(i) * cell
                         path.move(to: CGPoint(x: p, y: 0))
                         path.addLine(to: CGPoint(x: p, y: size.height))
+                    }
+                    for j in 0...h {                       // horizontal gridlines
+                        let p = CGFloat(j) * cell
                         path.move(to: CGPoint(x: 0, y: p))
                         path.addLine(to: CGPoint(x: size.width, y: p))
                     }
                     ctx.stroke(path, with: .color(Color(white: 0.4)), lineWidth: max(0.5 / state.scale, 0.1))
                 }
-                .frame(width: edge, height: edge)
+                .frame(width: base.width, height: base.height)
                 .scaleEffect(state.scale)
                 .rotationEffect(.radians(state.rotation))
                 .offset(state.translation)
                 .allowsHitTesting(false)
 
                 if let rect = state.pendingMarqueeRect {
-                    pendingRectOverlay(rect: rect, edge: edge)
+                    pendingRectOverlay(rect: rect, base: base)
                 }
 
                 if let sel = state.selection {
-                    floatingSelectionLayer(selection: sel, edge: edge)
-                    marchingAnts(bounds: sel.displayBounds, edge: edge)
+                    floatingSelectionLayer(selection: sel, base: base)
+                    marchingAnts(bounds: sel.displayBounds, base: base)
                 }
 
                 CanvasHostView(
                     state: state,
                     pencilAvailability: pencilAvailability,
-                    baseEdge: edge,
+                    baseSize: base,
                     onStrokePoint: onStrokePoint,
                     onStrokeBegin: onStrokeBegin,
                     onStrokeEnd: onStrokeEnd,
@@ -159,13 +163,15 @@ struct CanvasView: View {
         }
     }
 
-    /// Canvas edge length at scale=1 in points. Integer multiple of `dimension` so each canvas
-    /// pixel maps to an integer number of screen points for crisp 1× presentation.
-    private func baseEdge(in geo: GeometryProxy) -> CGFloat {
+    /// Canvas display size at scale=1 in points. One square `perPixel` (integer points per
+    /// canvas pixel) governs both axes, so a non-square canvas keeps true proportions and
+    /// crisp 1× presentation; the perPixel is sized off the LONGEST edge so the whole canvas
+    /// fits the available area. Square → width == height (unchanged behavior).
+    private func baseSize(in geo: GeometryProxy) -> CGSize {
         let m = Swift.min(geo.size.width, geo.size.height) * 0.85
-        let dim = CGFloat(state.size.dimension)
-        let perPixel = floor(m / dim)
-        return max(perPixel, 1) * dim
+        let perPixel = max(floor(m / CGFloat(state.size.longestEdge)), 1)
+        return CGSize(width: perPixel * CGFloat(state.size.width),
+                      height: perPixel * CGFloat(state.size.height))
     }
 
     /// Raw pixel data wrapped as a UIImage at canvas native resolution. Transparent where
@@ -195,14 +201,14 @@ struct CanvasView: View {
     }
 
     @ViewBuilder
-    private func floatingSelectionLayer(selection sel: MarqueeSelection, edge: CGFloat) -> some View {
+    private func floatingSelectionLayer(selection sel: MarqueeSelection, base: CGSize) -> some View {
         if let image = selectionImage(sel) {
-            let perPixel = edge / CGFloat(state.size.dimension)
+            let perPixel = base.width / CGFloat(state.size.width)
             Image(uiImage: image)
                 .resizable()
                 .interpolation(.none)
                 .antialiased(false)
-                .frame(width: edge, height: edge)
+                .frame(width: base.width, height: base.height)
                 .offset(x: CGFloat(sel.dragOffset.dx) * perPixel,
                         y: CGFloat(sel.dragOffset.dy) * perPixel)
                 .scaleEffect(state.scale)
@@ -212,9 +218,9 @@ struct CanvasView: View {
         }
     }
 
-    private func pendingRectOverlay(rect: PixelRect, edge: CGFloat) -> some View {
+    private func pendingRectOverlay(rect: PixelRect, base: CGSize) -> some View {
         Canvas { ctx, size in
-            let perPixel = size.width / CGFloat(state.size.dimension)
+            let perPixel = size.width / CGFloat(state.size.width)
             let r = CGRect(
                 x: CGFloat(rect.x) * perPixel,
                 y: CGFloat(rect.y) * perPixel,
@@ -223,17 +229,17 @@ struct CanvasView: View {
             )
             ctx.stroke(Path(r), with: .color(.white), lineWidth: max(1.0 / state.scale, 0.25))
         }
-        .frame(width: edge, height: edge)
+        .frame(width: base.width, height: base.height)
         .scaleEffect(state.scale)
         .rotationEffect(.radians(state.rotation))
         .offset(state.translation)
         .allowsHitTesting(false)
     }
 
-    private func marchingAnts(bounds: PixelRect, edge: CGFloat) -> some View {
+    private func marchingAnts(bounds: PixelRect, base: CGSize) -> some View {
         TimelineView(.animation) { timeline in
             Canvas { ctx, size in
-                let perPixel = size.width / CGFloat(state.size.dimension)
+                let perPixel = size.width / CGFloat(state.size.width)
                 let r = CGRect(
                     x: CGFloat(bounds.x) * perPixel,
                     y: CGFloat(bounds.y) * perPixel,
@@ -257,7 +263,7 @@ struct CanvasView: View {
                             dashPhase: CGFloat(phase) + dashLen))
             }
         }
-        .frame(width: edge, height: edge)
+        .frame(width: base.width, height: base.height)
         .scaleEffect(state.scale)
         .rotationEffect(.radians(state.rotation))
         .offset(state.translation)

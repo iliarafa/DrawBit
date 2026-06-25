@@ -5,7 +5,7 @@ import UIKit.UIGestureRecognizerSubclass
 struct CanvasHostView: UIViewRepresentable {
     let state: EditorState
     var pencilAvailability: PencilAvailability
-    var baseEdge: CGFloat
+    var baseSize: CGSize
     var onStrokePoint: (Int, Int) -> Void
     var onStrokeBegin: () -> Void
     var onStrokeEnd: () -> Void
@@ -14,7 +14,7 @@ struct CanvasHostView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> CanvasInputView {
         let v = CanvasInputView()
-        v.configure(state: state, pencilAvailability: pencilAvailability, baseEdge: baseEdge)
+        v.configure(state: state, pencilAvailability: pencilAvailability, baseSize: baseSize)
         v.onStrokePoint = onStrokePoint
         v.onStrokeBegin = onStrokeBegin
         v.onStrokeEnd = onStrokeEnd
@@ -25,14 +25,14 @@ struct CanvasHostView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: CanvasInputView, context: Context) {
-        uiView.configure(state: state, pencilAvailability: pencilAvailability, baseEdge: baseEdge)
+        uiView.configure(state: state, pencilAvailability: pencilAvailability, baseSize: baseSize)
     }
 }
 
 final class CanvasInputView: UIView {
     var state: EditorState?
     var pencilAvailability: PencilAvailability?
-    var baseEdge: CGFloat = 0
+    var baseSize: CGSize = .zero
     var onStrokePoint: ((Int, Int) -> Void)?
     var onStrokeBegin: (() -> Void)?
     var onStrokeEnd: (() -> Void)?
@@ -43,10 +43,10 @@ final class CanvasInputView: UIView {
     private var lastPixel: (Int, Int)?
     private var didMove = false
 
-    func configure(state: EditorState, pencilAvailability: PencilAvailability, baseEdge: CGFloat) {
+    func configure(state: EditorState, pencilAvailability: PencilAvailability, baseSize: CGSize) {
         self.state = state
         self.pencilAvailability = pencilAvailability
-        self.baseEdge = baseEdge
+        self.baseSize = baseSize
         isMultipleTouchEnabled = true
         installRecognizersIfNeeded()
     }
@@ -196,9 +196,10 @@ final class CanvasInputView: UIView {
     /// current editor transform (translation, scale, rotation). Returns nil if out of canvas.
     private func pixelCoord(for touch: UITouch) -> (Int, Int)? {
         guard let state else { return nil }
-        let dim = CGFloat(state.size.dimension)
+        let cw = CGFloat(state.size.width)
+        let ch = CGFloat(state.size.height)
         let size = bounds.size
-        guard baseEdge > 0, dim > 0, state.scale > 0 else { return nil }
+        guard baseSize.width > 0, baseSize.height > 0, cw > 0, ch > 0, state.scale > 0 else { return nil }
 
         let p = touch.location(in: self)
         // Step 1: recenter so canvas center is at origin (canvas is drawn centered, then translated).
@@ -211,15 +212,15 @@ final class CanvasInputView: UIView {
         let sinR = Foundation.sin(-state.rotation)
         let rotated = CGPoint(x: centered.x * cosR - centered.y * sinR,
                               y: centered.x * sinR + centered.y * cosR)
-        // Step 3: un-scale to canvas-local centered coords (-baseEdge/2 … baseEdge/2).
+        // Step 3: un-scale to canvas-local centered coords (-baseSize/2 … baseSize/2).
         let local = CGPoint(x: rotated.x / state.scale, y: rotated.y / state.scale)
-        // Step 4: shift to canvas-local top-left coords (0 … baseEdge).
-        let canvasLocal = CGPoint(x: local.x + baseEdge / 2, y: local.y + baseEdge / 2)
-        // Step 5: integer pixel index.
-        let perPixel = baseEdge / dim
+        // Step 4: shift to canvas-local top-left coords (0 … baseSize), per axis.
+        let canvasLocal = CGPoint(x: local.x + baseSize.width / 2, y: local.y + baseSize.height / 2)
+        // Step 5: integer pixel index. perPixel is square (same on both axes).
+        let perPixel = baseSize.width / cw
         let ix = Int(floor(canvasLocal.x / perPixel))
         let iy = Int(floor(canvasLocal.y / perPixel))
-        guard ix >= 0, iy >= 0, ix < Int(dim), iy < Int(dim) else { return nil }
+        guard ix >= 0, iy >= 0, ix < Int(cw), iy < Int(ch) else { return nil }
         return (ix, iy)
     }
 }
