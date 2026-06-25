@@ -16,8 +16,8 @@ final class ShareSheetUITests: XCTestCase {
         // Fresh 32x32 piece.
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // Open the export sheet.
         XCTAssertTrue(app.buttons["SHARE"].waitForExistence(timeout: 15))

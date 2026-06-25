@@ -13,8 +13,8 @@ final class ReferencePhotoUITests: XCTestCase {
         // Create a fresh 32x32 piece from the gallery.
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // Open the layers panel.
         XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 15))

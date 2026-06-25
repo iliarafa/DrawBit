@@ -10,8 +10,8 @@ final class DrawAndSaveTest: XCTestCase {
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
 
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // 2. Editor is up. Tap near the middle to paint one pixel.
         let window = app.windows.firstMatch

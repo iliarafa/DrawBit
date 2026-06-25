@@ -36,7 +36,6 @@ struct NewPieceSheet: View {
             PixelSlider(value: Binding(get: { dim }, set: { setDim($0) }),
                         range: CanvasSize.minDimension...CanvasSize.maxDimension)
             ratioSelector
-            presetChips
             createButton
         }
         .frame(width: 320)
@@ -132,33 +131,6 @@ struct NewPieceSheet: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier(isPlus ? "NewPiece-plus" : "NewPiece-minus")
         .accessibilityLabel(isPlus ? "Increase size" : "Decrease size")
-    }
-
-    // MARK: - Presets (square chips, centered group)
-
-    private var presetChips: some View {
-        HStack(spacing: 8) {
-            ForEach(CanvasSize.presets) { size in
-                let active = size.dimension == dim
-                Button {
-                    onCreate(CanvasSize(ratio: ratio, longestEdge: size.dimension))
-                } label: {
-                    Text("\(size.dimension)")
-                        .font(.pixel(11))
-                        .foregroundStyle(active ? Color.toolSelected : .white.opacity(0.7))
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 9)
-                        .background(
-                            Rectangle()
-                                .fill(active ? Color.toolSelected.opacity(0.14) : .clear)
-                                .overlay(Rectangle().stroke(active ? Color.toolSelected : .white.opacity(0.2), lineWidth: 1))
-                        )
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("NewPiece-\(size.rawValue)")
-            }
-        }
     }
 
     private var createButton: some View {

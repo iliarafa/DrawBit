@@ -11,8 +11,8 @@ final class GalleryMenuUITests: XCTestCase {
     private func makePieceAndReturnToGallery(_ app: XCUIApplication) {
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // Creating a piece pushes the editor; go back to the gallery.
         XCTAssertTrue(app.buttons["Gallery"].waitForExistence(timeout: 15))

@@ -15,8 +15,8 @@ final class AnimationStripUITests: XCTestCase {
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
 
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // FramesStrip is hidden by default for a new (single-frame) piece.
         // ANIMATE both reveals the strip and seeds the second frame.
@@ -87,8 +87,8 @@ final class AnimationStripUITests: XCTestCase {
         // Create a fresh 32×32 piece.
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // FramesStrip is hidden by default. ANIMATE reveals it and seeds frame 2;
         // active frame becomes #2 (FrameSequence.addFrameAfter selects the new one).
@@ -149,8 +149,8 @@ final class AnimationStripUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // ANIMATE button must exist and be the entry point — strip itself must NOT.
         let animate = app.buttons["Animate"]
@@ -173,8 +173,8 @@ final class AnimationStripUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         let animate = app.buttons["Animate"]
         XCTAssertTrue(animate.waitForExistence(timeout: 15))
@@ -224,8 +224,8 @@ final class AnimationStripUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         let animate = app.buttons["Animate"]
         XCTAssertTrue(animate.waitForExistence(timeout: 15))
@@ -243,8 +243,8 @@ final class AnimationStripUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         let animate = app.buttons["Animate"]
         XCTAssertTrue(animate.waitForExistence(timeout: 15))
@@ -274,8 +274,8 @@ final class AnimationStripUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         let animate = app.buttons["Animate"]
         XCTAssertTrue(animate.waitForExistence(timeout: 15))
@@ -314,8 +314,8 @@ final class AnimationStripUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // ANIMATE reveals the strip and seeds a 2nd frame (total: 2). The active
         // frame becomes the new one, so exactly one delete × is shown.
@@ -364,8 +364,8 @@ final class AnimationStripUITests: XCTestCase {
 
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         let animate = app.buttons["Animate"]
         XCTAssertTrue(animate.waitForExistence(timeout: 15))

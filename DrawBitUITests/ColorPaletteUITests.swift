@@ -16,8 +16,8 @@ final class ColorPaletteUITests: XCTestCase {
         // Fresh 32x32 piece from the gallery.
         XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
         app.buttons["NewButton"].tap()
-        XCTAssertTrue(app.buttons["NewPiece-32"].waitForExistence(timeout: 15))
-        app.buttons["NewPiece-32"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
 
         // Open the color picker.
         XCTAssertTrue(app.buttons["ColorSwatch"].waitForExistence(timeout: 15))
