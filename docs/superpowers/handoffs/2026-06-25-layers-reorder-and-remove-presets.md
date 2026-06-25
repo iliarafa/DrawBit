@@ -1,11 +1,11 @@
-# Handoff — 2 tasks (2026-06-25)
+# Handoff — 1 task (2026-06-25)
 
 Previous session shipped **non-square canvases** (all 4 stages), gallery single-source
-lighting, and the export SIZE relabel — all on `main`. Below are the next two tasks. Neither
-is started.
+lighting, the export SIZE relabel, and **removed the New Draw 16/32/64/128 size presets**
+(`50b1514`) — all on `main`. The one remaining task below is not started.
 
 ## Repo state
-- Branch `main`, in sync with `origin/main`, **HEAD `93ea68b`** (+ this handoff commit), tree clean.
+- Branch `main`, in sync with `origin/main`, **HEAD `50b1514`** (or later), tree clean.
 - Only `main` exists (all feature branches deleted).
 - Untracked root images — **leave alone, never `git add -A`**: `alt_logo.PNG`, `dbit.png`, `share.PNG`.
 - Build/run/test commands + invariants live in `CLAUDE.md`. As of last session: **337 unit + 33 UI tests green.**
@@ -36,23 +36,10 @@ is started.
   feel**, plus existing `LayersPanelUITests` (poll for row counts per `CLAUDE.md`'s async-rebuild
   note). Respect the animation-gating rule (`UITestSupport.isRunning`) for any new `.animation`.
 
-## 2. NEW DRAW — remove the 16/32/64/128 preset shortcuts
-- The size presets feel redundant now: the user can dial any size with the **slider** or the
-  **+/− steppers**, so the preset chip row is clutter.
-- File: `DrawBit/Views/Gallery/NewPieceSheet.swift`. Remove the `presetChips` view (the
-  `ForEach(CanvasSize.presets) { … }` row) from `body` and delete the `presetChips` computed
-  property. Keep the **ratio selector** (1:1 / 16:9 / 9:16), the number field/steppers, the
-  slider, and CREATE.
-- **⚠️ Breaks UI tests — must migrate them.** Most UI tests create a piece via
-  `app.buttons["NewButton"].tap()` then `app.buttons["NewPiece-32"].tap()` (the preset chip's
-  a11y id). Removing the chips deletes `NewPiece-32`. The field defaults to "32", so the fix is
-  to replace those two taps' second step with **`app.buttons["NewPiece-create"].tap()`** (creates
-  the default 32×32) — a near-mechanical find/replace across:
-  `ColorPaletteUITests`, `LayersPanelUITests`, `GalleryMenuUITests`, `ReferencePhotoUITests`,
-  `ShareSheetUITests`, `AnimationStripUITests`, `HappyPathTests/DrawAndSaveTest` (grep
-  `NewPiece-32` to find every site). Run the full UI suite after.
-- Optional: also drop `CanvasSize.presets` if nothing else references it (grep first — the ratio
-  presets / `s16…s128` constants may still be used by tests).
+## ✅ (DONE 2026-06-24) NEW DRAW — removed the 16/32/64/128 size presets
+Shipped in `50b1514`: removed `presetChips` from `NewPieceSheet`; migrated every UI test from
+the `NewPiece-32` chip to `NewPiece-create` (field defaults to 32). `CanvasSize.presets` kept as
+a model constant. 33/33 UI tests pass.
 
 ---
 
