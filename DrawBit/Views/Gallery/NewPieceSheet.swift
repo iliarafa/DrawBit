@@ -62,14 +62,12 @@ struct NewPieceSheet: View {
                 .foregroundStyle(active ? Color.toolSelected : .white.opacity(0.7))
                 .padding(.horizontal, 13)
                 .padding(.vertical, 9)
-                .background(
-                    Rectangle()
-                        .fill(active ? Color.toolSelected.opacity(0.14) : .clear)
-                        .overlay(Rectangle().stroke(active ? Color.toolSelected : .white.opacity(0.2), lineWidth: 1))
-                )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PixelButtonStyle(
+            face: active ? Color.toolSelected.opacity(0.22) : Color(white: 0.16),
+            border: active ? Color.toolSelected : .white.opacity(0.2)
+        ))
         .accessibilityIdentifier("NewPiece-ratio-\(r)")
     }
 
@@ -125,10 +123,9 @@ struct NewPieceSheet: View {
                 }
             }
             .frame(width: 44, height: 44)
-            .overlay(Rectangle().stroke(Color.white.opacity(0.25), lineWidth: 1))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PixelButtonStyle(face: Color(white: 0.16), border: .white.opacity(0.25)))
         .accessibilityIdentifier(isPlus ? "NewPiece-plus" : "NewPiece-minus")
         .accessibilityLabel(isPlus ? "Increase size" : "Decrease size")
     }
@@ -142,14 +139,9 @@ struct NewPieceSheet: View {
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(
-                    Rectangle()
-                        .fill(Color.toolSelected.opacity(0.16))
-                        .overlay(Rectangle().stroke(Color.toolSelected, lineWidth: 1))
-                )
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PixelButtonStyle(face: Color.toolSelected.opacity(0.22), border: Color.toolSelected))
         .padding(.top, 4)
         .accessibilityIdentifier("NewPiece-create")
     }
