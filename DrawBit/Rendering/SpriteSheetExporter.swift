@@ -37,9 +37,10 @@ enum SpriteSheetExporter {
 
         let count = frames.count
         let (columns, rows) = grid(count: count)
-        let cellEdge = size.dimension * scale
-        let outWidth = cellEdge * columns
-        let outHeight = cellEdge * rows
+        let cellWidth = size.width * scale
+        let cellHeight = size.height * scale
+        let outWidth = cellWidth * columns
+        let outHeight = cellHeight * rows
 
         guard let ctx = CGContext(
             data: nil,
@@ -60,11 +61,11 @@ enum SpriteSheetExporter {
             let row = idx / columns
             let buffer = Compositor.composite(frame, size: size)
             guard let cg = bufferToCGImage(buffer) else { return nil }
-            let x = col * cellEdge
+            let x = col * cellWidth
             // Top-left at (col, row) in display coords; CGContext y=0 is the bottom,
-            // so flip: y = outHeight - (row + 1) * cellEdge.
-            let y = outHeight - (row + 1) * cellEdge
-            ctx.draw(cg, in: CGRect(x: x, y: y, width: cellEdge, height: cellEdge))
+            // so flip: y = outHeight - (row + 1) * cellHeight.
+            let y = outHeight - (row + 1) * cellHeight
+            ctx.draw(cg, in: CGRect(x: x, y: y, width: cellWidth, height: cellHeight))
         }
 
         guard let image = ctx.makeImage() else { return nil }

@@ -41,17 +41,19 @@ enum ExportSizeBudget {
     /// formula exactly.
     static func outputDimensions(
         format: Format,
-        canvasEdge: Int,
+        canvasWidth: Int,
+        canvasHeight: Int,
         scale: Int,
         frameCount: Int
     ) -> (width: Int, height: Int) {
-        let cellEdge = max(0, canvasEdge) * max(0, scale)
+        let cellW = max(0, canvasWidth) * max(0, scale)
+        let cellH = max(0, canvasHeight) * max(0, scale)
         switch format {
         case .png, .gif, .apng:
-            return (cellEdge, cellEdge)
+            return (cellW, cellH)
         case .spriteSheet:
             let (cols, rows) = spriteSheetGrid(frameCount: frameCount)
-            return (cellEdge * cols, cellEdge * rows)
+            return (cellW * cols, cellH * rows)
         }
     }
 
@@ -73,25 +75,27 @@ enum ExportSizeBudget {
     /// Empty / zero-frame inputs are treated as safe (nothing to allocate).
     static func isOverBudget(
         format: Format,
-        canvasEdge: Int,
+        canvasWidth: Int,
+        canvasHeight: Int,
         scale: Int,
         frameCount: Int
     ) -> Bool {
         guard frameCount > 0 else { return false }
-        let cellEdge = max(0, canvasEdge) * max(0, scale)
+        let cellW = max(0, canvasWidth) * max(0, scale)
+        let cellH = max(0, canvasHeight) * max(0, scale)
         let (outW, outH) = outputDimensions(
-            format: format, canvasEdge: canvasEdge, scale: scale, frameCount: frameCount
+            format: format, canvasWidth: canvasWidth, canvasHeight: canvasHeight,
+            scale: scale, frameCount: frameCount
         )
         if outW > maxContextEdge || outH > maxContextEdge {
             return true
         }
         switch format {
         case .gif, .apng:
-            // Per-frame context is bounded by `cellEdge × cellEdge × 4`; the
-            // accumulated encoder state is roughly proportional to
-            // `frameCount × that`. Guard against multiplication overflow on
-            // absurd inputs so the predicate never traps.
-            let perFrameBytes = cellEdge &* cellEdge &* 4
+            // Per-frame context is bounded by `cellW × cellH × 4`; the accumulated
+            // encoder state is roughly proportional to `frameCount × that`. Guard
+            // against multiplication overflow on absurd inputs so it never traps.
+            let perFrameBytes = cellW &* cellH &* 4
             let (total, overflow) = perFrameBytes
                 .multipliedReportingOverflow(by: frameCount)
             if overflow { return true }

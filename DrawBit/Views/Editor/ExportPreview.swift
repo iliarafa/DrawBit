@@ -10,8 +10,9 @@ struct ExportPreview: View {
     let size: CanvasSize
     let fps: Int
     let format: ShareSheet.ExportFormat
-    /// Output edge (px) of the currently-selected scale — shown in the badge.
-    let outputEdge: Int
+    /// Output pixel dimensions of the currently-selected scale — shown in the badge.
+    let outputWidth: Int
+    let outputHeight: Int
 
     /// Cached nearest-neighbor renders of every frame (built once; reused by all modes).
     @State private var images: [CGImage] = []
@@ -104,7 +105,9 @@ struct ExportPreview: View {
     private var badgeText: String {
         switch format {
         case .png:
-            return "PNG · \(outputEdge)px"
+            return outputWidth == outputHeight
+                ? "PNG · \(outputWidth)px"
+                : "PNG · \(outputWidth)×\(outputHeight)"
         case .gif, .apng:
             let secs = Double(max(1, frames.count)) / Double(safeFPS)
             return "\(format.label) · \(String(format: "%.1f", secs))s"

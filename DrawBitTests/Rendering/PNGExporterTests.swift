@@ -26,6 +26,16 @@ final class PNGExporterTests: XCTestCase {
         XCTAssertEqual(image.height, 256)
     }
 
+    func testExportNonSquareProducesWidthHeightOutput() throws {
+        let size = CanvasSize(width: 32, height: 16)
+        let grid = PixelGrid(size: size)
+        let data = try XCTUnwrap(PNGExporter.export(frame: frame(for: grid), size: size, scale: 2))
+        let src = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
+        let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
+        XCTAssertEqual(image.width, 64)
+        XCTAssertEqual(image.height, 32)
+    }
+
     func testExportRejectsZeroOrNegativeScale() {
         let grid = PixelGrid(size: .s16)
         XCTAssertNil(PNGExporter.export(frame: frame(for: grid), size: .s16, scale: 0))

@@ -4,8 +4,9 @@ import Foundation
 /// Wraps a CompositedBuffer's raw RGBA bytes in a CGImage. Uses sRGB explicitly (NEVER deviceRGB) so
 /// rendering and export are consistent across iPad models including P3 displays.
 func bufferToCGImage(_ buffer: CompositedBuffer) -> CGImage? {
-    let dim = buffer.size.dimension
-    let bytesPerRow = dim * 4
+    let w = buffer.size.width
+    let h = buffer.size.height
+    let bytesPerRow = w * 4
 
     guard let provider = CGDataProvider(data: buffer.data as CFData) else { return nil }
     guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
@@ -14,8 +15,8 @@ func bufferToCGImage(_ buffer: CompositedBuffer) -> CGImage? {
     ]
 
     return CGImage(
-        width: dim,
-        height: dim,
+        width: w,
+        height: h,
         bitsPerComponent: 8,
         bitsPerPixel: 32,
         bytesPerRow: bytesPerRow,

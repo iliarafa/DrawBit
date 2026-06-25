@@ -31,19 +31,27 @@ enum ThumbnailRenderer {
         guard let source = bufferToCGImage(buffer) else { return nil }
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
 
+        // Preserve the canvas aspect: `targetEdge` is the LONGEST edge; the short edge
+        // scales down proportionally. Square → targetEdge×targetEdge (unchanged). The
+        // gallery tile then letterboxes a non-square thumbnail against its own dark
+        // background (no bands baked into the image).
+        let longest = max(size.width, size.height)
+        let outW = max(1, targetEdge * size.width / longest)
+        let outH = max(1, targetEdge * size.height / longest)
+
         guard let ctx = CGContext(
             data: nil,
-            width: targetEdge,
-            height: targetEdge,
+            width: outW,
+            height: outH,
             bitsPerComponent: 8,
-            bytesPerRow: targetEdge * 4,
+            bytesPerRow: outW * 4,
             space: colorSpace,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ) else { return nil }
 
         ctx.interpolationQuality = .none
         ctx.setShouldAntialias(false)
-        ctx.draw(source, in: CGRect(x: 0, y: 0, width: targetEdge, height: targetEdge))
+        ctx.draw(source, in: CGRect(x: 0, y: 0, width: outW, height: outH))
 
         return ctx.makeImage()
     }

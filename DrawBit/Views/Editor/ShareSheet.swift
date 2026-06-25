@@ -18,7 +18,8 @@ struct ShareSheet: View {
     @State private var activeIndex = 0
     @State private var fps = 12
 
-    private var outputEdge: Int { piece.size.dimension * selectedScale }
+    private var outputWidth: Int { piece.size.width * selectedScale }
+    private var outputHeight: Int { piece.size.height * selectedScale }
 
     /// Output formats. PNG always works (single-frame snapshot of the active frame);
     /// GIF and APNG are animated and require the underlying piece to actually have
@@ -78,7 +79,8 @@ struct ShareSheet: View {
                 size: piece.size,
                 fps: fps,
                 format: selectedFormat,
-                outputEdge: outputEdge
+                outputWidth: outputWidth,
+                outputHeight: outputHeight
             )
 
             Text(piece.effectiveName)
@@ -206,7 +208,10 @@ struct ShareSheet: View {
     }
 
     private func scaleTile(scale s: Int) -> some View {
-        let edge = piece.size.dimension * s
+        let outW = piece.size.width * s
+        let outH = piece.size.height * s
+        // Square → one number; non-square → the full W×H (one number can't describe it).
+        let label = outW == outH ? "\(outW)" : "\(outW)×\(outH)"
         let isSelected = s == selectedScale
         let overBudget = isOverBudget(scale: s, format: selectedFormat)
         // Surface the predicate verdict up front rather than letting the
@@ -223,13 +228,11 @@ struct ShareSheet: View {
                     .stroke(isSelected ? Color.white : Color.white.opacity(0.15),
                             lineWidth: isSelected ? 2 : 0.5)
                 VStack(spacing: 4) {
-                    // Output is always square, so one number says it all — the actual
-                    // exported edge in px (128…2048), not the source-relative multiplier.
-                    // "TOO BIG" only appears on over-budget tiles, keeping normal tiles
-                    // to a single clean number.
-                    // `verbatim:` to bypass SwiftUI's LocalizedStringKey number
-                    // grouping — we want "1920", not a comma-grouped "1,920".
-                    Text(verbatim: "\(edge)")
+                    // The actual exported size in px: one number when square, W×H when not.
+                    // "TOO BIG" only appears on over-budget tiles, keeping normal tiles tidy.
+                    // `verbatim:` to bypass SwiftUI's LocalizedStringKey number grouping —
+                    // we want "1920", not a comma-grouped "1,920".
+                    Text(verbatim: label)
                         .font(.pixel(14))
                         .foregroundStyle(.white.opacity(primaryOpacity))
                         .lineLimit(1)
@@ -258,7 +261,8 @@ struct ShareSheet: View {
     private func isOverBudget(scale s: Int, format f: ExportFormat) -> Bool {
         ExportSizeBudget.isOverBudget(
             format: f.budgetKind,
-            canvasEdge: piece.size.dimension,
+            canvasWidth: piece.size.width,
+            canvasHeight: piece.size.height,
             scale: s,
             frameCount: frameCount
         )
@@ -276,7 +280,9 @@ struct ShareSheet: View {
         // an exact block on output (nearest-neighbour everywhere). This reproduces the
         // old per-preset table exactly (16→[8,16,32,64,128] … 128→[1,2,4,8,16]) and
         // generalises to any custom square (48→[2,4,8,16,32], 8→[16,32,64,128,256]).
-        let k = max(1, 128 / size.dimension)
+        // Anchors to the LONGEST edge so it lands near 128…2048; the short edge scales
+        // by the same k. Square is the longestEdge == dimension case (unchanged).
+        let k = max(1, 128 / size.longestEdge)
         return [1, 2, 4, 8, 16].map { k * $0 }
     }
 
@@ -292,7 +298,7 @@ struct ShareSheet: View {
         // sources can afford—and benefit from—the crisper larger export). Pick the
         // scale whose output edge lands closest to that target. Reproduces the old
         // per-preset defaults (16→64, 32→32, 64→32, 128→16) and generalises.
-        let d = size.dimension
+        let d = size.longestEdge
         let target = d <= 32 ? 1024 : 2048
         return scales(for: size).min(by: { abs($0 * d - target) < abs($1 * d - target) }) ?? 1
     }
@@ -328,7 +334,8 @@ struct ShareSheet: View {
             exportFPS = loaded.fps
         }
 
-        let filename = "drawbit-\(piece.size.dimension)-\(scale)x.\(format.fileExtension)"
+        let sizeTag = piece.size.isSquare ? "\(piece.size.width)" : "\(piece.size.width)x\(piece.size.height)"
+        let filename = "drawbit-\(sizeTag)-\(scale)x.\(format.fileExtension)"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
 
         // NOTE: the animated exporters now check `Task.checkCancellation()` between

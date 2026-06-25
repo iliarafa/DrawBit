@@ -15,7 +15,7 @@ final class ExportSizeBudgetTests: XCTestCase {
     func testSpriteSheetAtMaxFramesAndScaleIsOverBudget() {
         XCTAssertTrue(ExportSizeBudget.isOverBudget(
             format: .spriteSheet,
-            canvasEdge: 128,
+            canvasWidth: 128, canvasHeight: 128,
             scale: 16,
             frameCount: 64
         ))
@@ -25,7 +25,7 @@ final class ExportSizeBudgetTests: XCTestCase {
         // 8 frames × 32 canvas × 4 scale = 128px cell × 3×3 grid = 384px. Plenty of headroom.
         XCTAssertFalse(ExportSizeBudget.isOverBudget(
             format: .spriteSheet,
-            canvasEdge: 32,
+            canvasWidth: 32, canvasHeight: 32,
             scale: 4,
             frameCount: 8
         ))
@@ -36,10 +36,10 @@ final class ExportSizeBudgetTests: XCTestCase {
     /// grid to 4 × 5 → 8192 × 10240, which crosses the limit.
     func testSpriteSheetAtExactlyMaxIsSafeButOneStepLargerIsNot() {
         XCTAssertFalse(ExportSizeBudget.isOverBudget(
-            format: .spriteSheet, canvasEdge: 128, scale: 16, frameCount: 16
+            format: .spriteSheet, canvasWidth: 128, canvasHeight: 128, scale: 16, frameCount: 16
         ))
         XCTAssertTrue(ExportSizeBudget.isOverBudget(
-            format: .spriteSheet, canvasEdge: 128, scale: 16, frameCount: 17
+            format: .spriteSheet, canvasWidth: 128, canvasHeight: 128, scale: 16, frameCount: 17
         ))
     }
 
@@ -48,7 +48,7 @@ final class ExportSizeBudgetTests: XCTestCase {
     func testPNGAtMaxScaleIsSafe() {
         // The largest output edge any canvas × scale combination produces today.
         XCTAssertFalse(ExportSizeBudget.isOverBudget(
-            format: .png, canvasEdge: 128, scale: 16, frameCount: 1
+            format: .png, canvasWidth: 128, canvasHeight: 128, scale: 16, frameCount: 1
         ))
     }
 
@@ -57,14 +57,14 @@ final class ExportSizeBudgetTests: XCTestCase {
     func testGIFAtLargeFrameCountAndScaleIsOverBudgetOnTotalBytes() {
         // 64 frames × 2048² × 4B = ~1 GB — past the 256 MB soft cap.
         XCTAssertTrue(ExportSizeBudget.isOverBudget(
-            format: .gif, canvasEdge: 128, scale: 16, frameCount: 64
+            format: .gif, canvasWidth: 128, canvasHeight: 128, scale: 16, frameCount: 64
         ))
     }
 
     func testAPNGShortAnimationIsSafe() {
         // 4 frames × 128² × 4B = 256 KB. Fine.
         XCTAssertFalse(ExportSizeBudget.isOverBudget(
-            format: .apng, canvasEdge: 32, scale: 4, frameCount: 4
+            format: .apng, canvasWidth: 32, canvasHeight: 32, scale: 4, frameCount: 4
         ))
     }
 
@@ -86,17 +86,26 @@ final class ExportSizeBudgetTests: XCTestCase {
     func testOutputDimensionsForSpriteSheet() {
         // 4 frames × 32 canvas × 1 scale: 2 × 2 grid = 64 × 64.
         let dims = ExportSizeBudget.outputDimensions(
-            format: .spriteSheet, canvasEdge: 32, scale: 1, frameCount: 4
+            format: .spriteSheet, canvasWidth: 32, canvasHeight: 32, scale: 1, frameCount: 4
         )
         XCTAssertEqual(dims.width, 64)
         XCTAssertEqual(dims.height, 64)
+    }
+
+    func testOutputDimensionsNonSquarePerAxis() {
+        // 16:9 canvas 256×144 at scale 4 → 1024×576 (each axis scales independently).
+        let dims = ExportSizeBudget.outputDimensions(
+            format: .png, canvasWidth: 256, canvasHeight: 144, scale: 4, frameCount: 1
+        )
+        XCTAssertEqual(dims.width, 1024)
+        XCTAssertEqual(dims.height, 576)
     }
 
     func testOutputDimensionsForSingleFrameFormatsIgnoresFrameCount() {
         // PNG / GIF / APNG all share a single edge × edge worst-case context.
         for format in [ExportSizeBudget.Format.png, .gif, .apng] {
             let dims = ExportSizeBudget.outputDimensions(
-                format: format, canvasEdge: 128, scale: 8, frameCount: 50
+                format: format, canvasWidth: 128, canvasHeight: 128, scale: 8, frameCount: 50
             )
             XCTAssertEqual(dims.width, 1024)
             XCTAssertEqual(dims.height, 1024)
@@ -108,7 +117,7 @@ final class ExportSizeBudgetTests: XCTestCase {
     func testZeroFrameCountIsTreatedAsSafe() {
         // Empty piece — the exporter would short-circuit to nil. Predicate must not crash.
         XCTAssertFalse(ExportSizeBudget.isOverBudget(
-            format: .spriteSheet, canvasEdge: 128, scale: 16, frameCount: 0
+            format: .spriteSheet, canvasWidth: 128, canvasHeight: 128, scale: 16, frameCount: 0
         ))
     }
 }
