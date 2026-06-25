@@ -8,13 +8,18 @@ struct NewPieceSheet: View {
     let onCancel: () -> Void
 
     /// Single source of truth for the dial; the field shows it verbatim while typing,
-    /// `dim` is the clamped value everything downstream uses.
+    /// `dim` is the clamped value everything downstream uses. With a non-square ratio
+    /// `dim` is the LONGEST edge; the ratio derives the short edge.
     @State private var text: String = "32"
+    @State private var ratio: CanvasSize.Ratio = .square
     @FocusState private var fieldFocused: Bool
 
     private var dim: Int {
         min(CanvasSize.maxDimension, max(CanvasSize.minDimension, Int(text) ?? CanvasSize.minDimension))
     }
+
+    /// The actual canvas the current (ratio, longest-edge) selection produces.
+    private var selectedSize: CanvasSize { CanvasSize(ratio: ratio, longestEdge: dim) }
 
     private func setDim(_ n: Int) {
         text = String(min(CanvasSize.maxDimension, max(CanvasSize.minDimension, n)))
@@ -25,16 +30,48 @@ struct NewPieceSheet: View {
         // (set in GalleryView) to hug it, giving an equal margin on all four sides.
         VStack(spacing: 20) {
             header
-            CanvasPreview(dimension: dim)
+            CanvasPreview(size: selectedSize)
                 .frame(width: 96, height: 96)
             numberRow
             PixelSlider(value: Binding(get: { dim }, set: { setDim($0) }),
                         range: CanvasSize.minDimension...CanvasSize.maxDimension)
+            ratioSelector
             presetChips
             createButton
         }
         .frame(width: 320)
         .padding(20)
+    }
+
+    // MARK: - Aspect ratio selector (1:1 / 16:9 / 9:16)
+
+    private var ratioSelector: some View {
+        HStack(spacing: 8) {
+            ratioChip("1:1", .square)
+            ratioChip("16:9", .r16x9)
+            ratioChip("9:16", .r9x16)
+        }
+    }
+
+    private func ratioChip(_ label: String, _ r: CanvasSize.Ratio) -> some View {
+        let active = ratio == r
+        return Button {
+            ratio = r
+        } label: {
+            Text(label)
+                .font(.pixel(11))
+                .foregroundStyle(active ? Color.toolSelected : .white.opacity(0.7))
+                .padding(.horizontal, 13)
+                .padding(.vertical, 9)
+                .background(
+                    Rectangle()
+                        .fill(active ? Color.toolSelected.opacity(0.14) : .clear)
+                        .overlay(Rectangle().stroke(active ? Color.toolSelected : .white.opacity(0.2), lineWidth: 1))
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("NewPiece-ratio-\(r)")
     }
 
     // MARK: - Header (NEW DRAW left, CANCEL right)
@@ -104,7 +141,7 @@ struct NewPieceSheet: View {
             ForEach(CanvasSize.presets) { size in
                 let active = size.dimension == dim
                 Button {
-                    onCreate(size)
+                    onCreate(CanvasSize(ratio: ratio, longestEdge: size.dimension))
                 } label: {
                     Text("\(size.dimension)")
                         .font(.pixel(11))
@@ -126,7 +163,7 @@ struct NewPieceSheet: View {
 
     private var createButton: some View {
         Button {
-            onCreate(CanvasSize(dim))
+            onCreate(selectedSize)
         } label: {
             Text("CREATE")
                 .font(.pixel(12))
@@ -152,31 +189,38 @@ struct NewPieceSheet: View {
 /// (`count = min(dimension, side/minCell)`) while the square keeps growing toward
 /// filling the frame — so every size still reads distinctly.
 private struct CanvasPreview: View {
-    let dimension: Int
+    let size: CanvasSize
 
     var body: some View {
-        Canvas { ctx, size in
-            let maxSide = min(size.width, size.height)
-            let minSide = maxSide * 0.36
+        Canvas { ctx, canvas in
+            let box = min(canvas.width, canvas.height)
+            let minSide = box * 0.36
             let lo = sqrt(Double(CanvasSize.minDimension))
             let hi = sqrt(Double(CanvasSize.maxDimension))
-            let frac = max(0, min(1, (sqrt(Double(dimension)) - lo) / (hi - lo)))
-            let side = minSide + CGFloat(frac) * (maxSide - minSide)
-            let rect = CGRect(x: (size.width - side) / 2, y: (size.height - side) / 2,
-                              width: side, height: side)
+            let frac = max(0, min(1, (sqrt(Double(size.longestEdge)) - lo) / (hi - lo)))
+            // Longest edge grows with the chosen size; the short edge keeps the canvas aspect.
+            let longSide = minSide + CGFloat(frac) * (box - minSide)
+            let w = size.width >= size.height ? longSide : longSide * CGFloat(size.width) / CGFloat(size.height)
+            let h = size.height >= size.width ? longSide : longSide * CGFloat(size.height) / CGFloat(size.width)
+            let rect = CGRect(x: (canvas.width - w) / 2, y: (canvas.height - h) / 2, width: w, height: h)
 
             ctx.fill(Path(rect), with: .color(Color(white: 0.15)))
 
             // Real pixels while they stay ≥ minCell on screen, then a fixed fine grain.
+            // Square cells, sized off the longest edge; gridlines walk each axis to its edge.
             let minCell: CGFloat = 3
-            let count = max(2, min(dimension, Int(side / minCell)))
-            let cell = side / CGFloat(count)
+            let countLong = max(2, min(size.longestEdge, Int(longSide / minCell)))
+            let cell = longSide / CGFloat(countLong)
             var path = Path()
-            for i in 0...count {
-                let x = rect.minX + CGFloat(i) * cell
-                let y = rect.minY + CGFloat(i) * cell
+            var x = rect.minX
+            while x <= rect.maxX + 0.5 {
                 path.move(to: CGPoint(x: x, y: rect.minY)); path.addLine(to: CGPoint(x: x, y: rect.maxY))
+                x += cell
+            }
+            var y = rect.minY
+            while y <= rect.maxY + 0.5 {
                 path.move(to: CGPoint(x: rect.minX, y: y)); path.addLine(to: CGPoint(x: rect.maxX, y: y))
+                y += cell
             }
             ctx.stroke(path, with: .color(.white.opacity(0.14)), lineWidth: 1)
             ctx.stroke(Path(rect), with: .color(.white.opacity(0.3)), lineWidth: 1)

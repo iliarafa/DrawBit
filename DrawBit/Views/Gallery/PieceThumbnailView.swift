@@ -8,15 +8,24 @@ struct PieceThumbnailView: View {
         ZStack {
             Color(white: 0.10)
             Canvas { ctx, size in
-                let dim = piece.size.dimension
-                let cell = size.width / CGFloat(dim)
+                // Confine the gridlines to the aspect-fit art region so a non-square
+                // piece letterboxes with pure dark bands (no grid in the bands).
+                let cw = piece.size.width
+                let ch = piece.size.height
+                let s = min(size.width / CGFloat(cw), size.height / CGFloat(ch))
+                let aw = CGFloat(cw) * s
+                let ah = CGFloat(ch) * s
+                let ox = (size.width - aw) / 2
+                let oy = (size.height - ah) / 2
+                let cell = aw / CGFloat(cw)
                 var path = Path()
-                for i in 0...dim {
-                    let p = CGFloat(i) * cell
-                    path.move(to: CGPoint(x: p, y: 0))
-                    path.addLine(to: CGPoint(x: p, y: size.height))
-                    path.move(to: CGPoint(x: 0, y: p))
-                    path.addLine(to: CGPoint(x: size.width, y: p))
+                for i in 0...cw {
+                    let x = ox + CGFloat(i) * cell
+                    path.move(to: CGPoint(x: x, y: oy)); path.addLine(to: CGPoint(x: x, y: oy + ah))
+                }
+                for j in 0...ch {
+                    let y = oy + CGFloat(j) * cell
+                    path.move(to: CGPoint(x: ox, y: y)); path.addLine(to: CGPoint(x: ox + aw, y: y))
                 }
                 ctx.stroke(path, with: .color(Color(white: 0.22)), lineWidth: 0.5)
             }
@@ -24,6 +33,7 @@ struct PieceThumbnailView: View {
                 Image(uiImage: image)
                     .resizable()
                     .interpolation(.none)
+                    .scaledToFit()
             }
         }
         .aspectRatio(1, contentMode: .fit)
