@@ -17,8 +17,10 @@ import UIKit
 final class ButtonClick {
     static let shared = ButtonClick()
 
-    private var pool: [AVAudioPlayer] = []
-    private var next = 0
+    private var buttonPool: [AVAudioPlayer] = []   // button press "pock"
+    private var tickPool: [AVAudioPlayer] = []     // slider "dial detent"
+    private var buttonNext = 0
+    private var tickNext = 0
     private let impact = UIImpactFeedbackGenerator(style: .light)
     private let selection = UISelectionFeedbackGenerator()
     private var prepared = false
@@ -37,40 +39,48 @@ final class ButtonClick {
     func prepare() {
         impact.prepare()
         selection.prepare()
-        guard pool.isEmpty else { return }
-        guard let url = Bundle.main.url(forResource: "button-press", withExtension: "wav")
-            ?? Bundle.main.url(forResource: "button-press", withExtension: "caf") else { return }
-        for _ in 0..<Self.poolSize {
-            if let p = try? AVAudioPlayer(contentsOf: url) {
-                p.prepareToPlay()
-                pool.append(p)
-            }
-        }
-        prepared = !pool.isEmpty
+        guard buttonPool.isEmpty, tickPool.isEmpty else { return }
+        buttonPool = Self.makePool("button-press")
+        tickPool = Self.makePool("slider-tick")
+        prepared = !buttonPool.isEmpty
     }
 
-    /// Plays the click on the next pooled player (round-robin).
-    private func play() {
+    /// Builds a round-robin pool of primed players from a bundled sound (.wav or .caf).
+    private static func makePool(_ resource: String) -> [AVAudioPlayer] {
+        guard let url = Bundle.main.url(forResource: resource, withExtension: "wav")
+            ?? Bundle.main.url(forResource: resource, withExtension: "caf") else { return [] }
+        var players: [AVAudioPlayer] = []
+        for _ in 0..<poolSize {
+            if let p = try? AVAudioPlayer(contentsOf: url) {
+                p.prepareToPlay()
+                players.append(p)
+            }
+        }
+        return players
+    }
+
+    /// Plays the next player (round-robin) from the given pool.
+    private func play(_ pool: [AVAudioPlayer], _ idx: inout Int) {
         if !prepared { prepare() }
         guard !pool.isEmpty else { return }
-        let p = pool[next]
-        next = (next + 1) % pool.count
+        let p = pool[idx % pool.count]
+        idx = (idx + 1) % pool.count
         p.currentTime = 0
         p.play()
     }
 
-    /// Single button press: light-impact haptic + click, on touch-down.
+    /// Single button press: light-impact haptic + "pock" click, on touch-down.
     func fire() {
         impact.impactOccurred()
-        play()
+        play(buttonPool, &buttonNext)
     }
 
-    /// Slider detent: selection haptic + click, throttled for rapid drags.
+    /// Slider detent: selection haptic + crisp "dial detent" tick, throttled for rapid drags.
     func tick() {
         let now = CACurrentMediaTime()
         guard now - lastTick >= tickInterval else { return }
         lastTick = now
         selection.selectionChanged()
-        play()
+        play(tickPool, &tickNext)
     }
 }
