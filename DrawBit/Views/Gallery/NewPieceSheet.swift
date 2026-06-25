@@ -40,6 +40,7 @@ struct NewPieceSheet: View {
         }
         .frame(width: 320)
         .padding(20)
+        .onAppear { ButtonClick.shared.prepare() }   // warm up click + haptic, no first-press latency
     }
 
     // MARK: - Aspect ratio selector (1:1 / 16:9 / 9:16)
@@ -219,7 +220,11 @@ private struct PixelSlider: View {
                 .gesture(
                     DragGesture(minimumDistance: 0).onChanged { g in
                         let f = min(1, max(0, (g.location.x - Self.thumb / 2) / usable))
-                        value = range.lowerBound + Int((f * CGFloat(span)).rounded())
+                        let stepped = range.lowerBound + Int((f * CGFloat(span)).rounded())
+                        if stepped != value {           // one detent tick per integer crossed
+                            ButtonClick.shared.tick()
+                            value = stepped
+                        }
                     }
                 )
             }

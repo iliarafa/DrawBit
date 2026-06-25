@@ -25,5 +25,10 @@ struct PixelButtonStyle: ButtonStyle {
             }
             .padding(.bottom, depth)                         // reserve room for the slab strip
             .animation(UITestSupport.isRunning ? nil : .easeOut(duration: 0.05), value: pressed)
+            // Mechanical click + light-impact haptic the instant the finger lands (touch-down,
+            // i.e. the false→true transition — `onChange` fires only on real changes).
+            .onChange(of: pressed) { _, isDown in
+                if isDown { ButtonClick.shared.fire() }
+            }
     }
 }
