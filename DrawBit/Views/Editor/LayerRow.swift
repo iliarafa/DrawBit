@@ -12,25 +12,28 @@ struct LayerRow: View {
     /// Position in the reversed (top-of-stack-first) display order.
     let displayIndex: Int
     let layerCount: Int
-    /// Reorder request in display order, mirroring `FrameRow.onMove`.
+    /// Reorder request in display order, mirroring `FrameRow.onMove`. Still used by the
+    /// accessibility "Move up/down" actions as the non-drag fallback.
     let onMoveByDisplayIndex: (Int, Int) -> Void
+
+    // Custom drag-reorder, driven by the parent `LayersPanel` (which owns the drag state so
+    // sibling rows can open a gap). The row reports gesture phases up; the parent feeds back
+    // this row's live vertical offset and whether it's the lifted one.
+    let visualOffset: CGFloat
+    let isLifted: Bool
+    let onDragChanged: (Int, CGFloat) -> Void
+    let onDragEnded: (Int) -> Void
 
     @State private var isEditingName = false
     @State private var draftName = ""
 
-    private static let dragRowHeight: CGFloat = 44
+    /// Fixed row height so the parent's point→slot drag math is exact (44pt controls + 12pt).
+    static let rowHeight: CGFloat = 56
 
     var body: some View {
         HStack(spacing: 10) {
-            // Thumbnail is the drag handle — a clear visual "grip" without
-            // making every tap on the row arm a drag.
+            // Thumbnail reads as the "grip"; the whole row is the drag target (long-press to lift).
             thumbnail
-                .contentShape(Rectangle())
-                .draggable("\(displayIndex)") {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.white.opacity(0.2))
-                        .frame(width: 200, height: Self.dragRowHeight)
-                }
             if isEditingName {
                 TextField("", text: $draftName)
                     .font(.pixel(11))
@@ -83,20 +86,34 @@ struct LayerRow: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(isActive ? Color.blue.opacity(0.30) : Color.clear)
-        .contentShape(Rectangle())
-        .onTapGesture { onTap() }
-        // Drop target is the entire row so users don't have to land precisely
-        // on the 32-pt thumbnail to complete a reorder.
-        .dropDestination(for: String.self) { items, _ in
-            guard let s = items.first, let from = Int(s), from != displayIndex else { return false }
-            onMoveByDisplayIndex(from, displayIndex)
-            return true
-        }
+        .frame(height: Self.rowHeight)
+        .background(rowBackground)
         .overlay(
-            RoundedRectangle(cornerRadius: 0)
-                .stroke(Color.red.opacity(isPulsing ? 0.85 : 0), lineWidth: 2)
+            // Lifted accent (drag) on top of the lock-pulse border — both hard-edged, no blur.
+            Rectangle().stroke(isLifted ? Color.toolSelected.opacity(0.9)
+                                        : Color.red.opacity(isPulsing ? 0.85 : 0),
+                               lineWidth: 2)
+        )
+        .contentShape(Rectangle())
+        // Pickup "pop": a small springy scale the instant the row is armed/lifted. Render-only,
+        // so the parent's gap math (keyed on the fixed rowHeight) is undisturbed.
+        .scaleEffect(isLifted ? 1.03 : 1.0)
+        .animation(UITestSupport.isRunning ? nil : .spring(response: 0.22, dampingFraction: 0.6), value: isLifted)
+        .offset(y: visualOffset)
+        .onTapGesture { onTap() }
+        // Reliable reorder: hold to lift, then drag. Long-press disambiguates from a scroll flick
+        // (which moves immediately) and from a quick tap (select), so it composes with both.
+        .gesture(
+            LongPressGesture(minimumDuration: 0.22)
+                .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named("layerList")))
+                .onChanged { value in
+                    // Catch the long-press-completed phase too (drag == nil ⇒ armed, not yet moved)
+                    // so the pickup haptic + lifted "pop" fire the instant the row becomes grabbable.
+                    if case .second(true, let drag) = value {
+                        onDragChanged(displayIndex, drag?.translation.height ?? 0)
+                    }
+                }
+                .onEnded { _ in onDragEnded(displayIndex) }
         )
         .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.18), value: isPulsing)
         .accessibilityAction(named: "Rename") {
@@ -109,6 +126,12 @@ struct LayerRow: View {
         .accessibilityAction(named: "Move down") {
             if displayIndex < layerCount - 1 { onMoveByDisplayIndex(displayIndex, displayIndex + 1) }
         }
+    }
+
+    /// Lifted (being dragged) reads brightest; otherwise the active row keeps its blue tint.
+    private var rowBackground: Color {
+        if isLifted { return Color(white: 0.24) }
+        return isActive ? Color.blue.opacity(0.30) : Color.clear
     }
 
     private var thumbnail: some View {

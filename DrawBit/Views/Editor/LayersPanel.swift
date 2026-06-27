@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct LayersPanel: View {
     let state: EditorState
@@ -11,6 +12,16 @@ struct LayersPanel: View {
     let onDismiss: () -> Void
 
     @State private var confirmDeleteLayerID: UUID?
+
+    /// Live drag-reorder state. `start` is the dragged row's original display slot; `translation`
+    /// is the running vertical drag in points. `nil` when no drag is in flight.
+    @State private var drag: (id: UUID, start: Int, translation: CGFloat)?
+    /// Last slot the drag crossed — used to fire a selection tick only on a new slot.
+    @State private var lastDragTarget: Int?
+
+    private let liftHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private let dropHaptic = UIImpactFeedbackGenerator(style: .light)
+    private let crossHaptic = UISelectionFeedbackGenerator()
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -147,10 +158,9 @@ struct LayersPanel: View {
 
     // MARK: - Layer list
 
-    /// `ScrollView + LazyVStack` instead of `List` — SwiftUI `List` rows
-    /// intercept `.dropDestination` events at the cell level, so drops over a
-    /// row never fire and the dragged row springs back. The FramesStrip uses
-    /// the same pattern for its drag-to-reorder.
+    /// `ScrollView + LazyVStack` instead of `List` — `List` reorder chrome can't be themed and
+    /// fought the pixel aesthetic. Reorder is a custom long-press-then-drag (see `rowDrag*`).
+    /// Scrolling is locked while a drag is armed so the two gestures don't fight.
     private var layerList: some View {
         let count = state.frame.layers.count
         return ScrollView {
@@ -185,12 +195,59 @@ struct LayersPanel: View {
                         },
                         displayIndex: displayIndex,
                         layerCount: count,
-                        onMoveByDisplayIndex: { from, to in performMove(displayFrom: from, displayTo: to) }
+                        onMoveByDisplayIndex: { from, to in performMove(displayFrom: from, displayTo: to) },
+                        visualOffset: rowVisualOffset(displayIndex: displayIndex, count: count),
+                        isLifted: drag?.id == layer.id,
+                        onDragChanged: { start, translation in rowDragChanged(id: layer.id, start: start, translation: translation, count: count) },
+                        onDragEnded: { start in rowDragEnded(start: start, count: count) }
                     )
+                    .zIndex(drag?.id == layer.id ? 1 : 0)
+                    .animation(UITestSupport.isRunning ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.82),
+                               value: drag?.translation)
                 }
             }
         }
+        .coordinateSpace(name: "layerList")
+        .scrollDisabled(drag != nil)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            liftHaptic.prepare(); dropHaptic.prepare(); crossHaptic.prepare()
+        }
+    }
+
+    // MARK: - Custom drag-reorder
+
+    /// This row's live vertical offset: the lifted row follows the finger; the rows it passes
+    /// open a gap. All derived from `drag` + the pure `LayerDragMath` helpers.
+    private func rowVisualOffset(displayIndex i: Int, count: Int) -> CGFloat {
+        guard let drag else { return 0 }
+        if i == drag.start { return drag.translation }
+        let target = draggedDisplayIndex(start: drag.start, translation: drag.translation,
+                                         rowHeight: LayerRow.rowHeight, count: count)
+        return rowGapShift(displayIndex: i, start: drag.start, target: target, rowHeight: LayerRow.rowHeight)
+    }
+
+    private func rowDragChanged(id: UUID, start: Int, translation: CGFloat, count: Int) {
+        if drag == nil { liftHaptic.impactOccurred() }   // first frame of the lift
+        drag = (id, start, translation)
+        let target = draggedDisplayIndex(start: start, translation: translation,
+                                         rowHeight: LayerRow.rowHeight, count: count)
+        if target != lastDragTarget {
+            if lastDragTarget != nil { crossHaptic.selectionChanged() }
+            lastDragTarget = target
+        }
+    }
+
+    private func rowDragEnded(start: Int, count: Int) {
+        let translation = drag?.translation ?? 0
+        let target = draggedDisplayIndex(start: start, translation: translation,
+                                         rowHeight: LayerRow.rowHeight, count: count)
+        drag = nil
+        lastDragTarget = nil
+        if target != start {
+            dropHaptic.impactOccurred()
+            performMove(displayFrom: start, displayTo: target)
+        }
     }
 
     /// Toolbar-consistent button: SF Symbol over an uppercase pixel-font label.
