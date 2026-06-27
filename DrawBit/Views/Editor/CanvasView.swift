@@ -106,36 +106,15 @@ struct CanvasView: View {
                         .rotationEffect(.radians(state.rotation))
                         .offset(state.translation)
                 }
-                Canvas { ctx, size in
-                    let w = state.size.width
-                    let h = state.size.height
-                    let cell = size.width / CGFloat(w)   // square cells
-                    var path = Path()
-                    for i in 0...w {                       // vertical gridlines
-                        let p = CGFloat(i) * cell
-                        path.move(to: CGPoint(x: p, y: 0))
-                        path.addLine(to: CGPoint(x: p, y: size.height))
-                    }
-                    for j in 0...h {                       // horizontal gridlines
-                        let p = CGFloat(j) * cell
-                        path.move(to: CGPoint(x: 0, y: p))
-                        path.addLine(to: CGPoint(x: size.width, y: p))
-                    }
-                    ctx.stroke(path, with: .color(Color(white: 0.4)), lineWidth: max(0.5 / state.scale, 0.1))
-                }
-                .frame(width: base.width, height: base.height)
-                .scaleEffect(state.scale)
-                .rotationEffect(.radians(state.rotation))
-                .offset(state.translation)
-                .allowsHitTesting(false)
+                gridOverlay(base: base, viewport: geo.size)
 
                 if let rect = state.pendingMarqueeRect {
-                    pendingRectOverlay(rect: rect, base: base)
+                    pendingRectOverlay(rect: rect, base: base, viewport: geo.size)
                 }
 
                 if let sel = state.selection {
                     floatingSelectionLayer(selection: sel, base: base)
-                    marchingAnts(bounds: sel.displayBounds, base: base)
+                    marchingAnts(bounds: sel.displayBounds, base: base, viewport: geo.size)
                 }
 
                 CanvasHostView(
@@ -218,28 +197,63 @@ struct CanvasView: View {
         }
     }
 
-    private func pendingRectOverlay(rect: PixelRect, base: CGSize) -> some View {
-        Canvas { ctx, size in
-            let perPixel = size.width / CGFloat(state.size.width)
+    /// The pixel grid, drawn directly at viewport resolution so lines stay crisp at any zoom.
+    /// The line `Path` is built in canvas-local (base) points, then its points are mapped to
+    /// screen space via `canvasToScreenTransform` (matching the pixel image's transform exactly),
+    /// and stroked with a constant 1pt hairline — no `.scaleEffect`, so nothing is resampled.
+    private func gridOverlay(base: CGSize, viewport: CGSize) -> some View {
+        Canvas { ctx, _ in
+            let w = state.size.width
+            let h = state.size.height
+            let cell = base.width / CGFloat(w)   // square cells, in base points
+            var path = Path()
+            for i in 0...w {                       // vertical gridlines
+                let p = CGFloat(i) * cell
+                path.move(to: CGPoint(x: p, y: 0))
+                path.addLine(to: CGPoint(x: p, y: base.height))
+            }
+            for j in 0...h {                       // horizontal gridlines
+                let p = CGFloat(j) * cell
+                path.move(to: CGPoint(x: 0, y: p))
+                path.addLine(to: CGPoint(x: base.width, y: p))
+            }
+            let t = canvasToScreenTransform(base: base, viewport: viewport,
+                                            scale: state.scale, rotation: state.rotation,
+                                            translation: state.translation)
+            ctx.stroke(path.applying(t), with: .color(Color(white: 0.4)), lineWidth: 1)
+        }
+        .frame(width: viewport.width, height: viewport.height)
+        .allowsHitTesting(false)
+    }
+
+    private func pendingRectOverlay(rect: PixelRect, base: CGSize, viewport: CGSize) -> some View {
+        Canvas { ctx, _ in
+            let perPixel = base.width / CGFloat(state.size.width)
             let r = CGRect(
                 x: CGFloat(rect.x) * perPixel,
                 y: CGFloat(rect.y) * perPixel,
                 width: CGFloat(rect.width) * perPixel,
                 height: CGFloat(rect.height) * perPixel
             )
-            ctx.stroke(Path(r), with: .color(.white), lineWidth: max(1.0 / state.scale, 0.25))
+            let t = canvasToScreenTransform(base: base, viewport: viewport,
+                                            scale: state.scale, rotation: state.rotation,
+                                            translation: state.translation)
+            ctx.stroke(Path(r).applying(t), with: .color(.white), lineWidth: 1)
         }
-        .frame(width: base.width, height: base.height)
-        .scaleEffect(state.scale)
-        .rotationEffect(.radians(state.rotation))
-        .offset(state.translation)
+        .frame(width: viewport.width, height: viewport.height)
         .allowsHitTesting(false)
     }
 
-    private func marchingAnts(bounds: PixelRect, base: CGSize) -> some View {
-        TimelineView(.animation) { timeline in
-            Canvas { ctx, size in
-                let perPixel = size.width / CGFloat(state.size.width)
+    private func marchingAnts(bounds: PixelRect, base: CGSize, viewport: CGSize) -> some View {
+        let perPixel = base.width / CGFloat(state.size.width)
+        // Dash length tracks the on-screen pixel size so the ants read consistently at any zoom.
+        let screenPerPixel = perPixel * state.scale
+        let dashLen = max(screenPerPixel * 0.75, 2)
+        let t = canvasToScreenTransform(base: base, viewport: viewport,
+                                        scale: state.scale, rotation: state.rotation,
+                                        translation: state.translation)
+        return TimelineView(.animation) { timeline in
+            Canvas { ctx, _ in
                 let r = CGRect(
                     x: CGFloat(bounds.x) * perPixel,
                     y: CGFloat(bounds.y) * perPixel,
@@ -247,26 +261,17 @@ struct CanvasView: View {
                     height: CGFloat(bounds.height) * perPixel
                 )
                 let elapsed = timeline.date.timeIntervalSinceReferenceDate
-                let phase = elapsed.truncatingRemainder(dividingBy: 1.0) * Double(perPixel * 2)
-                let dashLen = perPixel * 0.75
-                let style = StrokeStyle(
-                    lineWidth: max(1.0 / state.scale, 0.25),
-                    dash: [dashLen, dashLen],
-                    dashPhase: CGFloat(phase)
-                )
-                let path = Path(r)
-                ctx.stroke(path, with: .color(.black.opacity(0.85)), style: style)
+                let phase = elapsed.truncatingRemainder(dividingBy: 1.0) * Double(dashLen * 2)
+                let path = Path(r).applying(t)
+                ctx.stroke(path, with: .color(.black.opacity(0.85)),
+                           style: StrokeStyle(lineWidth: 1, dash: [dashLen, dashLen],
+                                              dashPhase: CGFloat(phase)))
                 ctx.stroke(path, with: .color(.white),
-                           style: StrokeStyle(
-                            lineWidth: max(1.0 / state.scale, 0.25),
-                            dash: [dashLen, dashLen],
-                            dashPhase: CGFloat(phase) + dashLen))
+                           style: StrokeStyle(lineWidth: 1, dash: [dashLen, dashLen],
+                                              dashPhase: CGFloat(phase) + dashLen))
             }
         }
-        .frame(width: base.width, height: base.height)
-        .scaleEffect(state.scale)
-        .rotationEffect(.radians(state.rotation))
-        .offset(state.translation)
+        .frame(width: viewport.width, height: viewport.height)
         .allowsHitTesting(false)
     }
 }
