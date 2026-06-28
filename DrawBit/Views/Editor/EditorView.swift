@@ -16,22 +16,82 @@ struct EditorView: View {
     @State private var showingDeleteFrameConfirm = false
     @State private var playback: PlaybackController?
 
+    /// True when this draw's stored blob was recognized (V1/V2 magic) but failed to decode —
+    /// i.e. corrupt. We then show an error and BLOCK all saves so the (recoverable) original is
+    /// never overwritten by a blank, instead of silently substituting a blank canvas.
+    private let loadFailed: Bool
+
     init(piece: Piece) {
         self.piece = piece
         // Synchronous load: frameData is already in-memory on the SwiftData object.
-        // decodeAnyFrameData handles V2 sequence, V1 single-frame, and raw legacy bytes.
-        let result = FrameCodec.decodeAnyFrameData(piece.frameData,
-                                                    fallbackByteCount: piece.size.byteCount)
-        let editorState = EditorState(piece: piece,
+        // `decodeForEditing` THROWS on a corrupt recognized blob (vs. decodeAnyFrameData, which
+        // would silently return a blank frame that the next save would make permanent).
+        let editorState: EditorState
+        var failed = false
+        do {
+            let result = try FrameCodec.decodeForEditing(piece.frameData,
+                                                         fallbackByteCount: piece.size.byteCount)
+            editorState = EditorState(piece: piece,
                                       frames: result.frames,
                                       activeFrameIndex: result.activeFrameIndex,
                                       fps: result.fps)
+        } catch {
+            failed = true
+            // Throwaway placeholder so @State is initialized; never shown (error view replaces the
+            // editor) and never saved (loadFailed gates persistence). Mirrors Piece(size:)'s blank.
+            let layer = Layer(name: "Layer 1", pixels: Data(count: piece.size.byteCount))
+            let frame = Frame(name: "Frame 1", layers: [layer], activeLayerID: layer.id)
+            editorState = EditorState(piece: piece, frames: [frame], activeFrameIndex: 0,
+                                      fps: FrameCodec.defaultFPS)
+        }
         editorState.setReference(imageData: piece.referenceImageData)
         editorState.referenceOpacity = piece.referenceOpacity
         self._state = State(initialValue: editorState)
+        self.loadFailed = failed
     }
 
     var body: some View {
+        if loadFailed {
+            loadErrorView
+        } else {
+            editorBody
+        }
+    }
+
+    /// Shown instead of the editor when the draw can't be decoded. The original bytes are left
+    /// untouched (saves are blocked), so the file is preserved rather than overwritten by a blank.
+    private var loadErrorView: some View {
+        ZStack {
+            Color(white: 0.10).ignoresSafeArea()
+            VStack(spacing: 16) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 40, weight: .regular))
+                    .foregroundStyle(Color.toolSelected)
+                Text("THIS DRAW COULDN'T BE OPENED")
+                    .font(.pixel(14))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                Text("Your file is preserved — nothing was changed.")
+                    .font(.pixelBody(16))
+                    .foregroundStyle(.white.opacity(0.65))
+                    .multilineTextAlignment(.center)
+                Button { dismiss() } label: {
+                    Text("GALLERY")
+                        .font(.pixel(11))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .overlay(Rectangle().stroke(Color.toolSelected, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
+            .padding(40)
+        }
+        .accessibilityIdentifier("EditorLoadError")
+    }
+
+    private var editorBody: some View {
         ZStack(alignment: .trailing) {
             VStack(spacing: 0) {
                 topBar
@@ -440,6 +500,9 @@ struct EditorView: View {
     }
 
     private func saveCurrentFrame() {
+        // Never persist when the draw failed to load — the in-memory `state` is a blank
+        // placeholder, and saving it would overwrite the corrupt-but-recoverable original.
+        guard !loadFailed else { return }
         let repo = PieceRepository(context: modelContext)
         try? repo.saveFrames(piece: piece,
                              frames: state.frames,
@@ -448,6 +511,7 @@ struct EditorView: View {
     }
 
     private func saveReference() {
+        guard !loadFailed else { return }
         let repo = PieceRepository(context: modelContext)
         try? repo.saveReference(piece: piece,
                                 imageData: state.referenceImageData,

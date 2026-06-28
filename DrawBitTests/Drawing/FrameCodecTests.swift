@@ -91,4 +91,51 @@ final class FrameCodecTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - decodeForEditing (data-loss guard)
+
+    /// A V2-magic blob that fails to decode must THROW from `decodeForEditing`, so the editor can
+    /// show an error instead of silently substituting a blank frame and overwriting the original.
+    /// We also pin the bug being closed: the legacy `decodeAnyFrameData` returns a *blank* frame.
+    func testDecodeForEditingThrowsOnCorruptV2() {
+        let layer = Layer(name: "L", pixels: Data(count: CanvasSize.s32.byteCount))
+        let frame = Frame(layers: [layer], activeLayerID: layer.id)
+        let good = FrameCodec.encodeSequence(frames: [frame], activeFrameIndex: 0, fps: 12)
+        // Keep the V2 magic prefix, lop off the body → recognized-but-undecodable (corruption).
+        let corrupt = Data(good.prefix(FrameCodec.sequenceMagic.count + 3))
+        XCTAssertTrue(FrameCodec.hasV2SequenceMagicPrefix(corrupt), "test blob must still look like V2")
+
+        XCTAssertThrowsError(
+            try FrameCodec.decodeForEditing(corrupt, fallbackByteCount: CanvasSize.s32.byteCount),
+            "corrupt V2 must surface as an error, not a blank frame"
+        )
+
+        // The old tolerant path is exactly what caused silent data loss: it returns a blank frame.
+        let blanked = FrameCodec.decodeAnyFrameData(corrupt, fallbackByteCount: CanvasSize.s32.byteCount)
+        XCTAssertEqual(blanked.frames.count, 1)
+        XCTAssertTrue(blanked.frames[0].layers[0].pixels.allSatisfy { $0 == 0 },
+                      "documents the bug: decodeAnyFrameData blanks a corrupt blob")
+    }
+
+    /// A valid V2 sequence round-trips through `decodeForEditing` unchanged.
+    func testDecodeForEditingRoundTripsValidV2() throws {
+        let l1 = Layer(name: "L1", pixels: Data(count: CanvasSize.s32.byteCount))
+        let l2 = Layer(name: "L2", pixels: Data(count: CanvasSize.s32.byteCount))
+        let f1 = Frame(layers: [l1], activeLayerID: l1.id)
+        let f2 = Frame(layers: [l2], activeLayerID: l2.id)
+        let blob = FrameCodec.encodeSequence(frames: [f1, f2], activeFrameIndex: 1, fps: 24)
+        let decoded = try FrameCodec.decodeForEditing(blob, fallbackByteCount: CanvasSize.s32.byteCount)
+        XCTAssertEqual(decoded.frames.count, 2)
+        XCTAssertEqual(decoded.activeFrameIndex, 1)
+        XCTAssertEqual(decoded.fps, 24)
+    }
+
+    /// Unrecognized legacy raw bytes (exactly one canvas of pixels) stay tolerant — new pieces and
+    /// pre-v2 migration must not regress into "corrupt."
+    func testDecodeForEditingTolerantForLegacyRawBytes() throws {
+        let raw = Data(count: CanvasSize.s32.byteCount)   // no magic — pre-Layers-v2 raw blob
+        let decoded = try FrameCodec.decodeForEditing(raw, fallbackByteCount: CanvasSize.s32.byteCount)
+        XCTAssertEqual(decoded.frames.count, 1)
+        XCTAssertEqual(decoded.frames[0].layers.count, 1)
+    }
 }

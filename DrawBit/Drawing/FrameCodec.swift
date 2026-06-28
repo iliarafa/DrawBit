@@ -304,4 +304,22 @@ extension FrameCodec {
         let frame = wrapV1Data(payload, defaultName: "Layer 1")
         return ([frame], 0, defaultFPS)
     }
+
+    /// Like `decodeAnyFrameData`, but a blob whose magic identifies it as V2 (or V1) yet fails to
+    /// decode is treated as **corrupt** and the error is rethrown — instead of silently degrading
+    /// to a blank frame that a subsequent save would make permanent (the silent-data-loss path).
+    /// Only genuinely unrecognized raw/empty/legacy blobs keep the tolerant behavior; new pieces
+    /// always carry valid V2 magic, so this never affects the happy path. Mirrors the safe fast
+    /// path in `PieceRepository.loadFrames`. The editor opens through this, not `decodeAnyFrameData`.
+    static func decodeForEditing(_ data: Data, fallbackByteCount: Int) throws
+        -> (frames: [Frame], activeFrameIndex: Int, fps: Int)
+    {
+        if hasV2SequenceMagicPrefix(data) {
+            return try decodeSequence(data)
+        }
+        if hasV1MagicPrefix(data) {
+            return ([try decode(data)], 0, defaultFPS)
+        }
+        return decodeAnyFrameData(data, fallbackByteCount: fallbackByteCount)
+    }
 }
