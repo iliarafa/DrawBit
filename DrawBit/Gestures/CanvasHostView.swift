@@ -14,6 +14,8 @@ struct CanvasHostView: UIViewRepresentable {
     /// Pencil "hold to straighten": fired when the freehand stroke snaps to a straight line and on
     /// each subsequent re-aim. `justSnapped` is true only on the first (lock) event.
     var onLineStraighten: (_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void = { _, _, _ in }
+    var onUndo: () -> Void = {}   // two-finger tap
+    var onRedo: () -> Void = {}   // three-finger tap
 
     func makeUIView(context: Context) -> CanvasInputView {
         let v = CanvasInputView()
@@ -24,6 +26,8 @@ struct CanvasHostView: UIViewRepresentable {
         v.onStrokeCancel = onStrokeCancel
         v.onTap = onTap
         v.onLineStraighten = onLineStraighten
+        v.onUndo = onUndo
+        v.onRedo = onRedo
         v.backgroundColor = .clear
         return v
     }
@@ -43,6 +47,8 @@ final class CanvasInputView: UIView {
     var onStrokeCancel: (() -> Void)?
     var onTap: ((Int, Int) -> Void)?
     var onLineStraighten: ((_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void)?
+    var onUndo: (() -> Void)?   // two-finger tap
+    var onRedo: (() -> Void)?   // three-finger tap
 
     private var strokeInProgress = false
     private var lastPixel: (Int, Int)?
@@ -76,11 +82,24 @@ final class CanvasInputView: UIView {
         let xform = TwoFingerTransformGestureRecognizer(target: self, action: #selector(handleTransform(_:)))
         xform.delegate = self
         addGestureRecognizer(xform)
-        let reset = UITapGestureRecognizer(target: self, action: #selector(handleReset(_:)))
-        reset.numberOfTapsRequired = 2
-        reset.numberOfTouchesRequired = 2
-        addGestureRecognizer(reset)
+        // Two-finger tap = undo, three-finger tap = redo (iPad/Procreate convention). No double-tap
+        // gesture exists anymore, so the two-finger single tap fires instantly (no require-toFail
+        // wait) and rapid two-finger taps undo repeatedly. They recognize simultaneously with the
+        // transform recognizer (delegate returns true); a two-finger *drag* fails the tap → pan/zoom.
+        let undoTap = UITapGestureRecognizer(target: self, action: #selector(handleUndoTap))
+        undoTap.numberOfTapsRequired = 1
+        undoTap.numberOfTouchesRequired = 2
+        undoTap.delegate = self
+        addGestureRecognizer(undoTap)
+        let redoTap = UITapGestureRecognizer(target: self, action: #selector(handleRedoTap))
+        redoTap.numberOfTapsRequired = 1
+        redoTap.numberOfTouchesRequired = 3
+        redoTap.delegate = self
+        addGestureRecognizer(redoTap)
     }
+
+    @objc private func handleUndoTap() { onUndo?() }
+    @objc private func handleRedoTap() { onRedo?() }
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let state else { return }
@@ -254,13 +273,6 @@ final class CanvasInputView: UIView {
         default:
             break
         }
-    }
-
-    @objc private func handleReset(_ g: UITapGestureRecognizer) {
-        guard let state else { return }
-        state.translation = .zero
-        state.scale = 1.0
-        state.rotation = 0.0
     }
 
     private func cancelStrokeIfAny() {

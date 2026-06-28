@@ -67,4 +67,31 @@ final class LineToolTests: XCTestCase {
         XCTAssertTrue(isSet(out, 2, 2))
         XCTAssertFalse(isSet(out, 3, 2))
     }
+
+    // MARK: - isPerfectAngle (hold-to-straighten detent)
+
+    func testPerfectHorizontal() {
+        XCTAssertTrue(LineTool.isPerfectAngle(from: (1, 4), to: (9, 4)))
+        XCTAssertTrue(LineTool.isPerfectAngle(from: (9, 4), to: (1, 4)))   // direction-agnostic
+    }
+
+    func testPerfectVertical() {
+        XCTAssertTrue(LineTool.isPerfectAngle(from: (3, 1), to: (3, 8)))
+    }
+
+    func testPerfect45Degrees() {
+        XCTAssertTrue(LineTool.isPerfectAngle(from: (0, 0), to: (5, 5)))
+        XCTAssertTrue(LineTool.isPerfectAngle(from: (5, 5), to: (0, 0)))   // negative deltas via abs
+        XCTAssertTrue(LineTool.isPerfectAngle(from: (5, 0), to: (0, 5)))   // other diagonal
+    }
+
+    func testJaggedAnglesAreNotPerfect() {
+        XCTAssertFalse(LineTool.isPerfectAngle(from: (0, 0), to: (5, 2)))
+        XCTAssertFalse(LineTool.isPerfectAngle(from: (0, 0), to: (5, 3)))
+        XCTAssertFalse(LineTool.isPerfectAngle(from: (0, 0), to: (2, 1)))  // 2:1 iso is NOT in the v1 set
+    }
+
+    func testZeroLengthIsNotPerfect() {
+        XCTAssertFalse(LineTool.isPerfectAngle(from: (4, 4), to: (4, 4)))
+    }
 }

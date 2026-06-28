@@ -41,6 +41,21 @@ final class EditorState {
     var scale: CGFloat = 1.0
     var rotation: CGFloat = 0.0
 
+    /// True when the view transform is away from its default (zoom/pan/rotation). Drives the
+    /// contextual "reset view" chip — small tolerances absorb floating-point drift after a pinch.
+    var isViewTransformed: Bool {
+        abs(scale - 1) > 0.001
+            || abs(rotation) > 0.001
+            || abs(translation.width) > 0.5 || abs(translation.height) > 0.5
+    }
+
+    /// Snap the canvas back to default zoom/pan/rotation. View-only — never touches pixels.
+    func resetView() {
+        translation = .zero
+        scale = 1.0
+        rotation = 0.0
+    }
+
     // MARK: - Reference photo (display-only tracing backdrop)
 
     /// Decoded reference image for rendering. Kept in sync with `referenceImageData`
@@ -150,6 +165,10 @@ final class EditorState {
         frame.withActiveLayerPixels { $0 = data }
     }
 
+    /// Transient: whether the hold-to-straighten line was at a "perfect" angle on the last re-aim.
+    /// Lets `EditorView` fire a detent only on entry into a perfect angle. Reset per stroke.
+    var lineWasPerfect = false
+
     /// Replaces the active layer with a straight line from `from` to `to`, recomputed off the
     /// pre-stroke snapshot. Calling it repeatedly as the finger re-aims keeps the freehand wobble
     /// erased and only the latest line shown; the existing begin/commitStroke flow makes the whole
@@ -173,6 +192,7 @@ final class EditorState {
         preStrokeLayerID = frame.activeLayerID
         preStrokeFrameID = frame.id
         pixelPerfectBuffer.reset()
+        lineWasPerfect = false
     }
 
     func commitStroke() {

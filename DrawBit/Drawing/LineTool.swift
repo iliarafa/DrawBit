@@ -18,4 +18,15 @@ enum LineTool {
         }
         return grid.data
     }
+
+    /// Whether a line from `from` to `to` lands on a "perfect" pixel angle — horizontal, vertical,
+    /// or exact 45° — where the Bresenham staircase resolves to a clean line. Used to fire a detent
+    /// (click + haptic) as the held line re-aims through these angles. A zero-length line is not
+    /// perfect (so the snap moment, anchor == endpoint, doesn't count).
+    static func isPerfectAngle(from: (Int, Int), to: (Int, Int)) -> Bool {
+        let a = abs(to.0 - from.0)
+        let b = abs(to.1 - from.1)
+        guard a != 0 || b != 0 else { return false }
+        return a == 0 || b == 0 || a == b
+    }
 }

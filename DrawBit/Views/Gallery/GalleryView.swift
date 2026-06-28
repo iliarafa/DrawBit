@@ -255,6 +255,36 @@ struct PixelArtIcon: View {
         "...........",
     ]
 
+    /// Undo: a left-pointing arrow with a return-curl on the right (↩). 11×11 to match the others.
+    static let undoArrow: [String] = [
+        "...........",
+        "...........",
+        "......###..",
+        "....#...#..",
+        "...#....#..",
+        "..#######..",
+        "...#.......",
+        "....#......",
+        "...........",
+        "...........",
+        "...........",
+    ]
+
+    /// Redo: the horizontal mirror of `undoArrow` (↪).
+    static let redoArrow: [String] = [
+        "...........",
+        "...........",
+        "..###......",
+        "..#...#....",
+        "..#....#...",
+        "..#######..",
+        ".......#...",
+        "......#....",
+        "...........",
+        "...........",
+        "...........",
+    ]
+
     var body: some View {
         Canvas { ctx, sz in
             let cols = pattern.first?.count ?? 0

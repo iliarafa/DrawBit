@@ -7,8 +7,6 @@ import SwiftUI
 struct ToolBar: View {
     let state: EditorState
     @Binding var selectedColor: RGBA
-    var onUndo: () -> Void
-    var onRedo: () -> Void
     var onClear: () -> Void
     var onRequestColorPicker: () -> Void
 
@@ -40,28 +38,6 @@ struct ToolBar: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("Mirror")
             .accessibilityLabel("Mirror")
-            .frame(maxWidth: .infinity)
-
-            divider
-
-            Button(action: onUndo) {
-                iconLabel(systemImage: "arrow.uturn.backward", title: "Undo")
-                    .foregroundStyle(state.canUndo ? Color.white.opacity(0.85) : Color.white.opacity(0.25))
-                    .hoverPop()
-            }
-            .buttonStyle(.plain)
-            .disabled(!state.canUndo)
-            .accessibilityIdentifier("Undo")
-            .frame(maxWidth: .infinity)
-
-            Button(action: onRedo) {
-                iconLabel(systemImage: "arrow.uturn.forward", title: "Redo")
-                    .foregroundStyle(state.canRedo ? Color.white.opacity(0.85) : Color.white.opacity(0.25))
-                    .hoverPop()
-            }
-            .buttonStyle(.plain)
-            .disabled(!state.canRedo)
-            .accessibilityIdentifier("Redo")
             .frame(maxWidth: .infinity)
 
             divider

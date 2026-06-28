@@ -63,6 +63,9 @@ struct CanvasView: View {
     var onStrokeCancel: () -> Void = {}
     var onTap: (Int, Int) -> Void = { _, _ in }
     var onLineStraighten: (_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void = { _, _, _ in }
+    var onUndo: () -> Void = {}
+    var onRedo: () -> Void = {}
+    private let resetHaptic = UIImpactFeedbackGenerator(style: .light)
 
     var body: some View {
         GeometryReader { geo in
@@ -127,12 +130,25 @@ struct CanvasView: View {
                     onStrokeEnd: onStrokeEnd,
                     onStrokeCancel: onStrokeCancel,
                     onTap: onTap,
-                    onLineStraighten: onLineStraighten
+                    onLineStraighten: onLineStraighten,
+                    onUndo: onUndo,
+                    onRedo: onRedo
                 )
+
+                // Contextual "reset view" chip — topmost so it's tappable above the input layer;
+                // shown only when the canvas is zoomed/panned/rotated. Tapping animates back home.
+                if state.isViewTransformed {
+                    resetViewChip
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                        .padding(.trailing, 48)
+                        .padding(.bottom, 8)
+                        .transition(UITestSupport.isRunning ? .identity : .opacity)
+                }
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
             .clipped()
+            .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.2), value: state.isViewTransformed)
         }
         .accessibilityIdentifier("Canvas")
         .onChange(of: state.activeFrameIndex) { _, _ in
@@ -142,6 +158,31 @@ struct CanvasView: View {
             // invalidate eagerly on every active-frame transition.
             onionCache.invalidate()
         }
+    }
+
+    /// The contextual reset affordance: a small pixel-styled chip that snaps the canvas back to its
+    /// default zoom/pan/rotation (animated), with a light haptic. Replaces the old two-finger
+    /// double-tap reset (removed so two-finger-tap undo is unambiguous).
+    private var resetViewChip: some View {
+        Button {
+            resetHaptic.impactOccurred()
+            withAnimation(UITestSupport.isRunning ? nil : .easeOut(duration: 0.25)) {
+                state.resetView()
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.counterclockwise").font(.system(size: 12, weight: .bold))
+                Text("RESET").font(.pixel(9))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(white: 0.16))
+            .overlay(Rectangle().stroke(Color.toolSelected, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("ResetView")
+        .accessibilityLabel("Reset view")
     }
 
     /// Canvas display size at scale=1 in points. One square `perPixel` (integer points per

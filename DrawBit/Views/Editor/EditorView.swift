@@ -18,6 +18,8 @@ struct EditorView: View {
     @State private var playback: PlaybackController?
     /// Light haptic fired the instant a freehand stroke snaps to a straight line ("hold to straighten").
     private let lineSnapHaptic = UIImpactFeedbackGenerator(style: .light)
+    /// Light haptic confirming an undo/redo (button or gesture).
+    private let editHaptic = UIImpactFeedbackGenerator(style: .light)
 
     /// True when this draw's stored blob was recognized (V1/V2 magic) but failed to decode —
     /// i.e. corrupt. We then show an error and BLOCK all saves so the (recoverable) original is
@@ -109,7 +111,9 @@ struct EditorView: View {
                     onTap: { x, y in handleTap(x: x, y: y) },
                     onLineStraighten: { from, to, justSnapped in
                         handleLineStraighten(from: from, to: to, justSnapped: justSnapped)
-                    }
+                    },
+                    onUndo: { handleUndo() },
+                    onRedo: { handleRedo() }
                 )
                 .allowsHitTesting(!state.isPlaying)
                 // No dividers around the animation strip and it shares the Color(white: 0.10)
@@ -248,6 +252,27 @@ struct EditorView: View {
                 .hoverPop()
             }
             .accessibilityIdentifier("Gallery")
+
+            Button(action: handleUndo) {
+                PixelArtIcon(pattern: PixelArtIcon.undoArrow, size: 22)
+                    .frame(width: 44, height: 44)
+                    .hoverPop()
+            }
+            // Unavailable → almost invisible, camouflaged into the dark chrome.
+            .foregroundStyle(state.canUndo ? .white : .white.opacity(0.07))
+            .disabled(!state.canUndo || state.isPlaying)
+            .accessibilityIdentifier("Undo")
+            .accessibilityLabel("Undo")
+            Button(action: handleRedo) {
+                PixelArtIcon(pattern: PixelArtIcon.redoArrow, size: 22)
+                    .frame(width: 44, height: 44)
+                    .hoverPop()
+            }
+            .foregroundStyle(state.canRedo ? .white : .white.opacity(0.07))
+            .disabled(!state.canRedo || state.isPlaying)
+            .accessibilityIdentifier("Redo")
+            .accessibilityLabel("Redo")
+
             Spacer()
             Text(piece.size.displayName)
                 .font(.pixel(12))
@@ -317,14 +342,6 @@ struct EditorView: View {
                 get: { state.color },
                 set: { state.color = $0 }
             ),
-            onUndo: {
-                state.undo()
-                saveCurrentFrame()
-            },
-            onRedo: {
-                state.redo()
-                saveCurrentFrame()
-            },
             onClear: clearCanvas,
             onRequestColorPicker: { showingSystemColorPicker = true }
         )
@@ -486,6 +503,23 @@ struct EditorView: View {
         }
     }
 
+    /// Undo/redo, shared by the top-bar buttons and the two/three-finger-tap gestures. A light
+    /// haptic confirms the action — especially useful for the invisible gesture. Guarded so the
+    /// gesture path (which doesn't go through a disabled button) can't fire while playing or empty.
+    private func handleUndo() {
+        guard !state.isPlaying, state.canUndo else { return }
+        state.undo()
+        saveCurrentFrame()
+        editHaptic.impactOccurred()
+    }
+
+    private func handleRedo() {
+        guard !state.isPlaying, state.canRedo else { return }
+        state.redo()
+        saveCurrentFrame()
+        editHaptic.impactOccurred()
+    }
+
     /// Pencil "hold to straighten": redraw the active layer as a straight line from the stroke's
     /// start (`from`) to the current finger (`to`), off the pre-stroke snapshot, so re-aiming is a
     /// clean restore. A light haptic marks the lock. The stroke commits normally in `handleStrokeEnd`.
@@ -496,7 +530,15 @@ struct EditorView: View {
             return
         }
         state.applyStraightLine(from: from, to: to, mirror: state.isMirrorEnabled)
-        if justSnapped { lineSnapHaptic.impactOccurred() }
+        let perfect = LineTool.isPerfectAngle(from: from, to: to)
+        if justSnapped {
+            // The snap haptic owns this instant; just seed the perfect-angle tracker.
+            lineSnapHaptic.impactOccurred()
+        } else if perfect, !state.lineWasPerfect {
+            // Detent: the line just locked into a perfect angle (H / V / 45°) — click + haptic.
+            SelectionFeedback.shared.fire()
+        }
+        state.lineWasPerfect = perfect
     }
 
     private func handleTap(x: Int, y: Int) {
