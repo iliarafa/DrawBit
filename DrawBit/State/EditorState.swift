@@ -150,6 +150,16 @@ final class EditorState {
         frame.withActiveLayerPixels { $0 = data }
     }
 
+    /// Replaces the active layer with a straight line from `from` to `to`, recomputed off the
+    /// pre-stroke snapshot. Calling it repeatedly as the finger re-aims keeps the freehand wobble
+    /// erased and only the latest line shown; the existing begin/commitStroke flow makes the whole
+    /// thing one undo entry. No-op until a stroke has begun (snapshot set) — see "hold to straighten".
+    func applyStraightLine(from: (Int, Int), to: (Int, Int), mirror: Bool) {
+        guard let base = preStrokeSnapshot else { return }
+        setActiveLayerPixels(LineTool.apply(to: base, size: size, from: from, to: to,
+                                            color: color, mirror: mirror))
+    }
+
     /// Sets the reference photo from stored bytes, decoding for display. Pass nil to clear.
     func setReference(imageData: Data?) {
         referenceImageData = imageData

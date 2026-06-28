@@ -11,6 +11,9 @@ struct CanvasHostView: UIViewRepresentable {
     var onStrokeEnd: () -> Void
     var onStrokeCancel: () -> Void
     var onTap: (Int, Int) -> Void
+    /// Pencil "hold to straighten": fired when the freehand stroke snaps to a straight line and on
+    /// each subsequent re-aim. `justSnapped` is true only on the first (lock) event.
+    var onLineStraighten: (_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void = { _, _, _ in }
 
     func makeUIView(context: Context) -> CanvasInputView {
         let v = CanvasInputView()
@@ -20,6 +23,7 @@ struct CanvasHostView: UIViewRepresentable {
         v.onStrokeEnd = onStrokeEnd
         v.onStrokeCancel = onStrokeCancel
         v.onTap = onTap
+        v.onLineStraighten = onLineStraighten
         v.backgroundColor = .clear
         return v
     }
@@ -38,10 +42,26 @@ final class CanvasInputView: UIView {
     var onStrokeEnd: (() -> Void)?
     var onStrokeCancel: (() -> Void)?
     var onTap: ((Int, Int) -> Void)?
+    var onLineStraighten: ((_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void)?
 
     private var strokeInProgress = false
     private var lastPixel: (Int, Int)?
     private var didMove = false
+
+    // MARK: - Pencil "hold to straighten" (QuickLine)
+    /// Pixel under the touch-down — the line's fixed start. Only set for the pencil tool.
+    private var lineAnchor: (Int, Int)?
+    /// Once true, the stroke has snapped to a straight line; freehand emission stops and moves re-aim.
+    private var lineMode = false
+    /// Latest pixel/screen position of the active touch, used by the dwell timer and re-aim.
+    private var lastTouchPixel: (Int, Int)?
+    private var lastTouchLocation: CGPoint?
+    /// Screen anchor for stillness: the dwell timer is rescheduled only when the finger moves beyond
+    /// `dwellRadius` of this point, so holding still lets it fire.
+    private var dwellOrigin: CGPoint?
+    private var dwellWorkItem: DispatchWorkItem?
+    private let dwellDuration: TimeInterval = 0.5
+    private let dwellRadius: CGFloat = 10
 
     func configure(state: EditorState, pencilAvailability: PencilAvailability, baseSize: CGSize) {
         self.state = state
@@ -82,6 +102,16 @@ final class CanvasInputView: UIView {
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard strokeInProgress, let event else { return }
         let drawingTouches = touches.filter { shouldDraw(with: $0) }
+
+        // Line mode: the stroke has snapped straight — moves re-aim the endpoint, no freehand.
+        if lineMode {
+            if let touch = drawingTouches.first, let p = pixelCoord(for: touch), let anchor = lineAnchor {
+                lastTouchPixel = p
+                onLineStraighten?(anchor, p, false)
+            }
+            return
+        }
+
         for touch in drawingTouches {
             let coalesced = event.coalescedTouches(for: touch) ?? [touch]
             for t in coalesced {
@@ -97,22 +127,40 @@ final class CanvasInputView: UIView {
                     lastPixel = p
                 }
             }
+            lastTouchPixel = pixelCoord(for: touch)
+        }
+
+        // Drive the hold-to-straighten dwell timer (pencil only, and only once the stroke has
+        // actually drawn something — so a plain tap/hold never snaps). The timer is rescheduled
+        // when the finger moves beyond `dwellRadius`; holding still lets it fire → snapToLine().
+        if isLineEligible, didMove, let touch = drawingTouches.first {
+            let loc = touch.location(in: self)
+            lastTouchLocation = loc
+            if let origin = dwellOrigin, hypot(loc.x - origin.x, loc.y - origin.y) <= dwellRadius {
+                // Still within the stillness radius — keep the running timer.
+            } else {
+                dwellOrigin = loc
+                scheduleDwell()
+            }
         }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard strokeInProgress else { return }
-        if !didMove, let first = touches.first, let p = pixelCoord(for: first) {
+        // A snapped line commits like any stroke (its pixels are already drawn); never a tap.
+        if !lineMode, !didMove, let first = touches.first, let p = pixelCoord(for: first) {
             // Pure tap: emit a single-point paint via onTap.
             strokeInProgress = false
             lastPixel = nil
             didMove = false
+            resetLineState()
             onTap?(p.0, p.1)
             return
         }
         strokeInProgress = false
         lastPixel = nil
         didMove = false
+        resetLineState()
         onStrokeEnd?()
     }
 
@@ -121,6 +169,7 @@ final class CanvasInputView: UIView {
         strokeInProgress = false
         lastPixel = nil
         didMove = false
+        resetLineState()
         onStrokeCancel?()
     }
 
@@ -136,7 +185,39 @@ final class CanvasInputView: UIView {
         strokeInProgress = true
         lastPixel = nil
         didMove = false
+        resetLineState()
+        // Capture the line's fixed start (pencil only). The anchor is the touch-down pixel so the
+        // line is well-defined even before the first freehand point is emitted.
+        if isLineEligible { lineAnchor = pixelCoord(for: touch) }
         onStrokeBegin?()
+    }
+
+    /// Hold-to-straighten is pencil-only in v1.
+    private var isLineEligible: Bool { state?.tool == .pencil }
+
+    private func resetLineState() {
+        lineAnchor = nil
+        lineMode = false
+        lastTouchPixel = nil
+        lastTouchLocation = nil
+        dwellOrigin = nil
+        dwellWorkItem?.cancel()
+        dwellWorkItem = nil
+    }
+
+    /// (Re)arm the dwell timer from the current finger position. Fires after `dwellDuration` of
+    /// stillness → snap to a straight line.
+    private func scheduleDwell() {
+        dwellWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.snapToLine() }
+        dwellWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + dwellDuration, execute: work)
+    }
+
+    private func snapToLine() {
+        guard strokeInProgress, !lineMode, let anchor = lineAnchor, let end = lastTouchPixel else { return }
+        lineMode = true
+        onLineStraighten?(anchor, end, true)
     }
 
     // MARK: - Two-finger transform gestures
@@ -187,6 +268,7 @@ final class CanvasInputView: UIView {
         strokeInProgress = false
         lastPixel = nil
         didMove = false
+        resetLineState()
         onStrokeCancel?()
     }
 

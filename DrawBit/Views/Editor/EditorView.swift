@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct EditorView: View {
     let piece: Piece
@@ -15,6 +16,8 @@ struct EditorView: View {
     @State private var showTimeline = false
     @State private var showingDeleteFrameConfirm = false
     @State private var playback: PlaybackController?
+    /// Light haptic fired the instant a freehand stroke snaps to a straight line ("hold to straighten").
+    private let lineSnapHaptic = UIImpactFeedbackGenerator(style: .light)
 
     /// True when this draw's stored blob was recognized (V1/V2 magic) but failed to decode —
     /// i.e. corrupt. We then show an error and BLOCK all saves so the (recoverable) original is
@@ -103,7 +106,10 @@ struct EditorView: View {
                     onStrokeBegin: { handleStrokeBegin() },
                     onStrokeEnd: { handleStrokeEnd() },
                     onStrokeCancel: { handleStrokeCancel() },
-                    onTap: { x, y in handleTap(x: x, y: y) }
+                    onTap: { x, y in handleTap(x: x, y: y) },
+                    onLineStraighten: { from, to, justSnapped in
+                        handleLineStraighten(from: from, to: to, justSnapped: justSnapped)
+                    }
                 )
                 .allowsHitTesting(!state.isPlaying)
                 // No dividers around the animation strip and it shares the Color(white: 0.10)
@@ -478,6 +484,19 @@ struct EditorView: View {
         } else {
             state.cancelStroke()
         }
+    }
+
+    /// Pencil "hold to straighten": redraw the active layer as a straight line from the stroke's
+    /// start (`from`) to the current finger (`to`), off the pre-stroke snapshot, so re-aiming is a
+    /// clean restore. A light haptic marks the lock. The stroke commits normally in `handleStrokeEnd`.
+    private func handleLineStraighten(from: (Int, Int), to: (Int, Int), justSnapped: Bool) {
+        guard state.tool == .pencil else { return }
+        if state.activeLayerIsLocked {
+            triggerLockPulse(layerID: state.frame.activeLayerID)
+            return
+        }
+        state.applyStraightLine(from: from, to: to, mirror: state.isMirrorEnabled)
+        if justSnapped { lineSnapHaptic.impactOccurred() }
     }
 
     private func handleTap(x: Int, y: Int) {

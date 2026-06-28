@@ -62,6 +62,7 @@ struct CanvasView: View {
     @State private var onionCache = OnionSkinCache()
     var onStrokeCancel: () -> Void = {}
     var onTap: (Int, Int) -> Void = { _, _ in }
+    var onLineStraighten: (_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void = { _, _, _ in }
 
     var body: some View {
         GeometryReader { geo in
@@ -125,7 +126,8 @@ struct CanvasView: View {
                     onStrokeBegin: onStrokeBegin,
                     onStrokeEnd: onStrokeEnd,
                     onStrokeCancel: onStrokeCancel,
-                    onTap: onTap
+                    onTap: onTap,
+                    onLineStraighten: onLineStraighten
                 )
             }
             .frame(width: geo.size.width, height: geo.size.height)
