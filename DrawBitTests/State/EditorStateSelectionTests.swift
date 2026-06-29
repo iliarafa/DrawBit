@@ -262,7 +262,7 @@ final class EditorStateSelectionTests: XCTestCase {
 
     // MARK: - Duplicate
 
-    func testDuplicateStampsCopyAtCurrentOffsetAndKeepsFloating() {
+    func testDuplicateStampsCopyAndKeepsFloatingNudged() {
         let state = paintedPiece()                 // red 2×2 at (4,4)
         state.beginMarqueeDefine(at: (4, 4))
         state.updateMarqueeDefine(to: (5, 5))
@@ -273,19 +273,21 @@ final class EditorStateSelectionTests: XCTestCase {
 
         state.duplicateSelection()
 
-        XCTAssertEqual(pixel(state, x: 8, y: 4), red)        // copy stamped at the float position
-        XCTAssertEqual(pixel(state, x: 9, y: 5), red)
-        XCTAssertNotNil(state.selection)                     // still floating
-        XCTAssertTrue(state.canUndo)                         // one undo step
-        XCTAssertEqual(pixel(state, x: 4, y: 4), .transparent) // origin stayed a hole
-
-        // Move the still-floating copy and commit → a SECOND copy; the first remains.
-        state.beginMarqueeDrag(at: (8, 4))
-        state.updateMarqueeDrag(to: (12, 4))
-        state.endMarqueeDrag()
-        state.commitMarquee()
-        XCTAssertEqual(pixel(state, x: 12, y: 4), red)
+        // A copy is stamped at the float's position…
         XCTAssertEqual(pixel(state, x: 8, y: 4), red)
+        XCTAssertEqual(pixel(state, x: 9, y: 5), red)
+        XCTAssertTrue(state.canUndo)                            // one undo step
+        XCTAssertEqual(pixel(state, x: 4, y: 4), .transparent)  // origin stayed a hole
+        // …and the carried copy is still floating, nudged 1px down-right so it's visibly separate.
+        XCTAssertNotNil(state.selection)
+        XCTAssertEqual(state.selection?.dragOffset.dx, 5)
+        XCTAssertEqual(state.selection?.dragOffset.dy, 1)
+
+        // Committing the carried copy drops a SECOND copy at the nudged spot; the first remains.
+        state.commitMarquee()
+        XCTAssertNil(state.selection)
+        XCTAssertEqual(pixel(state, x: 10, y: 6), red)  // the nudged copy's far corner (4+5+1, 4+1+1)
+        XCTAssertEqual(pixel(state, x: 8, y: 4), red)   // first stamp remains
     }
 
     // MARK: - Delete

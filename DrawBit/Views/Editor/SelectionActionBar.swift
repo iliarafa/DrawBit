@@ -4,11 +4,12 @@ import SwiftUI
 ///
 /// Shares the `resetViewChip` visual language so every transient affordance over the canvas reads
 /// as one family: a sharp-cornered rectangle, `Color(white: 0.16)` fill, a 1pt cyan
-/// (`Color.toolSelected`) border, white pixel-font content. The buttons themselves use the
-/// `ToolBar` blueprint (icon over a `.pixel(8)` caps label, `.hoverPop()`, 44pt hit target).
+/// (`Color.toolSelected`) border, white content. Icons are hand-drawn `PixelArtIcon` glyphs (the
+/// same renderer the undo/redo top bar uses) so they match the pixel-art aesthetic — no SF Symbols.
 ///
 /// Purely presentational — every action is injected as a closure, so feedback, persistence, and
-/// the rotate-refusal check all live in the owner (`EditorView`).
+/// the rotate-refusal check all live in the owner (`EditorView`). Buttons size to their content
+/// (icon over a `.pixel(8)` caps label), so labels never collide.
 struct SelectionActionBar: View {
     var onFlipHorizontal: () -> Void = {}
     var onFlipVertical: () -> Void = {}
@@ -17,36 +18,110 @@ struct SelectionActionBar: View {
     var onDelete: () -> Void = {}
 
     var body: some View {
-        HStack(spacing: 2) {
-            button("arrow.left.and.right", "FLIP H", onFlipHorizontal)
-            button("arrow.up.and.down",    "FLIP V", onFlipVertical)
-            button("rotate.right",         "ROTATE", onRotate)
-            button("square.on.square",     "COPY",   onDuplicate)
-            Rectangle().fill(Color.white.opacity(0.15)).frame(width: 1, height: 30)
-            button("trash",                "DELETE", onDelete)
+        HStack(spacing: 10) {
+            button(Glyph.flipH, "FLIP H", onFlipHorizontal)
+            button(Glyph.flipV, "FLIP V", onFlipVertical)
+            button(Glyph.rotate, "ROTATE", onRotate)
+            button(Glyph.copy, "COPY", onDuplicate)
+            Rectangle().fill(Color.white.opacity(0.18)).frame(width: 1, height: 32)
+            button(Glyph.delete, "DELETE", onDelete)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(Color(white: 0.16))
         .overlay(Rectangle().stroke(Color.toolSelected, lineWidth: 1))
         .contentShape(Rectangle())   // absorb taps so they don't fall through to the canvas
     }
 
-    // The `title` doubles as the button's accessibility label (the canvas's own
+    // The `title` doubles as each button's accessibility label (the canvas's own
     // `.accessibilityIdentifier("Canvas")` propagates onto these descendants and would clobber a
-    // custom identifier, so tests query these by label).
-    private func button(_ systemImage: String, _ title: String,
-                        _ run: @escaping () -> Void) -> some View {
+    // custom identifier, so UI tests query these by label).
+    private func button(_ glyph: [String], _ title: String, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            VStack(spacing: 3) {
-                Image(systemName: systemImage).font(.system(size: 14, weight: .regular))
-                Text(title).font(.pixel(8)).lineLimit(1).fixedSize()
+            VStack(spacing: 5) {
+                PixelArtIcon(pattern: glyph, size: 19)
+                Text(title).font(.pixel(8)).fixedSize()
             }
             .foregroundStyle(.white)
-            .frame(minWidth: 44, minHeight: 44)
+            .frame(minHeight: 44)
+            .padding(.horizontal, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .hoverPop()
     }
+}
+
+/// 11×11 pixel-art glyphs for the selection actions, in the `PixelArtIcon` `#`/`.` format.
+private enum Glyph {
+    /// Double-headed horizontal arrow (mirror left↔right).
+    static let flipH = [
+        "...........",
+        "...........",
+        "...........",
+        "...#...#...",
+        "..#.....#..",
+        ".#########.",
+        "..#.....#..",
+        "...#...#...",
+        "...........",
+        "...........",
+        "...........",
+    ]
+    /// Double-headed vertical arrow (mirror top↔bottom).
+    static let flipV = [
+        "...........",
+        ".....#.....",
+        "....###....",
+        "...#.#.#...",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        "...#.#.#...",
+        "....###....",
+        ".....#.....",
+        "...........",
+    ]
+    /// A ring with an arrowhead — rotate.
+    static let rotate = [
+        "...........",
+        "...####....",
+        "..#....#...",
+        ".#......#..",
+        ".#.......#.",
+        ".#......###",
+        ".#.......#.",
+        "..#....#...",
+        "...####....",
+        "...........",
+        "...........",
+    ]
+    /// Two overlapping squares — duplicate / copy.
+    static let copy = [
+        "...........",
+        "....######.",
+        "....#....#.",
+        "....#....#.",
+        ".######..#.",
+        ".#..#.#..#.",
+        ".#..######.",
+        ".#....#....",
+        ".#....#....",
+        ".######....",
+        "...........",
+    ]
+    /// A trash can — delete.
+    static let delete = [
+        "...........",
+        "....###....",
+        "..#######..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#######..",
+        "...........",
+    ]
 }

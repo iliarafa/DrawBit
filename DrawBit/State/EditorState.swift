@@ -494,8 +494,9 @@ final class EditorState {
     }
 
     /// Stamp a copy of the floating selection into the active layer at its current position (one
-    /// undo step) and keep the selection floating so the user can move it and stamp again. To keep
-    /// the original in place: duplicate before moving, then drag the copy away.
+    /// undo step), then keep the selection floating — nudged 1px down-right — so you immediately see
+    /// two and can drag the copy away. Tap it again to scatter more. The stamped copy stays where
+    /// you dropped it; you carry the duplicate.
     func duplicateSelection() {
         guard let sel = selection else { return }
         var grid = activeLayerPixelGrid
@@ -503,7 +504,9 @@ final class EditorState {
         setActiveLayerPixels(grid.data)
         commitStroke()          // bake the stamped copy as one undo step
         beginStrokeSnapshot()   // re-arm for the next stamp / the eventual commit
-        // selection is intentionally left untouched — same lifted pixels, same offset, still floating.
+        // Keep floating, nudged off the stamp so the duplicate is visibly separate.
+        selection = MarqueeSelection(extracted: sel.extracted,
+                                     dragOffset: (dx: sel.dragOffset.dx + 1, dy: sel.dragOffset.dy + 1))
     }
 
     /// Discard the floating selection, leaving the hole it was cut from (one undo step restores it).
