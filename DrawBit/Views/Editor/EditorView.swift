@@ -113,31 +113,25 @@ struct EditorView: View {
                         handleLineStraighten(from: from, to: to, justSnapped: justSnapped)
                     },
                     onUndo: { handleUndo() },
-                    onRedo: { handleRedo() },
-                    onFlipHorizontal: {
-                        state.flipSelectionHorizontal()
-                        SelectionFeedback.shared.fire()
-                    },
-                    onFlipVertical: {
-                        state.flipSelectionVertical()
-                        SelectionFeedback.shared.fire()
-                    },
-                    onRotate: {
-                        // Fire the detent only when the rotate actually happened (it refuses when
-                        // the selection can't fit the canvas rotated).
-                        if state.rotateSelection() { SelectionFeedback.shared.fire() }
-                    },
-                    onDuplicate: {
-                        state.duplicateSelection()   // writes the layer → persist like a commit
-                        saveCurrentFrame()
-                        SelectionFeedback.shared.fire()
-                    },
-                    onDelete: {
-                        state.deleteSelection()       // writes the layer → persist like a commit
-                        saveCurrentFrame()
-                        SelectionFeedback.shared.fire()
-                    }
+                    onRedo: { handleRedo() }
                 )
+                // Selection actions float in the empty band below the canvas. Pinned just above the
+                // animation-strip slot so they never overlap the frames strip; when the strip is
+                // hidden they drop down into that empty slot (where it reads best).
+                .overlay(alignment: .bottom) {
+                    if state.selection != nil {
+                        SelectionActionBar(
+                            onFlipHorizontal: { state.flipSelectionHorizontal(); SelectionFeedback.shared.fire() },
+                            onFlipVertical:   { state.flipSelectionVertical();   SelectionFeedback.shared.fire() },
+                            onRotate:         { if state.rotateSelection() { SelectionFeedback.shared.fire() } },
+                            onDuplicate:      { state.duplicateSelection(); saveCurrentFrame(); SelectionFeedback.shared.fire() },
+                            onDelete:         { state.deleteSelection();    saveCurrentFrame(); SelectionFeedback.shared.fire() }
+                        )
+                        .padding(.bottom, showTimeline ? 10 : -44)
+                        .transition(UITestSupport.isRunning ? .identity : .opacity)
+                    }
+                }
+                .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.2), value: state.selection != nil)
                 .allowsHitTesting(!state.isPlaying)
                 // No dividers around the animation strip and it shares the Color(white: 0.10)
                 // background, so canvas → strip → tool strip read as one continuous surface.

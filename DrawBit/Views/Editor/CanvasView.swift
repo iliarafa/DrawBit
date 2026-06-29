@@ -65,11 +65,6 @@ struct CanvasView: View {
     var onLineStraighten: (_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void = { _, _, _ in }
     var onUndo: () -> Void = {}
     var onRedo: () -> Void = {}
-    var onFlipHorizontal: () -> Void = {}
-    var onFlipVertical: () -> Void = {}
-    var onRotate: () -> Void = {}
-    var onDuplicate: () -> Void = {}
-    var onDelete: () -> Void = {}
     private let resetHaptic = UIImpactFeedbackGenerator(style: .light)
 
     var body: some View {
@@ -150,26 +145,11 @@ struct CanvasView: View {
                         .transition(UITestSupport.isRunning ? .identity : .opacity)
                 }
 
-                // Contextual selection actions — same chip styling, fades in only while a
-                // selection floats. Topmost so its buttons sit above the input layer.
-                if state.selection != nil {
-                    SelectionActionBar(
-                        onFlipHorizontal: onFlipHorizontal,
-                        onFlipVertical: onFlipVertical,
-                        onRotate: onRotate,
-                        onDuplicate: onDuplicate,
-                        onDelete: onDelete
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .padding(.bottom, 8)
-                    .transition(UITestSupport.isRunning ? .identity : .opacity)
-                }
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
             .clipped()
             .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.2), value: state.isViewTransformed)
-            .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.2), value: state.selection != nil)
         }
         .accessibilityIdentifier("Canvas")
         .onChange(of: state.activeFrameIndex) { _, _ in
@@ -198,8 +178,9 @@ struct CanvasView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Color(white: 0.16))
-            .overlay(Rectangle().stroke(Color.toolSelected, lineWidth: 1))
+            // Faint translucent scrim (no border, no opaque box): floats over the canvas while
+            // keeping "RESET" legible over artwork. Mirrors the selection bar's de-boxed look.
+            .background(Color.black.opacity(0.4))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("ResetView")

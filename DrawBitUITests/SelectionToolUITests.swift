@@ -29,8 +29,7 @@ final class SelectionToolUITests: XCTestCase {
         let end = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.65))
         start.press(forDuration: 0.2, thenDragTo: end)
 
-        // The contextual action bar appears (its buttons are queried by label — the canvas's
-        // accessibility identifier propagates onto them, so a custom identifier wouldn't stick).
+        // The contextual action bar appears (its buttons are queried by their labels).
         XCTAssertTrue(app.buttons["ROTATE"].waitForExistence(timeout: 15))
         XCTAssertTrue(app.buttons["FLIP H"].exists)
 

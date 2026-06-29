@@ -2,10 +2,10 @@ import SwiftUI
 
 /// Contextual actions for a floating selection — flip, rotate, duplicate, delete.
 ///
-/// Shares the `resetViewChip` visual language so every transient affordance over the canvas reads
-/// as one family: a sharp-cornered rectangle, `Color(white: 0.16)` fill, a 1pt cyan
-/// (`Color.toolSelected`) border, white content. Icons are hand-drawn `PixelArtIcon` glyphs (the
-/// same renderer the undo/redo top bar uses) so they match the pixel-art aesthetic — no SF Symbols.
+/// Designed to *float*: no border, and a fill that matches the app background (`Color(white: 0.10)`),
+/// so against the empty band below the canvas only the white buttons read — not a boxed menu. Icons
+/// are hand-drawn `PixelArtIcon` glyphs (the same renderer the undo/redo top bar uses) so they match
+/// the pixel-art aesthetic — no SF Symbols.
 ///
 /// Purely presentational — every action is injected as a closure, so feedback, persistence, and
 /// the rotate-refusal check all live in the owner (`EditorView`). Buttons size to their content
@@ -28,9 +28,8 @@ struct SelectionActionBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color(white: 0.16))
-        .overlay(Rectangle().stroke(Color.toolSelected, lineWidth: 1))
-        .contentShape(Rectangle())   // absorb taps so they don't fall through to the canvas
+        .background(Color(white: 0.10))   // the app background → buttons float, not boxed
+        .contentShape(Rectangle())        // absorb taps so they don't fall through to the canvas
     }
 
     // The `title` doubles as each button's accessibility label (the canvas's own
