@@ -76,17 +76,19 @@ final class CanvasTransformTests: XCTestCase {
     // MARK: - gridLineAlpha (fade the interior grid when zoomed out)
 
     func testGridHiddenWhenCellsTiny() {
-        XCTAssertEqual(gridLineAlpha(screenCellPoints: 3), 0, accuracy: acc)   // 256-canvas at fit
+        XCTAssertEqual(gridLineAlpha(screenCellPoints: 3), 0, accuracy: acc)   // large canvas at fit
         XCTAssertEqual(gridLineAlpha(screenCellPoints: 4), 0, accuracy: acc)   // at the low edge
         XCTAssertEqual(gridLineAlpha(screenCellPoints: 0), 0, accuracy: acc)
     }
 
-    func testGridFullWhenCellsLarge() {
-        XCTAssertEqual(gridLineAlpha(screenCellPoints: 9), 1, accuracy: acc)   // at the high edge
-        XCTAssertEqual(gridLineAlpha(screenCellPoints: 27), 1, accuracy: acc)  // 32-canvas at fit
+    func testGridFullOnlyWhenCellsLarge() {
+        XCTAssertEqual(gridLineAlpha(screenCellPoints: 20), 1, accuracy: acc)  // at the high edge (was 9)
+        XCTAssertEqual(gridLineAlpha(screenCellPoints: 27), 1, accuracy: acc)  // 32-canvas at fit, full
     }
 
-    func testGridFadesLinearlyBetween() {
-        XCTAssertEqual(gridLineAlpha(screenCellPoints: 6.5), 0.5, accuracy: acc)  // midpoint of 4…9
+    func testGridFadesGraduallySoDenseCanvasesStayCalm() {
+        XCTAssertEqual(gridLineAlpha(screenCellPoints: 12), 0.5, accuracy: acc)     // midpoint of 4…20
+        XCTAssertEqual(gridLineAlpha(screenCellPoints: 15), 0.6875, accuracy: acc)  // ~96×54 at fit: dimmed, not full
+        XCTAssertEqual(gridLineAlpha(screenCellPoints: 9), 0.3125, accuracy: acc)   // dense: well below full now
     }
 }
