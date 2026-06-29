@@ -65,6 +65,11 @@ struct CanvasView: View {
     var onLineStraighten: (_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void = { _, _, _ in }
     var onUndo: () -> Void = {}
     var onRedo: () -> Void = {}
+    var onFlipHorizontal: () -> Void = {}
+    var onFlipVertical: () -> Void = {}
+    var onRotate: () -> Void = {}
+    var onDuplicate: () -> Void = {}
+    var onDelete: () -> Void = {}
     private let resetHaptic = UIImpactFeedbackGenerator(style: .light)
 
     var body: some View {
@@ -144,11 +149,27 @@ struct CanvasView: View {
                         .padding(.bottom, 8)
                         .transition(UITestSupport.isRunning ? .identity : .opacity)
                 }
+
+                // Contextual selection actions — same chip styling, fades in only while a
+                // selection floats. Topmost so its buttons sit above the input layer.
+                if state.selection != nil {
+                    SelectionActionBar(
+                        onFlipHorizontal: onFlipHorizontal,
+                        onFlipVertical: onFlipVertical,
+                        onRotate: onRotate,
+                        onDuplicate: onDuplicate,
+                        onDelete: onDelete
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, 8)
+                    .transition(UITestSupport.isRunning ? .identity : .opacity)
+                }
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
             .clipped()
             .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.2), value: state.isViewTransformed)
+            .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.2), value: state.selection != nil)
         }
         .accessibilityIdentifier("Canvas")
         .onChange(of: state.activeFrameIndex) { _, _ in
@@ -305,23 +326,31 @@ struct CanvasView: View {
         let t = canvasToScreenTransform(base: base, viewport: viewport,
                                         scale: state.scale, rotation: state.rotation,
                                         translation: state.translation)
-        return TimelineView(.animation) { timeline in
-            Canvas { ctx, _ in
-                let r = CGRect(
-                    x: CGFloat(bounds.x) * perPixel,
-                    y: CGFloat(bounds.y) * perPixel,
-                    width: CGFloat(bounds.width) * perPixel,
-                    height: CGFloat(bounds.height) * perPixel
-                )
-                let elapsed = timeline.date.timeIntervalSinceReferenceDate
-                let phase = elapsed.truncatingRemainder(dividingBy: 1.0) * Double(dashLen * 2)
-                let path = Path(r).applying(t)
-                ctx.stroke(path, with: .color(.black.opacity(0.85)),
-                           style: StrokeStyle(lineWidth: 1, dash: [dashLen, dashLen],
-                                              dashPhase: CGFloat(phase)))
-                ctx.stroke(path, with: .color(.white),
-                           style: StrokeStyle(lineWidth: 1, dash: [dashLen, dashLen],
-                                              dashPhase: CGFloat(phase) + dashLen))
+        let r = CGRect(x: CGFloat(bounds.x) * perPixel, y: CGFloat(bounds.y) * perPixel,
+                       width: CGFloat(bounds.width) * perPixel, height: CGFloat(bounds.height) * perPixel)
+        let path = Path(r).applying(t)
+
+        func drawAnts(_ ctx: GraphicsContext, phase: CGFloat) {
+            ctx.stroke(path, with: .color(.black.opacity(0.85)),
+                       style: StrokeStyle(lineWidth: 1, dash: [dashLen, dashLen], dashPhase: phase))
+            ctx.stroke(path, with: .color(.white),
+                       style: StrokeStyle(lineWidth: 1, dash: [dashLen, dashLen], dashPhase: phase + dashLen))
+        }
+
+        return Group {
+            if UITestSupport.isRunning {
+                // Static dashes under UI test: a live TimelineView(.animation) never idles, which
+                // wedges XCUITest's automatic synchronization permanently (see CLAUDE.md test
+                // conventions — same reason every other animation is gated here).
+                Canvas { ctx, _ in drawAnts(ctx, phase: 0) }
+            } else {
+                TimelineView(.animation) { timeline in
+                    Canvas { ctx, _ in
+                        let elapsed = timeline.date.timeIntervalSinceReferenceDate
+                        let phase = elapsed.truncatingRemainder(dividingBy: 1.0) * Double(dashLen * 2)
+                        drawAnts(ctx, phase: CGFloat(phase))
+                    }
+                }
             }
         }
         .frame(width: viewport.width, height: viewport.height)

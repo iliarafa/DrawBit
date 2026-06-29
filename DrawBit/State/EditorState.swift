@@ -459,6 +459,61 @@ final class EditorState {
         dragAnchor = nil
         cancelStroke()
     }
+
+    // MARK: - Selection transforms (operate on the floating selection)
+    //
+    // Flip/rotate mutate only the floating pixels — no layer write, no undo entry of their own;
+    // the eventual `commitMarquee` captures the final result as one undo step (consistent with the
+    // documented "lasso collapses to one undo"). Duplicate/delete DO write the layer, each as its
+    // own undo step. Feedback (the detent click) fires from the view layer, not here.
+
+    func flipSelectionHorizontal() {
+        guard let sel = selection else { return }
+        selection = MarqueeSelection(extracted: SelectionTransform.flipHorizontal(sel.extracted),
+                                     dragOffset: sel.dragOffset)
+    }
+
+    func flipSelectionVertical() {
+        guard let sel = selection else { return }
+        selection = MarqueeSelection(extracted: SelectionTransform.flipVertical(sel.extracted),
+                                     dragOffset: sel.dragOffset)
+    }
+
+    /// Rotate the floating selection 90° clockwise around where the user currently sees it.
+    /// Returns `false` (and does nothing) when the rotated selection can't fit the canvas, so the
+    /// caller can skip the success feedback. See `SelectionTransform.rotate90`'s fit-or-refuse rule.
+    @discardableResult
+    func rotateSelection() -> Bool {
+        guard let sel = selection else { return false }
+        let b = sel.displayBounds
+        let center = (x: b.x + b.width / 2, y: b.y + b.height / 2)
+        guard let rotated = SelectionTransform.rotate90(sel.extracted, around: center) else { return false }
+        // Output bounds are absolute, so the drag offset folds away.
+        selection = MarqueeSelection(extracted: rotated, dragOffset: (0, 0))
+        return true
+    }
+
+    /// Stamp a copy of the floating selection into the active layer at its current position (one
+    /// undo step) and keep the selection floating so the user can move it and stamp again. To keep
+    /// the original in place: duplicate before moving, then drag the copy away.
+    func duplicateSelection() {
+        guard let sel = selection else { return }
+        var grid = activeLayerPixelGrid
+        Marquee.commit(into: &grid, selection: sel.extracted, offset: sel.dragOffset)
+        setActiveLayerPixels(grid.data)
+        commitStroke()          // bake the stamped copy as one undo step
+        beginStrokeSnapshot()   // re-arm for the next stamp / the eventual commit
+        // selection is intentionally left untouched — same lifted pixels, same offset, still floating.
+    }
+
+    /// Discard the floating selection, leaving the hole it was cut from (one undo step restores it).
+    /// Contrast `cancelMarquee`, which puts the pixels back.
+    func deleteSelection() {
+        guard selection != nil else { return }
+        selection = nil
+        dragAnchor = nil
+        commitStroke()          // bake the already-cut hole
+    }
 }
 
 struct MarqueeSelection: Equatable {

@@ -113,7 +113,30 @@ struct EditorView: View {
                         handleLineStraighten(from: from, to: to, justSnapped: justSnapped)
                     },
                     onUndo: { handleUndo() },
-                    onRedo: { handleRedo() }
+                    onRedo: { handleRedo() },
+                    onFlipHorizontal: {
+                        state.flipSelectionHorizontal()
+                        SelectionFeedback.shared.fire()
+                    },
+                    onFlipVertical: {
+                        state.flipSelectionVertical()
+                        SelectionFeedback.shared.fire()
+                    },
+                    onRotate: {
+                        // Fire the detent only when the rotate actually happened (it refuses when
+                        // the selection can't fit the canvas rotated).
+                        if state.rotateSelection() { SelectionFeedback.shared.fire() }
+                    },
+                    onDuplicate: {
+                        state.duplicateSelection()   // writes the layer → persist like a commit
+                        saveCurrentFrame()
+                        SelectionFeedback.shared.fire()
+                    },
+                    onDelete: {
+                        state.deleteSelection()       // writes the layer → persist like a commit
+                        saveCurrentFrame()
+                        SelectionFeedback.shared.fire()
+                    }
                 )
                 .allowsHitTesting(!state.isPlaying)
                 // No dividers around the animation strip and it shares the Color(white: 0.10)

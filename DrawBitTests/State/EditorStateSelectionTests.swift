@@ -209,4 +209,107 @@ final class EditorStateSelectionTests: XCTestCase {
         state.redo()
         XCTAssertNil(state.selection)
     }
+
+    // MARK: - Flip
+
+    func testFlipHorizontalMirrorsFloatingSelectionInPlace() {
+        let state = makeState()
+        setPixel(state, x: 4, y: 4, color: red)    // left cell of a 2-wide selection
+        state.beginMarqueeDefine(at: (4, 4))
+        state.updateMarqueeDefine(to: (5, 4))
+        state.endMarqueeDefine()                   // bounds (4,4) 2×1, red at local (0,0)
+
+        state.flipSelectionHorizontal()
+
+        XCTAssertEqual(state.selection?.extracted.pixels.pixel(x: 5, y: 4), red)         // (0,0)->(1,0)
+        XCTAssertEqual(state.selection?.extracted.pixels.pixel(x: 4, y: 4), .transparent)
+        XCTAssertFalse(state.canUndo)              // no commit yet — rides the eventual commit
+
+        state.commitMarquee()
+        XCTAssertEqual(pixel(state, x: 5, y: 4), red)         // flipped in place, committed
+        XCTAssertEqual(pixel(state, x: 4, y: 4), .transparent)
+    }
+
+    // MARK: - Rotate
+
+    func testRotateSwapsBoundsAndResetsOffset() {
+        let state = makeState()
+        setPixel(state, x: 5, y: 4, color: red)
+        setPixel(state, x: 5, y: 5, color: red)
+        setPixel(state, x: 5, y: 6, color: red)    // vertical 1×3 bar
+        state.beginMarqueeDefine(at: (5, 4))
+        state.updateMarqueeDefine(to: (5, 6))
+        state.endMarqueeDefine()                   // bounds (5,4) 1×3
+
+        XCTAssertTrue(state.rotateSelection())
+        XCTAssertEqual(state.selection?.extracted.originalBounds.width, 3)
+        XCTAssertEqual(state.selection?.extracted.originalBounds.height, 1)
+        XCTAssertEqual(state.selection?.dragOffset.dx, 0)
+        XCTAssertEqual(state.selection?.dragOffset.dy, 0)
+    }
+
+    func testRotateRefusedOnNonSquareLeavesSelectionUnchanged() {
+        let state = makeState(size: CanvasSize(width: 16, height: 8))
+        for x in 0..<10 { setPixel(state, x: x, y: 0, color: red) }   // 10-wide horizontal run
+        state.beginMarqueeDefine(at: (0, 0))
+        state.updateMarqueeDefine(to: (9, 2))
+        state.endMarqueeDefine()                   // bounds (0,0) 10×3 → rotated 3×10 can't fit h=8
+        let before = state.selection
+
+        XCTAssertFalse(state.rotateSelection())
+        XCTAssertEqual(state.selection, before)    // untouched
+    }
+
+    // MARK: - Duplicate
+
+    func testDuplicateStampsCopyAtCurrentOffsetAndKeepsFloating() {
+        let state = paintedPiece()                 // red 2×2 at (4,4)
+        state.beginMarqueeDefine(at: (4, 4))
+        state.updateMarqueeDefine(to: (5, 5))
+        state.endMarqueeDefine()
+        state.beginMarqueeDrag(at: (4, 4))
+        state.updateMarqueeDrag(to: (8, 4))        // offset (4,0): float at (8,4)
+        state.endMarqueeDrag()
+
+        state.duplicateSelection()
+
+        XCTAssertEqual(pixel(state, x: 8, y: 4), red)        // copy stamped at the float position
+        XCTAssertEqual(pixel(state, x: 9, y: 5), red)
+        XCTAssertNotNil(state.selection)                     // still floating
+        XCTAssertTrue(state.canUndo)                         // one undo step
+        XCTAssertEqual(pixel(state, x: 4, y: 4), .transparent) // origin stayed a hole
+
+        // Move the still-floating copy and commit → a SECOND copy; the first remains.
+        state.beginMarqueeDrag(at: (8, 4))
+        state.updateMarqueeDrag(to: (12, 4))
+        state.endMarqueeDrag()
+        state.commitMarquee()
+        XCTAssertEqual(pixel(state, x: 12, y: 4), red)
+        XCTAssertEqual(pixel(state, x: 8, y: 4), red)
+    }
+
+    // MARK: - Delete
+
+    func testDeleteLeavesHoleAndUndoRestores() {
+        let state = paintedPiece()
+        state.beginMarqueeDefine(at: (4, 4))
+        state.updateMarqueeDefine(to: (5, 5))
+        state.endMarqueeDefine()
+        XCTAssertEqual(pixel(state, x: 4, y: 4), .transparent)   // cut on define
+
+        state.deleteSelection()
+        XCTAssertNil(state.selection)
+        XCTAssertEqual(pixel(state, x: 4, y: 4), .transparent)   // hole stays
+        XCTAssertTrue(state.canUndo)
+
+        state.undo()
+        XCTAssertEqual(pixel(state, x: 4, y: 4), red)            // restored in one step
+        XCTAssertEqual(pixel(state, x: 5, y: 5), red)
+    }
+
+    func testDeleteNoOpWhenNoSelection() {
+        let state = paintedPiece()
+        state.deleteSelection()
+        XCTAssertFalse(state.canUndo)
+    }
 }

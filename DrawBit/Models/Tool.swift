@@ -26,7 +26,7 @@ enum Tool: String, CaseIterable, Codable {
         case .fill: "Fill"
         case .colorSwap: "Swap"
         case .eyedropper: "Pick"
-        case .marquee: "Laso"
+        case .marquee: "Select"
         }
     }
 }
