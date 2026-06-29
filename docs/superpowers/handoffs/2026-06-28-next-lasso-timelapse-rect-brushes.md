@@ -1,11 +1,18 @@
 # Handoff — next items (2026-06-28)
 
 ## Where things stand
-`main` is green and in sync (367 unit + 33 UI). Recent shipped work: pencil hold-to-straighten
+`main` is green and in sync (370 unit + 33 UI). Recent shipped work: pencil hold-to-straighten
 line + perfect-angle detents (`80615aa`, `4fdfc75`), undo/redo moved to the top bar with
-two/three-finger-tap gestures + a contextual RESET chip (`4fdfc75`), and a real data-loss fix
-(`97f1432`). Full prioritized roadmap + positioning context live in memory
-(`project_audit_followups`). DrawBit's guiding star (from the founder): a **calm, premium,
+two/three-finger-tap gestures + a contextual RESET chip (`4fdfc75`), a real data-loss fix
+(`97f1432`), and **grid fade-on-zoom-out** (`b606f40`). Full prioritized roadmap + positioning
+context live in memory (`project_audit_followups`, `project_crisp_grid`).
+
+**Latest fix — grid fade (`b606f40`):** a large canvas at fit used to wash gray because every pixel
+boundary is a 1pt line and the lines merged at ~3pt/cell. Now the *interior* grid fades out as the
+on-screen cell shrinks (pure `gridLineAlpha` in `CanvasTransform.swift`: hidden ≤4pt, full ≥9pt),
+while the canvas *border* is a separate steady stroke so bounds still read. In `CanvasView.gridOverlay`.
+Thresholds `lo=4`/`hi=9` are easy to nudge. This came from the founder hitting it in their own
+256×144 sprite loop — the truest kind of fix. DrawBit's guiding star (from the founder): a **calm, premium,
 single-player pixel app that feels like a beautiful machine**, built first to make sprites for the
 game *All my Falling Stars*. Judge each item by "does it remove friction from joyful making,"
 not "does it tick a competitor's box." Several items below are **discuss-first** — settle the shape
