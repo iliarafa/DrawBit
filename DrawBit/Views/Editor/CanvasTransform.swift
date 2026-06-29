@@ -21,3 +21,12 @@ func canvasToScreenTransform(base: CGSize, viewport: CGSize,
         .scaledBy(x: scale, y: scale)
         .translatedBy(x: -base.width / 2, y: -base.height / 2)
 }
+
+/// Opacity for the *interior* pixel grid given the on-screen size of one cell (points). The grid is
+/// only a useful guide when cells are big enough to target; below that the 1pt lines cover too much
+/// of each cell and merge into a gray wash, so fade them out. Linear ramp: hidden ≤4pt, full ≥9pt.
+/// The canvas border is drawn separately and stays visible so bounds read even when this is 0.
+func gridLineAlpha(screenCellPoints c: CGFloat) -> Double {
+    let lo: CGFloat = 4, hi: CGFloat = 9
+    return Double(max(0, min(1, (c - lo) / (hi - lo))))
+}

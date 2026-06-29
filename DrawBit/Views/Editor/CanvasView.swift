@@ -249,21 +249,31 @@ struct CanvasView: View {
             let w = state.size.width
             let h = state.size.height
             let cell = base.width / CGFloat(w)   // square cells, in base points
-            var path = Path()
-            for i in 0...w {                       // vertical gridlines
-                let p = CGFloat(i) * cell
-                path.move(to: CGPoint(x: p, y: 0))
-                path.addLine(to: CGPoint(x: p, y: base.height))
-            }
-            for j in 0...h {                       // horizontal gridlines
-                let p = CGFloat(j) * cell
-                path.move(to: CGPoint(x: 0, y: p))
-                path.addLine(to: CGPoint(x: base.width, y: p))
-            }
             let t = canvasToScreenTransform(base: base, viewport: viewport,
                                             scale: state.scale, rotation: state.rotation,
                                             translation: state.translation)
-            ctx.stroke(path.applying(t), with: .color(Color(white: 0.4)), lineWidth: 1)
+
+            // Interior gridlines fade out as the on-screen cell shrinks, so a zoomed-out large
+            // canvas reads as dark-canvas-with-art instead of a gray wash.
+            let alpha = gridLineAlpha(screenCellPoints: cell * state.scale)
+            if alpha > 0.01 {
+                var grid = Path()
+                for i in 1..<w {                   // interior verticals (0 and w are the border)
+                    let p = CGFloat(i) * cell
+                    grid.move(to: CGPoint(x: p, y: 0))
+                    grid.addLine(to: CGPoint(x: p, y: base.height))
+                }
+                for j in 1..<h {                   // interior horizontals
+                    let p = CGFloat(j) * cell
+                    grid.move(to: CGPoint(x: 0, y: p))
+                    grid.addLine(to: CGPoint(x: base.width, y: p))
+                }
+                ctx.stroke(grid.applying(t), with: .color(Color(white: 0.4).opacity(alpha)), lineWidth: 1)
+            }
+
+            // Canvas border — always visible so the bounds read even when the interior grid is hidden.
+            let border = Path(CGRect(x: 0, y: 0, width: base.width, height: base.height))
+            ctx.stroke(border.applying(t), with: .color(Color(white: 0.45)), lineWidth: 1)
         }
         .frame(width: viewport.width, height: viewport.height)
         .allowsHitTesting(false)
