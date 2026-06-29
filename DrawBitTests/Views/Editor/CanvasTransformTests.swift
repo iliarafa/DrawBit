@@ -91,4 +91,18 @@ final class CanvasTransformTests: XCTestCase {
         XCTAssertEqual(gridLineAlpha(screenCellPoints: 15), 0.6875, accuracy: acc)  // ~96×54 at fit: dimmed, not full
         XCTAssertEqual(gridLineAlpha(screenCellPoints: 9), 0.3125, accuracy: acc)   // dense: well below full now
     }
+
+    // MARK: - borderLineAlpha (border reads like a grid line, but never below a floor)
+
+    func testBorderMatchesGridLineWhenVisible() {
+        XCTAssertEqual(borderLineAlpha(screenCellPoints: 27), 1, accuracy: acc)       // zoomed in: full, like the grid
+        XCTAssertEqual(borderLineAlpha(screenCellPoints: 15), 0.6875, accuracy: acc)  // 96×54 at fit: == the grid line
+    }
+
+    func testBorderHoldsFloorWhenGridHidden() {
+        XCTAssertEqual(borderLineAlpha(screenCellPoints: 3), 0.45, accuracy: acc)     // grid hidden → faint outline survives
+        XCTAssertEqual(borderLineAlpha(screenCellPoints: 0), 0.45, accuracy: acc)
+        // Never dimmer than the grid line at the same zoom.
+        XCTAssertGreaterThanOrEqual(borderLineAlpha(screenCellPoints: 9), gridLineAlpha(screenCellPoints: 9))
+    }
 }

@@ -273,9 +273,11 @@ struct CanvasView: View {
                 ctx.stroke(grid.applying(t), with: .color(Color(white: 0.4).opacity(alpha)), lineWidth: 1)
             }
 
-            // Canvas border — always visible so the bounds read even when the interior grid is hidden.
+            // Canvas border — reads like a grid line (same grey, fades with it) but never fully
+            // vanishes, so the bounds still read faintly when the interior grid is hidden.
             let border = Path(CGRect(x: 0, y: 0, width: base.width, height: base.height))
-            ctx.stroke(border.applying(t), with: .color(Color(white: 0.45)), lineWidth: 1)
+            let borderA = borderLineAlpha(screenCellPoints: cell * state.scale)
+            ctx.stroke(border.applying(t), with: .color(Color(white: 0.4).opacity(borderA)), lineWidth: 1)
         }
         .frame(width: viewport.width, height: viewport.height)
         .allowsHitTesting(false)

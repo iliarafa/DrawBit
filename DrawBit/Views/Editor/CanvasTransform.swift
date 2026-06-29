@@ -34,3 +34,12 @@ func gridLineAlpha(screenCellPoints c: CGFloat) -> Double {
     let lo: CGFloat = 4, hi: CGFloat = 20
     return Double(max(0, min(1, (c - lo) / (hi - lo))))
 }
+
+/// Opacity for the canvas *border*. The border reads like a grid line (drawn in the same grey, and
+/// fading with `gridLineAlpha`) so it stops framing the canvas — but it never drops below `floor`,
+/// so a faint outline survives once the interior grid hides (zoomed out) and an empty canvas's
+/// bounds still read.
+func borderLineAlpha(screenCellPoints c: CGFloat) -> Double {
+    let floor = 0.45
+    return max(gridLineAlpha(screenCellPoints: c), floor)
+}
