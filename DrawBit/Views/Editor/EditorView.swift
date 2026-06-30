@@ -432,11 +432,7 @@ struct EditorView: View {
                 data = grid.data
             }
         case .eyedropper:
-            let buffer = Compositor.composite(state.frame, size: state.size)
-            let grid = PixelGrid(data: buffer.data, size: state.size)
-            if let picked = Eyedropper.pick(from: grid, at: (x, y)) {
-                state.color = picked
-            }
+            state.pickColor(at: (x, y))
         case .marquee:
             applyMarqueePoint(x: x, y: y)
         }

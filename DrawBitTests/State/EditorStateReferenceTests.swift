@@ -57,6 +57,39 @@ final class EditorStateReferenceTests: XCTestCase {
         XCTAssertNil(s.referenceGrid)
     }
 
+    // MARK: - pickColor (eyedropper reads the reference where layers are blank)
+
+    func testPickColorFromReferenceWhenLayerBlank() {
+        let s = makeState()
+        s.setReference(imageData: Self.tinyPNG())     // red fills the canvas
+        s.color = RGBA(r: 0, g: 0, b: 0, a: 255)      // start non-red
+        s.pickColor(at: (8, 8))
+        XCTAssertGreaterThan(s.color.r, 200)          // picked the reference red
+        XCTAssertLessThan(s.color.b, 80)
+    }
+
+    func testPickColorLayerWinsOverReference() {
+        let s = makeState()
+        s.setReference(imageData: Self.tinyPNG())     // red reference
+        let blue = RGBA(r: 0, g: 0, b: 255, a: 255)
+        var g = s.activeLayerPixelGrid
+        g.setPixel(x: 8, y: 8, color: blue)
+        s.setActiveLayerPixels(g.data)
+        s.color = RGBA(r: 0, g: 0, b: 0, a: 255)
+        s.pickColor(at: (8, 8))
+        XCTAssertEqual(s.color, blue)                 // an actual layer pixel wins
+    }
+
+    func testPickColorReferenceHiddenIsNoOp() {
+        let s = makeState()
+        s.setReference(imageData: Self.tinyPNG())
+        s.isReferenceVisible = false
+        let before = RGBA(r: 9, g: 9, b: 9, a: 255)
+        s.color = before
+        s.pickColor(at: (8, 8))                        // blank layer + hidden reference
+        XCTAssertEqual(s.color, before)               // unchanged
+    }
+
     private static func tinyPNG() -> Data {
         let cs = CGColorSpace(name: CGColorSpace.sRGB)!
         let ctx = CGContext(data: nil, width: 4, height: 4, bitsPerComponent: 8,

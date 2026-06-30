@@ -227,6 +227,18 @@ final class EditorState {
             .map { PixelGrid(data: $0, size: size) }
     }
 
+    /// Eyedropper: set `color` to the composited layer color at `point`; where the layers are blank
+    /// and the reference is visible, fall back to the reference photo's true color there. No-op when
+    /// both are empty. The reference grid is sampled, never composited into exports.
+    func pickColor(at point: (Int, Int)) {
+        let buffer = Compositor.composite(frame, size: size)
+        let grid = PixelGrid(data: buffer.data, size: size)
+        let fallback = isReferenceVisible ? referenceGrid : nil
+        if let picked = Eyedropper.pick(from: grid, fallback: fallback, at: point) {
+            color = picked
+        }
+    }
+
     // MARK: - Drawing-stroke undo
 
     func beginStrokeSnapshot() {
