@@ -138,7 +138,7 @@ struct HelpScreen: View {
         HelpTopic(id: "Help.section.colours", icon: .colourSwatches, title: "COLORS",
                   body: "Tap the color swatch to open the picker. Pick from built-in palettes — DB32, PICO-8, Sweetie 16, Game Boy — or mix your own by hex, spectrum or sliders. Save custom palettes; your recent colors are kept."),
         HelpTopic(id: "Help.section.tools", icon: .pixel(Self.toolbox), title: "TOOLS",
-                  body: "Pencil, eraser, fill, swap, pick, laso — tap one in the bottom bar to switch. Mirror reflects every stroke across the vertical center. Undo and redo sit at the bar's end."),
+                  body: "Pencil, eraser, fill, swap, pick, select — tap one in the bottom bar to switch. Tap the pencil or eraser again to resize it, from a single pixel up to four. Mirror reflects every stroke across the vertical center. Undo and redo sit at the bar's end."),
         HelpTopic(id: "Help.section.canvas", icon: .pixel(Self.gridLines), title: "CANVAS",
                   body: "Tap + to start a new draw — pick a preset size or set your own from 8 to 256. Then pinch to zoom, two-finger drag to pan or rotate. Pixels never move, so exports stay upright and crisp."),
         HelpTopic(id: "Help.section.layers", icon: .asset("LayersIcon"), title: "LAYERS",
