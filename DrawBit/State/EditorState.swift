@@ -267,6 +267,38 @@ final class EditorState {
                       color: snapGrid.pixel(x: elbow.0, y: elbow.1))
     }
 
+    /// Stamps the tool's square nib into the active layer at `point`, mirroring each painted cell
+    /// across the vertical centerline when mirror is on. Pencil writes `color`; eraser writes
+    /// transparent. The pixel-perfect elbow cleaner runs only at size 1 (a 1-px concept). All writes
+    /// happen in one `mutateActiveLayerPixels` closure, so the whole stroke is one undo step.
+    func stampBrush(_ tool: Tool, at point: (Int, Int)) {
+        let n = brushSize(for: tool)
+        let cells = Brush.squareCells(centeredAt: point, size: n)
+        let w = size.width - 1
+        let paintColor = color
+        mutateActiveLayerPixels { data in
+            var grid = PixelGrid(data: data, size: size)
+            if n == 1 {
+                revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: point)
+            }
+            func write(_ x: Int, _ y: Int) {
+                switch tool {
+                case .pencil: Pencil.paint(on: &grid, at: (x, y), color: paintColor)
+                case .eraser: Eraser.erase(on: &grid, at: (x, y))
+                default: break
+                }
+            }
+            for (cx, cy) in cells {
+                write(cx, cy)
+                if isMirrorEnabled {
+                    let mx = w - cx
+                    if mx != cx { write(mx, cy) }
+                }
+            }
+            data = grid.data
+        }
+    }
+
     // MARK: - Structural-change undo
 
     func beginStructuralSnapshot() {

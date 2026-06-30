@@ -51,4 +51,58 @@ final class EditorStateBrushTests: XCTestCase {
         XCTAssertEqual(s.pencilSize, 1)
         XCTAssertEqual(s.eraserSize, 1)
     }
+
+    // MARK: - stampBrush
+
+    func testStampSize1MatchesSinglePixel() {
+        let s = makeState()
+        s.color = red
+        s.stampBrush(.pencil, at: (5, 5))
+        XCTAssertEqual(pixel(s, 5, 5), red)
+        XCTAssertEqual(pixel(s, 6, 5), .transparent)
+        XCTAssertEqual(pixel(s, 5, 6), .transparent)
+    }
+
+    func testStampSize3PaintsNineCells() {
+        let s = makeState()
+        s.color = red
+        s.pencilSize = 3
+        s.stampBrush(.pencil, at: (5, 5))
+        for y in 4...6 { for x in 4...6 { XCTAssertEqual(pixel(s, x, y), red, "(\(x),\(y))") } }
+        XCTAssertEqual(pixel(s, 3, 5), .transparent)   // outside the nib
+    }
+
+    func testStampEraserClearsNib() {
+        let s = makeState()
+        for y in 4...6 { for x in 4...6 { setPixel(s, x, y, red) } }
+        s.eraserSize = 3
+        s.stampBrush(.eraser, at: (5, 5))
+        for y in 4...6 { for x in 4...6 { XCTAssertEqual(pixel(s, x, y), .transparent) } }
+    }
+
+    func testStampMirrorsEachCell() {
+        let s = makeState()                 // .s16 → width 16, so mirror x → 15 - x
+        s.color = red
+        s.pencilSize = 2
+        s.isMirrorEnabled = true
+        s.stampBrush(.pencil, at: (1, 1))   // cells (1,1)(2,1)(1,2)(2,2)
+        XCTAssertEqual(pixel(s, 1, 1), red)
+        XCTAssertEqual(pixel(s, 14, 1), red)   // 15 - 1
+        XCTAssertEqual(pixel(s, 13, 2), red)   // 15 - 2
+    }
+
+    func testStrokeIsOneUndoStep() {
+        let s = makeState()
+        s.color = red
+        s.pencilSize = 3
+        s.beginStrokeSnapshot()
+        s.stampBrush(.pencil, at: (5, 5))
+        s.stampBrush(.pencil, at: (6, 5))
+        s.commitStroke()
+        XCTAssertEqual(pixel(s, 5, 5), red)            // painted before undo
+        XCTAssertTrue(s.canUndo)
+        s.undo()
+        XCTAssertEqual(pixel(s, 5, 5), .transparent)   // one undo wipes the whole stroke
+        XCTAssertFalse(s.canUndo)
+    }
 }

@@ -403,21 +403,9 @@ struct EditorView: View {
 
         switch state.tool {
         case .pencil:
-            state.mutateActiveLayerPixels { data in
-                var grid = PixelGrid(data: data, size: state.size)
-                state.revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: (x, y))
-                Pencil.paint(on: &grid, at: (x, y), color: state.color)
-                if mirror { Pencil.paint(on: &grid, at: (mx, y), color: state.color) }
-                data = grid.data
-            }
+            state.stampBrush(.pencil, at: (x, y))
         case .eraser:
-            state.mutateActiveLayerPixels { data in
-                var grid = PixelGrid(data: data, size: state.size)
-                state.revertPixelPerfectElbow(grid: &grid, beforeApplyingAt: (x, y))
-                Eraser.erase(on: &grid, at: (x, y))
-                if mirror { Eraser.erase(on: &grid, at: (mx, y)) }
-                data = grid.data
-            }
+            state.stampBrush(.eraser, at: (x, y))
         case .fill:
             state.mutateActiveLayerPixels { data in
                 var grid = PixelGrid(data: data, size: state.size)
