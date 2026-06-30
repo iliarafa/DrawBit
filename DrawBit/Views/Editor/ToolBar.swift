@@ -15,14 +15,20 @@ struct ToolBar: View {
             ForEach(Tool.allCases, id: \.self) { tool in
                 Button {
                     SelectionFeedback.shared.fire()
-                    state.setTool(tool)
+                    if state.tool == tool, tool == .pencil || tool == .eraser {
+                        state.cycleBrushSize(for: tool)
+                    } else {
+                        state.setTool(tool)
+                    }
                 } label: {
-                    iconLabel(systemImage: tool.sfSymbol, title: tool.displayName)
+                    toolLabel(tool)
                         .foregroundStyle(state.tool == tool ? Color.toolSelected : Color.white.opacity(0.55))
                         .hoverPop()
                 }
                 .buttonStyle(.plain)
                 .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("Tool-\(tool.rawValue)")
+                .accessibilityValue(tool == .pencil || tool == .eraser ? "\(state.brushSize(for: tool))" : "")
             }
 
             // MIRROR — stroke-modifier toggle. Lives next to the tools because
@@ -80,6 +86,45 @@ struct ToolBar: View {
                 .fixedSize(horizontal: true, vertical: false)
         }
         .frame(minWidth: 44, minHeight: 44)
+    }
+
+    /// Pencil/eraser show scheme-C nib glyphs; every other tool keeps its SF Symbol.
+    @ViewBuilder
+    private func toolLabel(_ tool: Tool) -> some View {
+        if tool == .pencil || tool == .eraser {
+            nibLabel(filled: tool == .pencil, size: state.brushSize(for: tool), title: tool.displayName)
+        } else {
+            iconLabel(systemImage: tool.sfSymbol, title: tool.displayName)
+        }
+    }
+
+    /// Scheme-C glyph: the tool's icon *is* the square it paints — pencil filled, eraser hollow.
+    /// The on-screen side maps size 1...4 to a comfortable point range so size 1 still reads as a
+    /// deliberate square. Mirrors `iconLabel`'s 24-pt-glyph + 8-pt-pixel-label shape, and inherits
+    /// the foreground colour (teal when selected, dim white otherwise).
+    private func nibLabel(filled: Bool, size: Int, title: String) -> some View {
+        let side = nibGlyphSide(for: size)
+        return VStack(spacing: 8) {
+            ZStack {
+                if filled {
+                    Rectangle().frame(width: side, height: side)
+                } else {
+                    Rectangle().stroke(lineWidth: 1.5).frame(width: side, height: side)
+                }
+            }
+            .frame(width: 24, height: 24)
+            Text(title.uppercased())
+                .font(.pixel(8))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .frame(minWidth: 44, minHeight: 44)
+    }
+
+    /// Nib size 1...4 → glyph side in points.
+    private func nibGlyphSide(for size: Int) -> CGFloat {
+        let sides: [CGFloat] = [8, 12, 16, 20]
+        return sides[min(max(size, 1), 4) - 1]
     }
 
     /// Mirrors `iconLabel`'s 20pt-glyph + 8pt-pixel-label shape, but renders a
