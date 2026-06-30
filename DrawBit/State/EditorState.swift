@@ -22,6 +22,15 @@ final class EditorState {
     var tool: Tool = .pencil
     var color: RGBA = RGBA(r: 255, g: 255, b: 255, a: 255)
 
+    /// Square brush nib side for the pencil, within `brushSizeRange`. Session-only — resets to 1
+    /// when the editor closes. Independent from `eraserSize` so a fat eraser and a fine pencil coexist.
+    var pencilSize: Int = 1
+    /// Square brush nib side for the eraser. Session-only. See `pencilSize`.
+    var eraserSize: Int = 1
+    /// Inclusive range the nib cycles through. Raise the upper bound here to offer larger brushes;
+    /// `cycleBrushSize` and the toolbar glyph both read it.
+    let brushSizeRange = 1...4
+
     /// True while `PlaybackController` is advancing frames. Display-only state used to
     /// gate input (canvas hit-testing, frame/layer ops) and surface the play/pause icon.
     /// Cleared on `PlaybackController.stop()`. Not persisted.
@@ -163,6 +172,31 @@ final class EditorState {
 
     func setActiveLayerPixels(_ data: Data) {
         frame.withActiveLayerPixels { $0 = data }
+    }
+
+    // MARK: - Brush size
+
+    /// The active nib side for `tool` (1 for any tool that doesn't take a size).
+    func brushSize(for tool: Tool) -> Int {
+        switch tool {
+        case .pencil: pencilSize
+        case .eraser: eraserSize
+        default: 1
+        }
+    }
+
+    /// Steps the tool's nib up one and wraps at `brushSizeRange.upperBound`. No-op for tools that
+    /// don't take a size. Driven by tapping the already-selected pencil/eraser.
+    func cycleBrushSize(for tool: Tool) {
+        switch tool {
+        case .pencil: pencilSize = nextBrushSize(pencilSize)
+        case .eraser: eraserSize = nextBrushSize(eraserSize)
+        default: break
+        }
+    }
+
+    private func nextBrushSize(_ s: Int) -> Int {
+        s >= brushSizeRange.upperBound ? brushSizeRange.lowerBound : s + 1
     }
 
     /// Transient: whether the hold-to-straighten line was at a "perfect" angle on the last re-aim.
