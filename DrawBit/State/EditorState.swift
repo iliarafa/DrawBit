@@ -80,6 +80,11 @@ final class EditorState {
     /// Session-only show/hide of the backdrop. Not persisted (defaults visible when a reference exists).
     var isReferenceVisible: Bool = true
 
+    /// The reference image rendered onto the canvas grid (aspect-fit, sRGB, alpha 0/255), recomputed
+    /// in `setReference`. Lets the eyedropper sample the display-only reference where layers are
+    /// blank. Transient — never a `Layer`, never composited into exports.
+    private(set) var referenceGrid: PixelGrid?
+
     var selection: MarqueeSelection?
     var pendingMarqueeRect: PixelRect?
 
@@ -217,6 +222,9 @@ final class EditorState {
     func setReference(imageData: Data?) {
         referenceImageData = imageData
         referenceImage = imageData.flatMap { UIImage(data: $0) }
+        referenceGrid = imageData
+            .flatMap { ReferenceSampler.renderToCanvasGrid($0, size: size) }
+            .map { PixelGrid(data: $0, size: size) }
     }
 
     // MARK: - Drawing-stroke undo

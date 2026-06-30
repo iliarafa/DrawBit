@@ -36,6 +36,27 @@ final class EditorStateReferenceTests: XCTestCase {
         XCTAssertNil(s.referenceImage)
     }
 
+    func testSetReferenceComputesGrid() {
+        let s = makeState()
+        XCTAssertNil(s.referenceGrid)
+        s.setReference(imageData: Self.tinyPNG())
+        // The 4×4 red PNG fills the square canvas. Assert the grid is present, opaque, and reddish.
+        // Exact sRGB color preservation is covered by ReferenceSamplerTests; this fixture's PNG isn't
+        // sRGB-tagged, so its decoded red drifts a few points (a fixture quirk, not the sampler).
+        let c = s.referenceGrid?.pixel(x: 8, y: 8)
+        XCTAssertEqual(c?.a, 255)               // reference present + opaque
+        XCTAssertGreaterThan(c?.r ?? 0, 200)    // sampled the red reference, not blank/blue
+        XCTAssertLessThan(c?.b ?? 255, 80)
+    }
+
+    func testNilReferenceClearsGrid() {
+        let s = makeState()
+        s.setReference(imageData: Self.tinyPNG())
+        XCTAssertNotNil(s.referenceGrid)
+        s.setReference(imageData: nil)
+        XCTAssertNil(s.referenceGrid)
+    }
+
     private static func tinyPNG() -> Data {
         let cs = CGColorSpace(name: CGColorSpace.sRGB)!
         let ctx = CGContext(data: nil, width: 4, height: 4, bitsPerComponent: 8,
