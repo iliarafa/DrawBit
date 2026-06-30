@@ -47,10 +47,11 @@ suite). What changed, by layer:
 ## Still next
 **Founder decisions (2026-06-29): PNG import and the rectangle tool are DROPPED — do not
 re-propose them.** Remaining queue:
-- **Brush size — ACTIVE (building now).** 2/3/4px square+round for pencil+eraser; watch the
-  pixel-perfect-elbow + mirror interaction.
-- **Time-lapse / process replay** — kept in the queue; the standout delight/virality play, biggest
-  lift, deserves its own brainstorm. Reuses stroke snapshots + the GIF/APNG exporters.
+- **Brush size — SHIPPED 2026-06-29** (square nib 1–4, cycle-on-tap, scheme-C glyph; pencil + eraser,
+  thick straight line too). On `main` locally at `a78e110` (not pushed). Spec/plan under
+  `docs/superpowers/{specs,plans}/2026-06-29-brush-size*`; details in memory `project_brush_size`.
+- **Time-lapse / process replay** — the one remaining queued item; the standout delight/virality
+  play, biggest lift, deserves its own brainstorm. Reuses stroke snapshots + the GIF/APNG exporters.
 
 DrawBit's guiding star (from the founder): a **calm, premium, single-player pixel app that feels
 like a beautiful machine.** Judge each item by "does it remove friction from joyful making."
