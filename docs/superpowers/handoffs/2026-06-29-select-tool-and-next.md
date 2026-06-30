@@ -44,16 +44,13 @@ suite). What changed, by layer:
 - A true **free-form lasso / magic wand** was explicitly deferred — it's a whole selection-shape
   system on top of this. Its own item if the user wants it.
 
-## Still next (carried from the 2026-06-28 handoff)
-The other three candidates are untouched. Full context + reuse pointers live in
-`docs/superpowers/handoffs/2026-06-28-next-lasso-timelapse-rect-brushes.md` and memory
-(`project_audit_followups`). Quick recap:
-- **Time-lapse / process replay (#2)** — the standout delight/virality play, biggest lift; deserves
-  its own brainstorm. Reuses stroke snapshots + the GIF/APNG exporters.
-- **Rectangle tool (#3)** — next shape after the line; pure `RectTool` mirroring `LineTool`, plus a
-  toolbar/mode decision. Could share the new `SelectionActionBar` pattern for a shape-options strip.
-- **Brush size (#4)** — 2/3/4px square+round for pencil+eraser; watch the pixel-perfect-elbow +
-  mirror interaction.
+## Still next
+**Founder decisions (2026-06-29): PNG import and the rectangle tool are DROPPED — do not
+re-propose them.** Remaining queue:
+- **Brush size — ACTIVE (building now).** 2/3/4px square+round for pencil+eraser; watch the
+  pixel-perfect-elbow + mirror interaction.
+- **Time-lapse / process replay** — kept in the queue; the standout delight/virality play, biggest
+  lift, deserves its own brainstorm. Reuses stroke snapshots + the GIF/APNG exporters.
 
 DrawBit's guiding star (from the founder): a **calm, premium, single-player pixel app that feels
 like a beautiful machine.** Judge each item by "does it remove friction from joyful making."
