@@ -94,4 +94,26 @@ final class LineToolTests: XCTestCase {
     func testZeroLengthIsNotPerfect() {
         XCTAssertFalse(LineTool.isPerfectAngle(from: (4, 4), to: (4, 4)))
     }
+
+    // MARK: - brush size (thick lines)
+
+    func testThickLineStampsNib() {
+        // Horizontal line y=2, x 1...5, 3-px nib → 3 rows tall (y 1...3) and widened by the nib.
+        let out = LineTool.apply(to: blank(), size: size, from: (1, 2), to: (5, 2),
+                                 color: red, mirror: false, brushSize: 3)
+        for y in 1...3 { XCTAssertTrue(isSet(out, 3, y), "middle column row \(y)") }
+        XCTAssertTrue(isSet(out, 0, 2))    // extended left by the nib
+        XCTAssertTrue(isSet(out, 6, 2))    // extended right by the nib
+        XCTAssertFalse(isSet(out, 3, 0))   // not 4 rows tall
+        XCTAssertFalse(isSet(out, 3, 4))
+    }
+
+    func testDefaultBrushSizeIsThin() {
+        // No brushSize arg == 1 px (existing behavior): the line is exactly 1 row tall.
+        let out = LineTool.apply(to: blank(), size: size, from: (1, 2), to: (5, 2),
+                                 color: red, mirror: false)
+        XCTAssertTrue(isSet(out, 3, 2))
+        XCTAssertFalse(isSet(out, 3, 1))
+        XCTAssertFalse(isSet(out, 3, 3))
+    }
 }

@@ -9,14 +9,32 @@ import Foundation
 /// across the vertical centerline (`x → width-1-x`), matching the pencil's mirror behavior.
 enum LineTool {
     static func apply(to base: Data, size: CanvasSize, from: (Int, Int), to: (Int, Int),
-                      color: RGBA, mirror: Bool) -> Data {
+                      color: RGBA, mirror: Bool, brushSize: Int = 1) -> Data {
         var grid = PixelGrid(data: base, size: size)
-        Pencil.paintLine(on: &grid, from: from, to: to, color: color)
+        stampLine(on: &grid, from: from, to: to, color: color, brushSize: brushSize)
         if mirror {
             let w = size.width - 1
-            Pencil.paintLine(on: &grid, from: (w - from.0, from.1), to: (w - to.0, to.1), color: color)
+            stampLine(on: &grid, from: (w - from.0, from.1), to: (w - to.0, to.1),
+                      color: color, brushSize: brushSize)
         }
         return grid.data
+    }
+
+    /// Bresenham line, stamped with a square nib at each point. A 1-px nib is the original
+    /// single-pixel `Pencil.paintLine`; larger nibs stamp `Brush.squareCells` per point (gaps are
+    /// impossible because consecutive Bresenham points are adjacent). Out-of-bounds cells are
+    /// dropped by `PixelGrid.setPixel`.
+    private static func stampLine(on grid: inout PixelGrid, from: (Int, Int), to: (Int, Int),
+                                  color: RGBA, brushSize: Int) {
+        if brushSize <= 1 {
+            Pencil.paintLine(on: &grid, from: from, to: to, color: color)
+            return
+        }
+        for p in bresenhamLine(from: from, to: to) {
+            for (cx, cy) in Brush.squareCells(centeredAt: p, size: brushSize) {
+                grid.setPixel(x: cx, y: cy, color: color)
+            }
+        }
     }
 
     /// Whether a line from `from` to `to` lands on a "perfect" pixel angle — horizontal, vertical,

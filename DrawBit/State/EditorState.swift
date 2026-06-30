@@ -210,7 +210,7 @@ final class EditorState {
     func applyStraightLine(from: (Int, Int), to: (Int, Int), mirror: Bool) {
         guard let base = preStrokeSnapshot else { return }
         setActiveLayerPixels(LineTool.apply(to: base, size: size, from: from, to: to,
-                                            color: color, mirror: mirror))
+                                            color: color, mirror: mirror, brushSize: pencilSize))
     }
 
     /// Sets the reference photo from stored bytes, decoding for display. Pass nil to clear.
