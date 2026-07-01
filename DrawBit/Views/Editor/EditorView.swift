@@ -51,6 +51,7 @@ struct EditorView: View {
         }
         editorState.setReference(imageData: piece.referenceImageData)
         editorState.referenceOpacity = piece.referenceOpacity
+        editorState.loadTimelapse(piece.timelapseData)
         self._state = State(initialValue: editorState)
         self.loadFailed = failed
     }
@@ -236,6 +237,7 @@ struct EditorView: View {
                 }
             }
             saveCurrentFrame()
+            saveTimelapse()
         }
         .sheet(isPresented: $showingDeleteFrameConfirm) {
             ConfirmDialogSheet(
@@ -335,6 +337,7 @@ struct EditorView: View {
                 // export reads from SwiftData. Otherwise the user's in-flight
                 // cut+drag wouldn't appear in the exported GIF/APNG/PNG.
                 commitFloatingMarqueeAndPersist()
+                saveTimelapse()   // so the sheet's FILM export sees this session's steps
                 showingShareSheet = true
             } label: {
                 // Vector glyph drawn to match the LAYERS icon's stroke weight, at the
@@ -578,6 +581,17 @@ struct EditorView: View {
         try? repo.saveReference(piece: piece,
                                 imageData: state.referenceImageData,
                                 opacity: state.referenceOpacity)
+    }
+
+    /// Persist the time-lapse recording. `recordKeyframe()` first finalizes the clip
+    /// on the real current canvas (covers "ended on an undo"); then the encoded blob
+    /// is saved. Called on editor close and just before the share sheet opens (which
+    /// re-reads `piece.timelapseData`). Gated by `loadFailed` like every other save.
+    private func saveTimelapse() {
+        guard !loadFailed else { return }
+        state.recordKeyframe()
+        let repo = PieceRepository(context: modelContext)
+        try? repo.saveTimelapse(piece: piece, blob: state.encodedTimelapse())
     }
 
     private func clearCanvas() {
