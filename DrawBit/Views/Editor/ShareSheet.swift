@@ -18,8 +18,27 @@ struct ShareSheet: View {
     @State private var activeIndex = 0
     @State private var fps = 12
 
+    /// Sampled, decompressed time-lapse keyframes (RGBA canvases), ready for the
+    /// FILM preview + MP4 export. Empty ⇒ nothing recorded yet (tile disabled).
+    @State private var filmRGBA: [Data] = []
+
+    /// Below this, the FILM tile is disabled (no motion to show).
+    private static let minFilmFrames = 2
+
     private var outputWidth: Int { piece.size.width * selectedScale }
     private var outputHeight: Int { piece.size.height * selectedScale }
+
+    /// Film keyframes wrapped as single-layer Frames so ExportPreview renders them
+    /// through the existing pipeline.
+    private var filmFrames: [Frame] {
+        filmRGBA.map { rgba in
+            let l = Layer(name: "", pixels: rgba)
+            return Frame(layers: [l], activeLayerID: l.id)
+        }
+    }
+
+    private var previewFrames: [Frame] { selectedFormat == .film ? filmFrames : frames }
+    private var previewFPS: Int { selectedFormat == .film ? Timelapse.clipFPS : fps }
 
     /// Output formats. PNG always works (single-frame snapshot of the active frame);
     /// GIF and APNG are animated and require the underlying piece to actually have
@@ -30,6 +49,10 @@ struct ShareSheet: View {
         case gif
         case apng
         case spriteSheet
+        /// The time-lapse: an MP4 of the drawing's recorded process (not the current
+        /// frames). Different SOURCE from the others, but users read it as "the film
+        /// of it" so it lives in the same FORMAT grid.
+        case film
         var id: String { rawValue }
 
         var label: String {
@@ -38,6 +61,7 @@ struct ShareSheet: View {
             case .gif:         "GIF"
             case .apng:        "APNG"
             case .spriteSheet: "Sprite"
+            case .film:        "FILM"
             }
         }
 
@@ -47,6 +71,7 @@ struct ShareSheet: View {
             case .gif:         "gif"
             case .apng:        "apng"
             case .spriteSheet: "png"
+            case .film:        "mp4"
             }
         }
 
@@ -57,6 +82,7 @@ struct ShareSheet: View {
             case .gif:         .gif
             case .apng:        .apng
             case .spriteSheet: .spriteSheet
+            case .film:        .film
             }
         }
     }
@@ -74,10 +100,10 @@ struct ShareSheet: View {
             header
 
             ExportPreview(
-                frames: frames,
-                activeIndex: activeIndex,
+                frames: previewFrames,
+                activeIndex: selectedFormat == .film ? 0 : activeIndex,
                 size: piece.size,
-                fps: fps,
+                fps: previewFPS,
                 format: selectedFormat,
                 outputWidth: outputWidth,
                 outputHeight: outputHeight
@@ -88,7 +114,7 @@ struct ShareSheet: View {
                 .foregroundStyle(.white.opacity(0.6))
                 .lineLimit(1)
 
-            section(title: "FORMAT", columns: 4) {
+            section(title: "FORMAT", columns: 5) {
                 ForEach(ExportFormat.allCases) { formatTile(format: $0) }
             }
 
@@ -181,10 +207,16 @@ struct ShareSheet: View {
             activeIndex = loaded.activeFrameIndex
             fps = loaded.fps
         }
+        // Decode + evenly sample + decompress the recorded process for the FILM tile.
+        let compressed = piece.timelapseData.flatMap { TimelapseCodec.decode($0) } ?? []
+        filmRGBA = Timelapse.sample(compressed, to: Timelapse.targetClipFrames)
+            .compactMap { KeyframeCodec.decompress($0) }
     }
 
     private func formatTile(format f: ExportFormat) -> some View {
         let isSelected = f == selectedFormat
+        // FILM needs at least a couple of recorded steps to be worth exporting.
+        let disabled = f == .film && filmRGBA.count < Self.minFilmFrames
         return Button {
             selectedFormat = f
         } label: {
@@ -194,16 +226,25 @@ struct ShareSheet: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.white : Color.white.opacity(0.15),
                             lineWidth: isSelected ? 2 : 0.5)
-                Text(f.label)
-                    .font(.pixel(14))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
+                VStack(spacing: 2) {
+                    Text(f.label)
+                        .font(.pixel(14))
+                        .foregroundStyle(.white.opacity(disabled ? 0.3 : 1))
+                        .lineLimit(1)
+                    if disabled {
+                        Text("KEEP DRAWING")
+                            .font(.pixel(7))
+                            .foregroundStyle(.white.opacity(0.4))
+                            .lineLimit(1)
+                    }
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
         .accessibilityIdentifier("ShareSheet.format.\(f.rawValue)")
     }
 
@@ -344,7 +385,20 @@ struct ShareSheet: View {
         // auto-cancel on ShareSheet dismiss) is the follow-up that makes the
         // checkpoints actually fire. Until then, `try?` here swallows the
         // theoretical CancellationError the same way it swallows other failures.
+        // Lift the film keyframes into a local so the detached task doesn't capture `self`.
+        let film = filmRGBA
+
         let writtenURL: URL? = await Task.detached(priority: .userInitiated) {
+            // Film writes the MP4 straight to `url`; the others produce Data we then write.
+            if format == .film {
+                do {
+                    try MP4Exporter.export(keyframes: film, size: size, scale: scale,
+                                           fps: Timelapse.clipFPS, to: url)
+                    return url
+                } catch {
+                    return nil
+                }
+            }
             let data: Data?
             switch format {
             case .png:
@@ -355,6 +409,8 @@ struct ShareSheet: View {
                 data = try? APNGExporter.export(frames: allFrames, size: size, scale: scale, fps: exportFPS)
             case .spriteSheet:
                 data = SpriteSheetExporter.export(frames: allFrames, size: size, scale: scale)
+            case .film:
+                data = nil   // handled above
             }
             guard let data else { return nil }
             do {

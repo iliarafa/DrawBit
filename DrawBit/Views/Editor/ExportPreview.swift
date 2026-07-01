@@ -17,8 +17,13 @@ struct ExportPreview: View {
     /// Cached nearest-neighbor renders of every frame (built once; reused by all modes).
     @State private var images: [CGImage] = []
 
-    private var isAnimated: Bool { format == .gif || format == .apng }
+    private var isAnimated: Bool { format == .gif || format == .apng || format == .film }
     private var safeFPS: Int { max(1, fps) }
+
+    /// Re-render whenever the source changes. FILM feeds a DIFFERENT frame array
+    /// (the recorded process) than the other formats (the piece's frames), so the
+    /// cached images must rebuild on the format switch, not just on a count change.
+    private var renderKey: String { "\(format.rawValue)#\(frames.count)" }
 
     var body: some View {
         ZStack {
@@ -29,7 +34,7 @@ struct ExportPreview: View {
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.white.opacity(0.15), lineWidth: 0.5))
-        .task(id: frames.count) { renderImages() }
+        .task(id: renderKey) { renderImages() }
         .accessibilityIdentifier("ExportPreview")
     }
 
@@ -108,7 +113,7 @@ struct ExportPreview: View {
             return outputWidth == outputHeight
                 ? "PNG · \(outputWidth)px"
                 : "PNG · \(outputWidth)×\(outputHeight)"
-        case .gif, .apng:
+        case .gif, .apng, .film:
             let secs = Double(max(1, frames.count)) / Double(safeFPS)
             return "\(format.label) · \(String(format: "%.1f", secs))s"
         case .spriteSheet:
@@ -131,7 +136,9 @@ struct ExportPreview: View {
     }
 
     private func renderImages() {
-        guard images.isEmpty, !frames.isEmpty else { return }
+        // Rebuild on every source change (keyed by `renderKey`) — FILM swaps in a
+        // different frame array, so we can't early-out when `images` is non-empty.
+        guard !frames.isEmpty else { images = []; return }
         images = frames.compactMap {
             FrameThumbnailRenderer.renderCGImage(frame: $0, size: size, targetEdge: 512)
         }
