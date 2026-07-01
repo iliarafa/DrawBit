@@ -117,6 +117,14 @@ final class EditorState {
 
     private var pixelPerfectBuffer = PixelPerfectStroke()
 
+    /// Session recorder for the time-lapse. Not observed — no view reads it in a
+    /// body, so mutating it per stroke triggers no re-render. Persisted separately
+    /// via `encodedTimelapse()` / restored via `loadTimelapse(_:)`.
+    @ObservationIgnored private var timelapse = TimelapseRecording()
+
+    /// Number of keyframes recorded so far (drives the FILM export tile's gating).
+    var timelapseFrameCount: Int { timelapse.frames.count }
+
     private let undoLimit = 50
 
     /// Tighter cap for `.sequenceStructure` entries specifically. Each one
@@ -257,6 +265,7 @@ final class EditorState {
         preStrokeLayerID = nil
         preStrokeFrameID = nil
         pixelPerfectBuffer.reset()
+        recordKeyframe()
     }
 
     func cancelStroke() {
@@ -274,6 +283,30 @@ final class EditorState {
         preStrokeLayerID = nil
         preStrokeFrameID = nil
         pixelPerfectBuffer.reset()
+    }
+
+    // MARK: - Time-lapse recording
+
+    /// Snapshot the composited canvas (layers only — never the reference photo) and
+    /// append it to the recording. Deduped/thinned inside `TimelapseRecording`.
+    /// Called at every commit point, and again on close/share to finalize (so the
+    /// clip always ends on the real canvas even if the last action was an undo).
+    func recordKeyframe() {
+        let buffer = Compositor.composite(frame, size: size)
+        if let blob = KeyframeCodec.compress(buffer.data) {
+            timelapse.append(blob)
+        }
+    }
+
+    /// Restore a persisted recording when a piece is reopened. nil / corrupt → empty.
+    func loadTimelapse(_ blob: Data?) {
+        let frames = blob.flatMap { TimelapseCodec.decode($0) } ?? []
+        timelapse = TimelapseRecording(frames: frames)
+    }
+
+    /// Encoded recording for persistence, or nil when nothing has been recorded.
+    func encodedTimelapse() -> Data? {
+        timelapse.frames.isEmpty ? nil : TimelapseCodec.encode(timelapse.frames)
     }
 
     /// Pencil/eraser stroke filtering: append the new point and, if the trailing three points
@@ -329,6 +362,7 @@ final class EditorState {
         guard let snap = preStructuralSnapshot else { return }
         push(.frameStructure(before: snap))
         preStructuralSnapshot = nil
+        recordKeyframe()
     }
 
     func cancelStructuralChange() {
@@ -348,6 +382,7 @@ final class EditorState {
         guard let snap = preSequenceSnapshot else { return }
         push(.sequenceStructure(beforeFrames: snap.frames, beforeActive: snap.activeFrameIndex))
         preSequenceSnapshot = nil
+        recordKeyframe()
     }
 
     func cancelSequenceChange() {
