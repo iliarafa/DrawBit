@@ -84,6 +84,16 @@ final class PieceRepository {
         try context.save()
     }
 
+    // MARK: - Time-lapse
+
+    /// Persists the time-lapse recording blob (nil clears it). The blob is produced
+    /// by `EditorState.encodedTimelapse()`. Never part of `frameData`.
+    func saveTimelapse(piece: Piece, blob: Data?) throws {
+        piece.timelapseData = blob
+        piece.updatedAt = Date()
+        try context.save()
+    }
+
     // MARK: - Single-frame shims (V1 API, delegates to sequence methods)
 
     /// Loads a Frame for the given piece. Delegates to `loadFrames` which handles all
@@ -148,6 +158,7 @@ final class PieceRepository {
         copy.thumbnail = piece.thumbnail
         copy.referenceImageData = piece.referenceImageData
         copy.referenceOpacity = piece.referenceOpacity
+        copy.timelapseData = piece.timelapseData
         if let original = piece.name, !original.isEmpty {
             copy.name = "\(original) copy"
         } else {

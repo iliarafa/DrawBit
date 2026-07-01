@@ -38,6 +38,13 @@ final class Piece {
     /// piece reopens as the user left it. Default chosen for a readable lightbox look.
     var referenceOpacity: Double = 0.35
 
+    /// Optional saved time-lapse recording — a `TimelapseCodec` blob (a list of
+    /// zlib-compressed composited keyframes). Display/export-only: never part of
+    /// `frameData`, never composited into a normal export. External storage keeps
+    /// the row light. Additive optional column → inferred lightweight migration
+    /// (no new schema; see `DrawBitSchema.swift`).
+    @Attribute(.externalStorage) var timelapseData: Data?
+
     var size: CanvasSize {
         get { CanvasSize(width: sizeRaw, height: heightRaw == 0 ? sizeRaw : heightRaw) }
         set {
