@@ -32,7 +32,7 @@ enum ExportSizeBudget {
     /// in a separate enum here so this file stays Foundation-only and is trivial
     /// to test without pulling in SwiftUI or any view dependency.
     enum Format {
-        case png, gif, apng, spriteSheet
+        case png, gif, apng, spriteSheet, film
     }
 
     /// Worst-case output dimensions in pixels. PNG / GIF / APNG produce a single
@@ -49,7 +49,9 @@ enum ExportSizeBudget {
         let cellW = max(0, canvasWidth) * max(0, scale)
         let cellH = max(0, canvasHeight) * max(0, scale)
         switch format {
-        case .png, .gif, .apng:
+        case .png, .gif, .apng, .film:
+            // Film is a single-cell frame per keyframe (the writer streams them);
+            // its worst-case allocation is one output-sized context, same as PNG.
             return (cellW, cellH)
         case .spriteSheet:
             let (cols, rows) = spriteSheetGrid(frameCount: frameCount)
@@ -100,7 +102,10 @@ enum ExportSizeBudget {
                 .multipliedReportingOverflow(by: frameCount)
             if overflow { return true }
             return total > maxAnimatedTotalBytes
-        case .png, .spriteSheet:
+        case .png, .spriteSheet, .film:
+            // Film (MP4) streams frame-by-frame through AVAssetWriter, so there's no
+            // accumulated raw-RGBA jetsam risk like GIF/APNG — only the per-frame
+            // context, already bounded by `maxContextEdge` above.
             return false
         }
     }
