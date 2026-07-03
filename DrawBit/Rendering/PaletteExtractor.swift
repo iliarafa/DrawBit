@@ -9,9 +9,8 @@ enum PaletteExtractor {
         let grid = PixelGrid(data: Compositor.composite(frame, size: size).data, size: size)
         var seen = Set<String>()
         var ordered: [String] = []
-        let dim = size.dimension
-        for y in 0..<dim {
-            for x in 0..<dim {
+        for y in 0..<size.height {
+            for x in 0..<size.width {
                 let p = grid.pixel(x: x, y: y)
                 guard p.a == 255 else { continue }
                 let hex = String(format: "%02X%02X%02X", p.r, p.g, p.b)

@@ -37,6 +37,29 @@ final class PaletteExtractorTests: XCTestCase {
         XCTAssertEqual(PaletteExtractor.colors(in: f, size: .s16), ["00FF00"])
     }
 
+    func testPortraitCanvasScansBelowTheSquareRegion() {
+        // 9:16 portrait (18×32): a color painted below y == width must still be found.
+        let size = CanvasSize(ratio: .r9x16, longestEdge: 32)
+        XCTAssertEqual(size.width, 18)
+        XCTAssertEqual(size.height, 32)
+        let f = frame(size: size) { g in
+            g.setPixel(x: 0, y: 0, color: red)
+            g.setPixel(x: 5, y: 28, color: blue)  // below the top width×width square
+        }
+        XCTAssertEqual(PaletteExtractor.colors(in: f, size: size), ["FF0000", "0000FF"])
+    }
+
+    func testLandscapeCanvasScansFullWidth() {
+        // 16:9 landscape (32×18): the far-right column must be found.
+        let size = CanvasSize(ratio: .r16x9, longestEdge: 32)
+        XCTAssertEqual(size.width, 32)
+        XCTAssertEqual(size.height, 18)
+        let f = frame(size: size) { g in
+            g.setPixel(x: 31, y: 17, color: green)
+        }
+        XCTAssertEqual(PaletteExtractor.colors(in: f, size: size), ["00FF00"])
+    }
+
     func testLimitRespected() {
         let f = frame(size: .s16) { g in
             g.setPixel(x: 0, y: 0, color: red)
