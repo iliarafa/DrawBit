@@ -1,4 +1,4 @@
-# Handoff — 2026-07-03 (palette non-square fix + HELP copy refresh)
+# Handoff — 2026-07-03 (palette non-square fix + HELP copy refresh + HELP landscape fix)
 
 Session scope was set by the founder explicitly: **no new features** — fix the known bug, polish,
 and bring the HELP page up to date. Also housekeeping: the three untracked marketing PNGs
@@ -24,6 +24,21 @@ and bring the HELP page up to date. Also housekeeping: the three untracked marke
   - **EXPORT:** + "FILM: your draw painting itself, start to finish."
   - Verified untruncated on the 13-inch iPad sim via a throwaway XCUITest screenshot (temp test
     removed before commit; all four tiles render their full body, 4–5 lines each).
+
+## Also shipped later the same day: HELP landscape fix (`962879e`)
+
+Founder reported landscape crushed HELP (back chip invisible, title on the bezel). Root cause: a
+fixed no-scroll VStack (~1,140pt content vs ~940pt landscape region). Fix: back row is pinned
+chrome; everything below scrolls via `GeometryReader` + `ScrollView` + `.frame(minHeight:
+geo.size.height)` — the minHeight frame is load-bearing (without it, Spacers inside a ScrollView
+collapse to their minimum and portrait would lose its centering). `.scrollBounceBehavior(.basedOnSize)`
+keeps the fitting (portrait) case static. Grid stays the eager `Grid` (a11y/test contract).
+Regression test `testLandscapeKeepsBackChipVisibleAndAboutReachable` was red-first; **suite now
+445 unit + 37 UI, 0 failures**. New conventions documented: rotation tests restore portrait in
+`tearDown` (CLAUDE.md) + Help layout contract (spec, new HelpScreen subsection under Screens).
+Extra gotcha for screenshot verification: under a rotated device use `XCUIScreen.main.screenshot()`
+(raw portrait framebuffer; rotate the PNG upright with `sips -r 270`) — `app.screenshot()`
+mis-frames and clips in landscape.
 
 ## Verification
 
