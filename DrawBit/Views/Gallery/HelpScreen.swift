@@ -4,10 +4,12 @@ import SwiftUI
 /// `info` button in the `GALLERY` header. Pure static content — no environment
 /// dependencies.
 ///
-/// Layout is a 2-column grid of compact icon+title tiles, vertically centered
-/// between the back chip and a version footer. Tapping a tile reveals that
-/// topic's instructions *in place* — the text replaces the icon+title within the
-/// tile's own footprint; the row-mate stays put (no full-row expansion).
+/// Layout is a 2-column grid of compact icon+title tiles between the back chip
+/// and a version footer — vertically centered when the viewport fits it
+/// (portrait), scrolling under the pinned back chip when it doesn't
+/// (landscape). Tapping a tile reveals that topic's instructions *in place* —
+/// the text replaces the icon+title within the tile's own footprint; the
+/// row-mate stays put (no full-row expansion).
 /// Each tile toggles independently; open tiles stay open until tapped again. The
 /// ANIMATION tile reuses the editor's ANIMATE play sprite
 /// (`PixelArtIcon.playTriangle`) so it reads as the same control.
@@ -159,24 +161,41 @@ struct HelpScreen: View {
         VStack(spacing: 0) {
             backRow
 
-            Spacer(minLength: 24)
+            // Landscape can't fit the eager 5-row grid, so everything below the
+            // back chip scrolls. The minHeight frame recreates the portrait
+            // geometry exactly: when the content fits, the two Spacers split the
+            // leftover equally (title+grid centered, footer at the bottom); when
+            // it doesn't, they collapse to their 24pt minimum and the ScrollView
+            // takes over. Without that frame, ScrollView proposes unbounded
+            // height and the Spacers would always sit at minimum.
+            GeometryReader { geo in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 24)
 
-            VStack(spacing: 24) {
-                VStack(spacing: 10) {
-                    Text("HELP")
-                        .font(.pixel(18))
-                        .foregroundStyle(.white)
-                    Text("TAP A TOPIC FOR DETAILS")
-                        .font(.pixel(8))
-                        .foregroundStyle(.white.opacity(0.4))
+                        VStack(spacing: 24) {
+                            VStack(spacing: 10) {
+                                Text("HELP")
+                                    .font(.pixel(18))
+                                    .foregroundStyle(.white)
+                                Text("TAP A TOPIC FOR DETAILS")
+                                    .font(.pixel(8))
+                                    .foregroundStyle(.white.opacity(0.4))
+                            }
+                            topicGrid
+                                .padding(.horizontal, 20)
+                        }
+
+                        Spacer(minLength: 24)
+
+                        footer
+                    }
+                    .frame(maxWidth: .infinity, minHeight: geo.size.height)
                 }
-                topicGrid
-                    .padding(.horizontal, 20)
+                // Content exactly equals the viewport when it fits — without
+                // this, the static portrait screen would rubber-band.
+                .scrollBounceBehavior(.basedOnSize)
             }
-
-            Spacer(minLength: 24)
-
-            footer
         }
         .background(Color(white: 0.10).ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
