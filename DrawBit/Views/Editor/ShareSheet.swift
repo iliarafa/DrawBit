@@ -268,13 +268,13 @@ struct ShareSheet: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.white : Color.white.opacity(0.15),
                             lineWidth: isSelected ? 2 : 0.5)
-                VStack(spacing: 4) {
+                VStack(spacing: 2) {
                     // The actual exported size in px: one number when square, W×H when not.
                     // "TOO BIG" only appears on over-budget tiles, keeping normal tiles tidy.
                     // `verbatim:` to bypass SwiftUI's LocalizedStringKey number grouping —
                     // we want "1920", not a comma-grouped "1,920".
                     Text(verbatim: label)
-                        .font(.pixel(14))
+                        .font(.pixel(12))
                         .foregroundStyle(.white.opacity(primaryOpacity))
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
@@ -287,7 +287,9 @@ struct ShareSheet: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 72)
+            // Deliberately shorter and quieter than the 56pt FORMAT tiles — SIZE
+            // is the secondary choice on this sheet. 44pt is the hit-target floor.
+            .frame(height: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
