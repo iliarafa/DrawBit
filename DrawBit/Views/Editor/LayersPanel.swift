@@ -327,66 +327,6 @@ extension PixelArtIcon {
         "#..........",
     ]
 
-    /// Visibility ON — an open almond eye with a solid pupil.
-    static let layerEyeOpen: [String] = [
-        "...........",
-        "...........",
-        "..#######..",
-        ".#.......#.",
-        "#...###...#",
-        "#..#####..#",
-        "#...###...#",
-        ".#.......#.",
-        "..#######..",
-        "...........",
-        "...........",
-    ]
-
-    /// Visibility OFF — a closed, downcast lid with lashes.
-    static let layerEyeClosed: [String] = [
-        "...........",
-        "...........",
-        "...........",
-        "...........",
-        ".#########.",
-        "..#######..",
-        "...#.#.#...",
-        "..#.#.#.#..",
-        "...........",
-        "...........",
-        "...........",
-    ]
-
-    /// Locked — a closed padlock (shackle down, keyhole slot).
-    static let layerLockClosed: [String] = [
-        "...........",
-        "....###....",
-        "...#...#...",
-        "...#...#...",
-        "..#######..",
-        "..#######..",
-        "..##.#.##..",
-        "..##.#.##..",
-        "..#######..",
-        "..#######..",
-        "...........",
-    ]
-
-    /// Unlocked — the padlock with its shackle swung open to the left.
-    static let layerLockOpen: [String] = [
-        "..####.....",
-        ".#....#....",
-        ".#.........",
-        ".#.........",
-        "..#######..",
-        "..#######..",
-        "..##.#.##..",
-        "..##.#.##..",
-        "..#######..",
-        "..#######..",
-        "...........",
-    ]
-
     /// Add layer — a bold plus.
     static let layerAdd: [String] = [
         "...........",

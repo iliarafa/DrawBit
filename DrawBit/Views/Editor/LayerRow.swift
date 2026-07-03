@@ -156,8 +156,9 @@ struct LayerRow: View {
                 .accessibilityLabel("Rename")
             }
             Button { onToggleVisible() } label: {
-                PixelArtIcon(pattern: layer.isVisible ? PixelArtIcon.layerEyeOpen : PixelArtIcon.layerEyeClosed, size: 20)
-                    .foregroundStyle(.white.opacity(layer.isVisible ? 0.85 : 0.45))
+                Text(layer.isVisible ? "ON" : "OFF")
+                    .font(.pixel(9))
+                    .foregroundStyle(.white.opacity(layer.isVisible ? 0.9 : 0.4))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .hoverPop()
@@ -167,8 +168,9 @@ struct LayerRow: View {
             .accessibilityLabel("Visibility")
             .accessibilityValue(layer.isVisible ? "visible" : "hidden")
             Button { onToggleLocked() } label: {
-                PixelArtIcon(pattern: layer.isLocked ? PixelArtIcon.layerLockClosed : PixelArtIcon.layerLockOpen, size: 20)
-                    .foregroundStyle(.white.opacity(layer.isLocked ? 0.85 : 0.45))
+                Text(layer.isLocked ? "LOCK" : "OPEN")
+                    .font(.pixel(9))
+                    .foregroundStyle(.white.opacity(layer.isLocked ? 0.9 : 0.4))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .hoverPop()

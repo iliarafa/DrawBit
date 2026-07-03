@@ -37,8 +37,9 @@ struct ReferenceRow: View {
                 Spacer()
                 if hasReference {
                     Button { state.isReferenceVisible.toggle() } label: {
-                        PixelArtIcon(pattern: state.isReferenceVisible ? PixelArtIcon.layerEyeOpen : PixelArtIcon.layerEyeClosed, size: 20)
-                            .foregroundStyle(.white.opacity(state.isReferenceVisible ? 0.85 : 0.45))
+                        Text(state.isReferenceVisible ? "ON" : "OFF")
+                            .font(.pixel(9))
+                            .foregroundStyle(.white.opacity(state.isReferenceVisible ? 0.9 : 0.4))
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                             .hoverPop()
