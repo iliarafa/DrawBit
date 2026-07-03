@@ -312,33 +312,19 @@ struct LayersPanel: View {
 /// pixel-art language as the toolbar, HELP tiles, and selection bar instead of SF Symbols.
 /// All 11×11 in the `#`/`.` grid `PixelArtIcon` renders; `.` is transparent.
 extension PixelArtIcon {
-    /// Rename — a diagonal pencil, sharp tip bottom-left, eraser end top-right.
-    static let layerRename: [String] = [
-        ".........##",
-        "........###",
-        ".......###.",
-        "......###..",
-        ".....###...",
-        "....###....",
-        "...###.....",
-        "..###......",
-        ".###.......",
-        "##.........",
-        "#..........",
-    ]
-
-    /// Add layer — a bold plus.
+    /// Add layer — a thin plus (1px cross). Shared by the bottom-bar ADD and the
+    /// TRACE row's add-photo button.
     static let layerAdd: [String] = [
         "...........",
-        "....###....",
-        "....###....",
-        "....###....",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
         ".#########.",
-        ".#########.",
-        ".#########.",
-        "....###....",
-        "....###....",
-        "....###....",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
         "...........",
     ]
 

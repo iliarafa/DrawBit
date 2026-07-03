@@ -11,4 +11,8 @@ extension Color {
     /// only red — kept off the monochrome chrome and reserved for "this removes
     /// something". #D95763.
     static let destructive = Color(red: 217.0 / 255.0, green: 87.0 / 255.0, blue: 99.0 / 255.0)
+
+    /// The layer row's "LOCK" toggle when active (locked): a vivid red (#FF3B30).
+    /// Inactive/unlocked is a muted white, not a colour.
+    static let layerLocked = Color(red: 0xFF / 255.0, green: 0x3B / 255.0, blue: 0x30 / 255.0)
 }

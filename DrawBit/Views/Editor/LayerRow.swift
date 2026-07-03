@@ -138,23 +138,7 @@ struct LayerRow: View {
                     .foregroundStyle(.white)
             }
             Spacer()
-            // Inline pencil button replaces a context-menu Rename entry —
-            // long-press is unreliable next to `.draggable`, and the system
-            // context menu chrome doesn't match the app's pixel-font aesthetic.
-            if !isEditingName {
-                Button {
-                    draftName = layer.name
-                    isEditingName = true
-                } label: {
-                    PixelArtIcon(pattern: PixelArtIcon.layerRename, size: 20)
-                        .foregroundStyle(.white.opacity(0.65))
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                        .hoverPop()
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Rename")
-            }
+            // Controls read left→right: visibility, edit-name, lock.
             Button { onToggleVisible() } label: {
                 Text(layer.isVisible ? "ON" : "OFF")
                     .font(.pixel(9))
@@ -167,10 +151,31 @@ struct LayerRow: View {
             .accessibilityIdentifier("LayerRow-visibility")
             .accessibilityLabel("Visibility")
             .accessibilityValue(layer.isVisible ? "visible" : "hidden")
+            // Inline edit-name button (replaces a context-menu Rename entry — long-press
+            // is unreliable next to the drag gesture, and the system menu doesn't match
+            // the app's pixel aesthetic). Hidden while the name field is open.
+            if !isEditingName {
+                Button {
+                    draftName = layer.name
+                    isEditingName = true
+                } label: {
+                    Text("EDIT")
+                        .font(.pixel(9))
+                        .foregroundStyle(.white.opacity(0.65))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                        .hoverPop()
+                }
+                .buttonStyle(.plain)
+                // Keep the "Rename" a11y label — the rename UI tests query by it, and
+                // it keeps this button distinct from the removed EDIT-mode gate.
+                .accessibilityLabel("Rename")
+            }
+            // One word, two states: dark/inactive when unlocked, red when locked.
             Button { onToggleLocked() } label: {
-                Text(layer.isLocked ? "LOCK" : "OPEN")
+                Text("LOCK")
                     .font(.pixel(9))
-                    .foregroundStyle(.white.opacity(layer.isLocked ? 0.9 : 0.4))
+                    .foregroundStyle(layer.isLocked ? Color.layerLocked : Color.white.opacity(0.3))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     .hoverPop()
