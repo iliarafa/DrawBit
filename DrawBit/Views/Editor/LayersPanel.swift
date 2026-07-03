@@ -39,8 +39,13 @@ struct LayersPanel: View {
                         Button {
                             onDismiss()
                         } label: {
-                            Image(systemName: "xmark").foregroundStyle(.white)
+                            PixelArtIcon(pattern: PixelArtIcon.panelClose, size: 16)
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                                .hoverPop()
                         }
+                        .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -60,7 +65,7 @@ struct LayersPanel: View {
                             state.commitStructuralChange()
                             onStructuralChange()
                         } label: {
-                            actionButton(systemImage: "plus", title: "ADD")
+                            actionButton(pattern: PixelArtIcon.layerAdd, title: "ADD")
                                 .foregroundStyle(addDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
                                 .hoverPop()
                         }
@@ -76,7 +81,7 @@ struct LayersPanel: View {
                             state.commitStructuralChange()
                             onStructuralChange()
                         } label: {
-                            actionButton(systemImage: "doc.on.doc", title: "DUPE")
+                            actionButton(pattern: PixelArtIcon.layerDuplicate, title: "DUPE")
                                 .foregroundStyle(dupDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
                                 .hoverPop()
                         }
@@ -104,7 +109,7 @@ struct LayersPanel: View {
                                 confirmDeleteLayerID = active.id
                             }
                         } label: {
-                            actionButton(systemImage: "trash", title: "DELETE")
+                            actionButton(pattern: PixelArtIcon.layerTrash, title: "DELETE")
                                 .foregroundStyle(delDisabled ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
                                 .hoverPop()
                         }
@@ -199,7 +204,8 @@ struct LayersPanel: View {
                         visualOffset: rowVisualOffset(displayIndex: displayIndex, count: count),
                         isLifted: drag?.id == layer.id,
                         onDragChanged: { start, translation in rowDragChanged(id: layer.id, start: start, translation: translation, count: count) },
-                        onDragEnded: { start in rowDragEnded(start: start, count: count) }
+                        onDragEnded: { start in rowDragEnded(start: start, count: count) },
+                        onDelete: { deleteLayer(id: layer.id) }
                     )
                     .zIndex(drag?.id == layer.id ? 1 : 0)
                     .animation(UITestSupport.isRunning ? nil : .interactiveSpring(response: 0.28, dampingFraction: 0.82),
@@ -250,19 +256,37 @@ struct LayersPanel: View {
         }
     }
 
-    /// Toolbar-consistent button: SF Symbol over an uppercase pixel-font label.
-    /// Mirrors `ToolBar.iconLabel` / `FramesStrip.stripButton` so the panel's
+    /// Toolbar-consistent button: a hard-pixel glyph over an uppercase pixel-font
+    /// label. Mirrors `ToolBar.iconLabel` / `FramesStrip.stripButton` so the panel's
     /// action bar matches the rest of the editor chrome.
-    private func actionButton(systemImage: String, title: String) -> some View {
+    private func actionButton(pattern: [String], title: String) -> some View {
         VStack(spacing: 6) {
-            Image(systemName: systemImage)
-                .font(.system(size: 20, weight: .regular))
+            PixelArtIcon(pattern: pattern, size: 20)
             Text(title)
                 .font(.pixel(8))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .frame(minWidth: 44, minHeight: 44)
+    }
+
+    /// Swipe-left-to-delete a specific row's layer. Mirrors the DELETE button: never removes the
+    /// last layer, deletes an empty layer outright, and routes a non-empty one through the confirm
+    /// sheet (reusing `confirmDeleteLayerID`). Commits any floating marquee first so a layer whose
+    /// pixels are currently lifted into a selection isn't misread as empty.
+    private func deleteLayer(id: UUID) {
+        guard state.frame.layers.count > 1 else { return }
+        state.commitFloatingSelectionIfAny()
+        guard let target = state.frame.layers.first(where: { $0.id == id }) else { return }
+        let isEmpty = target.pixels.allSatisfy { $0 == 0 }
+        if isEmpty {
+            state.beginStructuralSnapshot()
+            state.frame.removeLayer(id: id)
+            state.commitStructuralChange()
+            onStructuralChange()
+        } else {
+            confirmDeleteLayerID = id
+        }
     }
 
     /// Drop-on-target reorder: the moved layer takes the target row's display slot.
@@ -282,4 +306,174 @@ struct LayersPanel: View {
         state.commitStructuralChange()
         onStructuralChange()
     }
+}
+
+/// Hard-pixel glyphs for the Layers panel + reference row, so the panel speaks the same
+/// pixel-art language as the toolbar, HELP tiles, and selection bar instead of SF Symbols.
+/// All 11×11 in the `#`/`.` grid `PixelArtIcon` renders; `.` is transparent.
+extension PixelArtIcon {
+    /// Rename — a diagonal pencil, sharp tip bottom-left, eraser end top-right.
+    static let layerRename: [String] = [
+        ".........##",
+        "........###",
+        ".......###.",
+        "......###..",
+        ".....###...",
+        "....###....",
+        "...###.....",
+        "..###......",
+        ".###.......",
+        "##.........",
+        "#..........",
+    ]
+
+    /// Visibility ON — an open almond eye with a solid pupil.
+    static let layerEyeOpen: [String] = [
+        "...........",
+        "...........",
+        "..#######..",
+        ".#.......#.",
+        "#...###...#",
+        "#..#####..#",
+        "#...###...#",
+        ".#.......#.",
+        "..#######..",
+        "...........",
+        "...........",
+    ]
+
+    /// Visibility OFF — a closed, downcast lid with lashes.
+    static let layerEyeClosed: [String] = [
+        "...........",
+        "...........",
+        "...........",
+        "...........",
+        ".#########.",
+        "..#######..",
+        "...#.#.#...",
+        "..#.#.#.#..",
+        "...........",
+        "...........",
+        "...........",
+    ]
+
+    /// Locked — a closed padlock (shackle down, keyhole slot).
+    static let layerLockClosed: [String] = [
+        "...........",
+        "....###....",
+        "...#...#...",
+        "...#...#...",
+        "..#######..",
+        "..#######..",
+        "..##.#.##..",
+        "..##.#.##..",
+        "..#######..",
+        "..#######..",
+        "...........",
+    ]
+
+    /// Unlocked — the padlock with its shackle swung open to the left.
+    static let layerLockOpen: [String] = [
+        "..####.....",
+        ".#....#....",
+        ".#.........",
+        ".#.........",
+        "..#######..",
+        "..#######..",
+        "..##.#.##..",
+        "..##.#.##..",
+        "..#######..",
+        "..#######..",
+        "...........",
+    ]
+
+    /// Add layer — a bold plus.
+    static let layerAdd: [String] = [
+        "...........",
+        "....###....",
+        "....###....",
+        "....###....",
+        ".#########.",
+        ".#########.",
+        ".#########.",
+        "....###....",
+        "....###....",
+        "....###....",
+        "...........",
+    ]
+
+    /// Duplicate — two overlapping squares (same metaphor as the selection bar's copy).
+    static let layerDuplicate: [String] = [
+        "...........",
+        "....######.",
+        "....#....#.",
+        "....#....#.",
+        ".######..#.",
+        ".#..#.#..#.",
+        ".#..######.",
+        ".#....#....",
+        ".#....#....",
+        ".######....",
+        "...........",
+    ]
+
+    /// Delete — a trash can with slats.
+    static let layerTrash: [String] = [
+        "...........",
+        "....###....",
+        "..#######..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#.#.#.#..",
+        "..#######..",
+        "...........",
+    ]
+
+    /// Reference photo — a framed picture with a sun and a mountain.
+    static let refPhoto: [String] = [
+        ".#########.",
+        ".#.......#.",
+        ".#.##....#.",
+        ".#.##....#.",
+        ".#.......#.",
+        ".#....#..#.",
+        ".#..######.",
+        ".#########.",
+        "...........",
+        "...........",
+        "...........",
+    ]
+
+    /// Opacity/fade — a half-filled circle (left solid, right outline).
+    static let refFade: [String] = [
+        "...........",
+        "...####....",
+        "..####.#...",
+        ".#####..#..",
+        ".#####..#..",
+        ".#####..#..",
+        ".#####..#..",
+        ".#####..#..",
+        "..####.#...",
+        "...####....",
+        "...........",
+    ]
+
+    /// Panel close — a hard X.
+    static let panelClose: [String] = [
+        "...........",
+        ".#.......#.",
+        ".##.....##.",
+        "..##...##..",
+        "...##.##...",
+        "....###....",
+        "...##.##...",
+        "..##...##..",
+        ".##.....##.",
+        ".#.......#.",
+        "...........",
+    ]
 }

@@ -210,6 +210,41 @@ final class LayersPanelUITests: XCTestCase {
         XCTAssertTrue(app.textFields.firstMatch.waitForExistence(timeout: 15))
     }
 
+    /// Swipe-left on a layer row deletes it (in addition to the DELETE button).
+    /// The freshly-added Layer 2 is empty, so it deletes without a confirmation dialog.
+    func testSwipeLeftDeletesLayer() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
+
+        XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 15))
+        app.buttons["LAYERS"].tap()
+
+        // Add Layer 2 so there are two layers (the last layer can't be swipe-deleted).
+        XCTAssertTrue(app.buttons["LayersPanel-plus"].waitForExistence(timeout: 15))
+        app.buttons["LayersPanel-plus"].tap()
+        let layer2 = app.staticTexts["Layer 2"]
+        XCTAssertTrue(layer2.waitForExistence(timeout: 15))
+
+        // A firm leftward drag across the row (starting in the spacer, away from the
+        // trailing buttons). The short 0.12s press stays under the 0.22s reorder
+        // long-press, so this reads as a delete-swipe, not a reorder. Layer 2 is
+        // empty, so it deletes without a confirmation dialog.
+        let anchor = layer2.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let start = anchor.withOffset(CGVector(dx: 70, dy: 0))
+        let end = anchor.withOffset(CGVector(dx: -170, dy: 0))
+        start.press(forDuration: 0.12, thenDragTo: end)
+
+        XCTAssertFalse(layer2.waitForExistence(timeout: 3),
+                       "Swiping a row left should delete that layer")
+        XCTAssertTrue(app.staticTexts["Layer 1"].exists)
+    }
+
     func testVisibilityAndLockTogglesPersist() {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
@@ -226,19 +261,22 @@ final class LayersPanelUITests: XCTestCase {
         app.buttons["LAYERS"].tap()
         XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 15))
 
-        // Default state: layer is visible (eye) and unlocked (lock.open).
-        XCTAssertTrue(app.buttons["eye"].firstMatch.waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["lock.open"].firstMatch.exists)
+        // The eye/lock controls are now custom pixel glyphs (no SF Symbol name to
+        // query), so the row exposes stable identifiers plus an accessibilityValue
+        // that flips with state.
+        let visibility = app.buttons["LayerRow-visibility"].firstMatch
+        let lock = app.buttons["LayerRow-lock"].firstMatch
+        XCTAssertTrue(visibility.waitForExistence(timeout: 15))
+        XCTAssertEqual(visibility.value as? String, "visible")
+        XCTAssertEqual(lock.value as? String, "unlocked")
 
-        // Toggle visibility: eye → eye.slash.
-        app.buttons["eye"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["eye.slash"].firstMatch.waitForExistence(timeout: 15))
-        XCTAssertFalse(app.buttons["eye"].firstMatch.exists)
+        // Toggle visibility: visible → hidden.
+        visibility.tap()
+        XCTAssertTrue(waitForValue(visibility, "hidden"))
 
-        // Toggle lock: lock.open → lock.fill.
-        app.buttons["lock.open"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["lock.fill"].firstMatch.waitForExistence(timeout: 15))
-        XCTAssertFalse(app.buttons["lock.open"].firstMatch.exists)
+        // Toggle lock: unlocked → locked.
+        lock.tap()
+        XCTAssertTrue(waitForValue(lock, "locked"))
 
         // Persistence round-trip: dismiss panel → Gallery → reopen piece → reopen panel.
         // Both toggled states should still be in effect.
@@ -252,7 +290,18 @@ final class LayersPanelUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 15))
 
         // Both toggles survived the SwiftData round-trip.
-        XCTAssertTrue(app.buttons["eye.slash"].firstMatch.exists)
-        XCTAssertTrue(app.buttons["lock.fill"].firstMatch.exists)
+        XCTAssertTrue(waitForValue(app.buttons["LayerRow-visibility"].firstMatch, "hidden"))
+        XCTAssertTrue(waitForValue(app.buttons["LayerRow-lock"].firstMatch, "locked"))
+    }
+
+    /// Poll an element's accessibilityValue until it matches (a11y value updates
+    /// arrive on a SwiftUI rebuild after the tap, so a single read can race it).
+    private func waitForValue(_ element: XCUIElement, _ expected: String, timeout: TimeInterval = 15) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if element.value as? String == expected { return true }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        return element.value as? String == expected
     }
 }

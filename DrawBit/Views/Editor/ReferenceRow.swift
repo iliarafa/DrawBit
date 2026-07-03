@@ -24,13 +24,20 @@ struct ReferenceRow: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 thumbnail
-                Text("REFERENCE")
-                    .font(.pixel(11))
-                    .foregroundStyle(.white.opacity(0.85))
+                // "TRACE" in the app accent marks this slab as the special backdrop —
+                // the sheet that sits behind every layer, not a layer itself.
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("TRACE")
+                        .font(.pixel(11))
+                        .foregroundStyle(Color.toolSelected)
+                    Text("BEHIND ALL LAYERS")
+                        .font(.pixel(7))
+                        .foregroundStyle(.white.opacity(0.3))
+                }
                 Spacer()
                 if hasReference {
                     Button { state.isReferenceVisible.toggle() } label: {
-                        Image(systemName: state.isReferenceVisible ? "eye" : "eye.slash")
+                        PixelArtIcon(pattern: state.isReferenceVisible ? PixelArtIcon.layerEyeOpen : PixelArtIcon.layerEyeClosed, size: 20)
                             .foregroundStyle(.white.opacity(state.isReferenceVisible ? 0.85 : 0.45))
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
@@ -38,9 +45,12 @@ struct ReferenceRow: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("Reference-toggle")
+                    .accessibilityLabel("Reference visibility")
+                    .accessibilityValue(state.isReferenceVisible ? "visible" : "hidden")
                 }
                 PhotosPicker(selection: $pickerItem, matching: .images) {
-                    Image(systemName: hasReference ? "arrow.triangle.2.circlepath" : "photo.badge.plus")
+                    // Empty → a plus ("add one"); set → the photo glyph ("choose another").
+                    PixelArtIcon(pattern: hasReference ? PixelArtIcon.refPhoto : PixelArtIcon.layerAdd, size: 20)
                         .foregroundStyle(.white.opacity(0.85))
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
@@ -57,7 +67,7 @@ struct ReferenceRow: View {
                 .accessibilityAddTraits(.isButton)
                 if hasReference {
                     Button(role: .destructive) { confirmRemove = true } label: {
-                        Image(systemName: "trash")
+                        PixelArtIcon(pattern: PixelArtIcon.layerTrash, size: 20)
                             .foregroundStyle(.white.opacity(0.85))
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
@@ -69,8 +79,9 @@ struct ReferenceRow: View {
             }
             if hasReference {
                 HStack(spacing: 8) {
-                    Image(systemName: "circle.lefthalf.filled")
+                    PixelArtIcon(pattern: PixelArtIcon.refFade, size: 16)
                         .foregroundStyle(.white.opacity(0.6))
+                        .frame(width: 20, height: 20)
                     Slider(
                         value: Binding(get: { state.referenceOpacity },
                                        set: { state.referenceOpacity = $0 }),
@@ -78,6 +89,7 @@ struct ReferenceRow: View {
                     ) { editing in
                         if !editing { onOpacityCommit() }
                     }
+                    .tint(Color.toolSelected)
                     .accessibilityIdentifier("Reference-opacity")
                 }
             }
@@ -125,8 +137,7 @@ struct ReferenceRow: View {
                     .fill(Color(white: 0.18))
                     .frame(width: 32, height: 32)
                     .overlay(
-                        Image(systemName: "photo")
-                            .font(.system(size: 12))
+                        PixelArtIcon(pattern: PixelArtIcon.refPhoto, size: 18)
                             .foregroundStyle(.white.opacity(0.4))
                     )
             }
