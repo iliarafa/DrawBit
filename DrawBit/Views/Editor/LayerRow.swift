@@ -169,11 +169,11 @@ struct LayerRow: View {
             .accessibilityValue(layer.isVisible ? "visible" : "hidden")
             // Inline edit-name control (replaces a context-menu Rename entry — long-press
             // is unreliable next to the drag gesture, and the system menu doesn't match
-            // the app's pixel aesthetic). While editing it becomes an explicit DONE that
+            // the app's pixel aesthetic). While editing it becomes an explicit SAVE that
             // commits, so there's always a visible way out of the field.
             if isEditingName {
                 Button { commitRename() } label: {
-                    Text("DONE")
+                    Text("SAVE")
                         .font(.pixel(9))
                         .foregroundStyle(Color.toolSelected)
                         .frame(width: 44, height: 44)
@@ -181,8 +181,8 @@ struct LayerRow: View {
                         .hoverPop()
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("LayerRow-doneEditing")
-                .accessibilityLabel("Done")
+                .accessibilityIdentifier("LayerRow-saveName")
+                .accessibilityLabel("Save")
             } else {
                 Button {
                     draftName = layer.name

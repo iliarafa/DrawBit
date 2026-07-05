@@ -6,9 +6,9 @@ final class LayersPanelUITests: XCTestCase {
     }
 
     /// Tapping EDIT must focus the name field immediately (keyboard appears) and
-    /// offer an explicit DONE control to finish — not just silently swap to an
+    /// offer an explicit SAVE control to finish — not just silently swap to an
     /// unfocused field with no way out.
-    func testRenameFocusesFieldAndCommitsViaDoneButton() {
+    func testRenameFocusesFieldAndCommitsViaSaveButton() {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
@@ -27,18 +27,18 @@ final class LayersPanelUITests: XCTestCase {
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5),
                       "Tapping EDIT should focus the name field and raise the keyboard")
 
-        // Type a new name into the auto-focused field, then finish via the DONE control.
+        // Type a new name into the auto-focused field, then finish via the SAVE control.
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.typeText("Ink")
 
-        let done = app.buttons["LayerRow-doneEditing"]
-        XCTAssertTrue(done.waitForExistence(timeout: 15), "An explicit DONE control must exist while editing")
-        done.tap()
+        let save = app.buttons["LayerRow-saveName"]
+        XCTAssertTrue(save.waitForExistence(timeout: 15), "An explicit SAVE control must exist while editing")
+        save.tap()
 
         // Edit mode exited: the name updated and the row is back to its EDIT state.
         XCTAssertTrue(app.staticTexts["Layer 1Ink"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.buttons["LayerRow-doneEditing"].waitForExistence(timeout: 1))
+        XCTAssertFalse(app.buttons["LayerRow-saveName"].waitForExistence(timeout: 1))
         XCTAssertTrue(app.buttons["Rename"].firstMatch.exists)
     }
 
