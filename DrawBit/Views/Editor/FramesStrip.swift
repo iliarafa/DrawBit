@@ -21,8 +21,8 @@ struct FramesStrip: View {
             // Transport group
             HStack(spacing: 16) {
                 Button(action: onTogglePlay) {
-                    stripButton(systemImage: state.isPlaying ? "pause.fill" : "play.fill",
-                                title: state.isPlaying ? "PAUSE" : "PLAY")
+                    pixelStripButton(pattern: state.isPlaying ? PixelArtIcon.pause : PixelArtIcon.playTriangle,
+                                     title: state.isPlaying ? "PAUSE" : "PLAY")
                         .hoverPop()
                 }
                 .buttonStyle(.plain)
@@ -34,7 +34,7 @@ struct FramesStrip: View {
                 // Custom dark/pixel popover instead of a native Menu, which can't
                 // take the app font or theme.
                 Button { showingFPSMenu = true } label: {
-                    stripButton(systemImage: "speedometer", title: "\(state.fps) FPS")
+                    pixelStripButton(pattern: PixelArtIcon.gauge, title: "\(state.fps) FPS")
                         .hoverPop()
                 }
                 .buttonStyle(.plain)
@@ -46,7 +46,7 @@ struct FramesStrip: View {
                 .popover(isPresented: $showingFPSMenu) { fpsMenu }
 
                 Button(action: { state.isOnionSkinEnabled.toggle() }) {
-                    stripButton(systemImage: "square.2.layers.3d", title: "ONION")
+                    pixelStripButton(pattern: PixelArtIcon.onion, title: "ONION")
                         .hoverPop()
                 }
                 .buttonStyle(.plain)
@@ -98,7 +98,7 @@ struct FramesStrip: View {
 
             // Actions
             Button(action: onAddFrame) {
-                stripButton(systemImage: "plus", title: "ADD")
+                pixelStripButton(pattern: PixelArtIcon.addPlus, title: "ADD")
                     .hoverPop()
             }
             .buttonStyle(.plain)
@@ -162,12 +162,13 @@ struct FramesStrip: View {
         return state.isOnionSkinEnabled ? Color.white : Color.white.opacity(0.55)
     }
 
-    /// Toolbar-consistent button: SF Symbol over an uppercase pixel-font label.
-    /// Mirrors `ToolBar.iconLabel`.
-    private func stripButton(systemImage: String, title: String) -> some View {
+    /// Toolbar-consistent button: a pixel-art glyph over an uppercase pixel-font label. The 11×11
+    /// `PixelArtIcon` renders at 22pt (crisp) centered in a fixed 24×24 box, so every control's
+    /// label shares one baseline. Mirrors `ToolBar.pixelIconLabel`; inherits the foreground color.
+    private func pixelStripButton(pattern: [String], title: String) -> some View {
         VStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.system(size: 24, weight: .regular))
+            PixelArtIcon(pattern: pattern, size: 22)
+                .frame(width: 24, height: 24)
             Text(title.uppercased())
                 .font(.pixel(8))
                 .lineLimit(1)
@@ -175,4 +176,70 @@ struct FramesStrip: View {
         }
         .frame(minWidth: 44, minHeight: 44)
     }
+}
+
+/// Pixel-art glyphs for the animation strip's chrome, in the app's 11×11 `#`/`.` style. PLAY reuses
+/// the shared `PixelArtIcon.playTriangle` (same sprite as the editor's ANIMATE button); the rest are
+/// defined here, matching how `ToolBar` keeps its tool glyphs local to the file that draws them.
+private extension PixelArtIcon {
+    /// PAUSE — two vertical bars.
+    static let pause: [String] = [
+        "...........",
+        "...........",
+        "..##...##..",
+        "..##...##..",
+        "..##...##..",
+        "..##...##..",
+        "..##...##..",
+        "..##...##..",
+        "..##...##..",
+        "...........",
+        "...........",
+    ]
+
+    /// FPS — a round gauge (speedometer) with a short needle pointing up-right.
+    static let gauge: [String] = [
+        "...........",
+        "...#####...",
+        "..#.....#..",
+        ".#....#..#.",
+        ".#....#..#.",
+        ".#...#...#.",
+        ".#.......#.",
+        "..#.....#..",
+        "...#####...",
+        "...........",
+        "...........",
+    ]
+
+    /// ONION — two overlapping frames (a previous frame stacked behind the current one). Clearest
+    /// legible read at 11px, and the closest pixel match to the old `square.2.layers.3d`.
+    static let onion: [String] = [
+        "...........",
+        "....######.",
+        "....#....#.",
+        "....#....#.",
+        ".######..#.",
+        ".#..#.#..#.",
+        ".#..######.",
+        ".#....#....",
+        ".#....#....",
+        ".######....",
+        "...........",
+    ]
+
+    /// ADD — the app's thin 1px plus cross (matches the layers/gallery add glyph).
+    static let addPlus: [String] = [
+        "...........",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        ".#########.",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        "...........",
+    ]
 }
