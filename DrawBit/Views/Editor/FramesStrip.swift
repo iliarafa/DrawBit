@@ -108,7 +108,7 @@ struct FramesStrip: View {
             .accessibilityIdentifier("FramesStrip.add")
             .accessibilityLabel("Add blank frame")
         }
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 52)
         .frame(height: 88)
         // No background of its own: the strip inherits the editor's Color(white: 0.10),
         // identical to the canvas and tool strip, and has no dividers above or below — so
