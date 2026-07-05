@@ -5,6 +5,43 @@ final class LayersPanelUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    /// Tapping EDIT must focus the name field immediately (keyboard appears) and
+    /// offer an explicit DONE control to finish — not just silently swap to an
+    /// unfocused field with no way out.
+    func testRenameFocusesFieldAndCommitsViaDoneButton() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
+        XCTAssertTrue(app.buttons["LAYERS"].waitForExistence(timeout: 15))
+        app.buttons["LAYERS"].tap()
+        XCTAssertTrue(app.staticTexts["Layer 1"].waitForExistence(timeout: 15))
+
+        // Enter edit — do NOT tap the field; auto-focus should raise the keyboard.
+        XCTAssertTrue(app.buttons["Rename"].firstMatch.waitForExistence(timeout: 15))
+        app.buttons["Rename"].firstMatch.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5),
+                      "Tapping EDIT should focus the name field and raise the keyboard")
+
+        // Type a new name into the auto-focused field, then finish via the DONE control.
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        field.typeText("Ink")
+
+        let done = app.buttons["LayerRow-doneEditing"]
+        XCTAssertTrue(done.waitForExistence(timeout: 15), "An explicit DONE control must exist while editing")
+        done.tap()
+
+        // Edit mode exited: the name updated and the row is back to its EDIT state.
+        XCTAssertTrue(app.staticTexts["Layer 1Ink"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["LayerRow-doneEditing"].waitForExistence(timeout: 1))
+        XCTAssertTrue(app.buttons["Rename"].firstMatch.exists)
+    }
+
     func testOpenPanelAndRenameLayer() {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]

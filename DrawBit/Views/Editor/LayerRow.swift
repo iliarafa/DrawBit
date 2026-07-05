@@ -28,6 +28,8 @@ struct LayerRow: View {
 
     @State private var isEditingName = false
     @State private var draftName = ""
+    /// Drives keyboard focus for the rename field so entering edit immediately shows a cursor.
+    @FocusState private var nameFieldFocused: Bool
     /// Live horizontal offset while swiping left to delete; springs back if released short.
     @State private var swipeX: CGFloat = 0
 
@@ -101,6 +103,13 @@ struct LayerRow: View {
                 }
         )
         .onChange(of: isLifted) { _, lifted in if lifted { swipeX = 0 } }
+        // Focus the field the instant edit mode opens (runs after the field is built, so
+        // focus lands on the live TextField → cursor + keyboard appear immediately).
+        .onChange(of: isEditingName) { _, editing in if editing { nameFieldFocused = true } }
+        // Losing focus while still editing (e.g. tapping away) commits rather than
+        // silently abandoning. commitRename() clears isEditingName first, so a DONE/Return
+        // commit doesn't re-enter here.
+        .onChange(of: nameFieldFocused) { _, focused in if !focused && isEditingName { commitRename() } }
         .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.18), value: isPulsing)
         .accessibilityAction(named: "Rename") {
             draftName = layer.name
@@ -115,6 +124,18 @@ struct LayerRow: View {
         }
     }
 
+    /// Commit the in-progress rename and leave edit mode. Shared by Return (`onSubmit`),
+    /// the DONE button, and focus-loss. Setting `isEditingName = false` first makes the
+    /// focus-loss handler a no-op so a single edit commits exactly once.
+    private func commitRename() {
+        isEditingName = false
+        nameFieldFocused = false
+        let trimmed = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty && trimmed != layer.name {
+            onRename(String(trimmed.prefix(32)))
+        }
+    }
+
     /// The visible row content that slides on a delete-swipe. Opaque base (panel color) so the
     /// delete zone behind it stays hidden until the swipe reveals it.
     private var rowForeground: some View {
@@ -125,13 +146,8 @@ struct LayerRow: View {
                 TextField("", text: $draftName)
                     .font(.pixel(11))
                     .foregroundStyle(.white)
-                    .onSubmit {
-                        let trimmed = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !trimmed.isEmpty && trimmed != layer.name {
-                            onRename(String(trimmed.prefix(32)))
-                        }
-                        isEditingName = false
-                    }
+                    .focused($nameFieldFocused)
+                    .onSubmit { commitRename() }
             } else {
                 Text(layer.name)
                     .font(.pixel(11))
@@ -151,10 +167,23 @@ struct LayerRow: View {
             .accessibilityIdentifier("LayerRow-visibility")
             .accessibilityLabel("Visibility")
             .accessibilityValue(layer.isVisible ? "visible" : "hidden")
-            // Inline edit-name button (replaces a context-menu Rename entry — long-press
+            // Inline edit-name control (replaces a context-menu Rename entry — long-press
             // is unreliable next to the drag gesture, and the system menu doesn't match
-            // the app's pixel aesthetic). Hidden while the name field is open.
-            if !isEditingName {
+            // the app's pixel aesthetic). While editing it becomes an explicit DONE that
+            // commits, so there's always a visible way out of the field.
+            if isEditingName {
+                Button { commitRename() } label: {
+                    Text("DONE")
+                        .font(.pixel(9))
+                        .foregroundStyle(Color.toolSelected)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                        .hoverPop()
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("LayerRow-doneEditing")
+                .accessibilityLabel("Done")
+            } else {
                 Button {
                     draftName = layer.name
                     isEditingName = true
