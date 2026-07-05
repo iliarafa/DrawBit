@@ -12,7 +12,8 @@ struct FrameRow: View {
     /// Index-based reorder (from, to).
     let onMove: (Int, Int) -> Void
 
-    private static let edge: CGFloat = 72
+    /// Thumbnail side. Also read by `FramesStrip` to snap its scroll viewport to whole frames.
+    static let edge: CGFloat = 72
 
     var body: some View {
         thumbnail

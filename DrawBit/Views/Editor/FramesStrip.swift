@@ -16,6 +16,10 @@ struct FramesStrip: View {
 
     private static let fpsChoices = [4, 8, 12, 24, 30, 60]
 
+    /// Inter-frame gap and the frames-lane content inset — reused by the whole-frame snapping math.
+    private static let frameSpacing: CGFloat = 16
+    private static let frameInset: CGFloat = 4
+
     var body: some View {
         HStack(spacing: 18) {
             // Transport group
@@ -59,40 +63,52 @@ struct FramesStrip: View {
 
             divider
 
-            // Frames
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(Array(state.frames.enumerated()), id: \.element.id) { index, frame in
-                        FrameRow(
-                            frame: frame,
-                            size: state.size,
-                            index: index,
-                            isActive: frame.id == state.frames[state.activeFrameIndex].id,
-                            frameCount: state.frames.count,
-                            onTap: {
-                                if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
-                                    onActivateFrame(idx)
-                                }
-                            },
-                            onDuplicate: {
-                                if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
-                                    onActivateFrame(idx)
-                                }
-                                onDuplicateFrame()
-                            },
-                            onDelete: {
-                                if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
-                                    onActivateFrame(idx)
-                                }
-                                onDeleteFrame()
-                            },
-                            onMove: { from, to in onReorderFrame(from, to) }
-                        )
+            // Frames. The scroll viewport is snapped to a whole number of frames so none is ever
+            // shown half-cropped at rest, and it auto-scrolls to keep the active frame fully in view.
+            GeometryReader { geo in
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: Self.frameSpacing) {
+                            ForEach(Array(state.frames.enumerated()), id: \.element.id) { index, frame in
+                                FrameRow(
+                                    frame: frame,
+                                    size: state.size,
+                                    index: index,
+                                    isActive: frame.id == state.frames[state.activeFrameIndex].id,
+                                    frameCount: state.frames.count,
+                                    onTap: {
+                                        if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
+                                            onActivateFrame(idx)
+                                        }
+                                    },
+                                    onDuplicate: {
+                                        if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
+                                            onActivateFrame(idx)
+                                        }
+                                        onDuplicateFrame()
+                                    },
+                                    onDelete: {
+                                        if let idx = state.frames.firstIndex(where: { $0.id == frame.id }) {
+                                            onActivateFrame(idx)
+                                        }
+                                        onDeleteFrame()
+                                    },
+                                    onMove: { from, to in onReorderFrame(from, to) }
+                                )
+                                .id(frame.id)
+                            }
+                        }
+                        .padding(.horizontal, Self.frameInset)
+                        .frame(height: geo.size.height)
                     }
+                    .frame(width: snappedLaneWidth(available: geo.size.width, count: state.frames.count),
+                           height: geo.size.height, alignment: .leading)
+                    .disabled(state.isPlaying)
+                    .onAppear { DispatchQueue.main.async { scrollToActiveFrame(proxy) } }
+                    .onChange(of: state.activeFrameIndex) { scrollToActiveFrame(proxy) }
+                    .onChange(of: state.frames.count) { scrollToActiveFrame(proxy) }
                 }
-                .padding(.horizontal, 4)
             }
-            .disabled(state.isPlaying)
 
             divider
 
@@ -160,6 +176,27 @@ struct FramesStrip: View {
     private var onionColor: Color {
         if state.activeFrameIndex == 0 || state.isPlaying { return Color.white.opacity(0.25) }
         return state.isOnionSkinEnabled ? Color.white : Color.white.opacity(0.55)
+    }
+
+    /// Width that shows the largest *whole* number of frames fitting `available` (so the trailing
+    /// edge always lands between frames, never mid-frame), capped at the real content width so a
+    /// few frames don't stretch the lane. The leftover stays as trailing space, keeping ADD aligned.
+    private func snappedLaneWidth(available: CGFloat, count: Int) -> CGFloat {
+        guard available > 0, count > 0 else { return max(available, 0) }
+        let stride = FrameRow.edge + Self.frameSpacing
+        let usable = available - 2 * Self.frameInset
+        let fit = max(1, Int((usable + Self.frameSpacing) / stride))
+        let shown = min(count, fit)
+        let content = CGFloat(shown) * FrameRow.edge
+                    + CGFloat(shown - 1) * Self.frameSpacing
+                    + 2 * Self.frameInset
+        return min(available, content)
+    }
+
+    /// Keep the active frame fully in view (centered when possible, clamped at the ends).
+    private func scrollToActiveFrame(_ proxy: ScrollViewProxy) {
+        guard state.frames.indices.contains(state.activeFrameIndex) else { return }
+        proxy.scrollTo(state.frames[state.activeFrameIndex].id, anchor: .center)
     }
 
     /// Toolbar-consistent button: a pixel-art glyph over an uppercase pixel-font label. The 11×11
