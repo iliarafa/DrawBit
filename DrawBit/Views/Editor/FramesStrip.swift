@@ -35,9 +35,9 @@ struct FramesStrip: View {
                 .accessibilityIdentifier("FramesStrip.playPause")
                 .accessibilityLabel(state.isPlaying ? "Pause animation" : "Play animation")
 
-                // Custom dark/pixel popover instead of a native Menu, which can't
-                // take the app font or theme.
-                Button { showingFPSMenu = true } label: {
+                // Opens the "Speed dial" — a squared custom overlay (a system popover can't be
+                // squared or themed). Toggle so a second tap on the button also closes it.
+                Button { showingFPSMenu.toggle() } label: {
                     pixelStripButton(pattern: PixelArtIcon.gauge, title: "\(state.fps) FPS")
                         .hoverPop()
                 }
@@ -47,7 +47,6 @@ struct FramesStrip: View {
                 .accessibilityIdentifier("FramesStrip.fps")
                 .accessibilityLabel("Playback speed")
                 .accessibilityValue("\(state.fps) frames per second")
-                .popover(isPresented: $showingFPSMenu) { fpsMenu }
 
                 Button(action: { state.isOnionSkinEnabled.toggle() }) {
                     pixelStripButton(pattern: PixelArtIcon.onion, title: "ONION")
@@ -126,46 +125,115 @@ struct FramesStrip: View {
         }
         .padding(.horizontal, 52)
         .frame(height: 88)
+        // The Speed dial floats above the FPS button as a squared custom overlay (no system
+        // popover chrome to round its corners); a full-screen clear catcher dismisses on an
+        // outside tap.
+        .overlay(alignment: .bottomLeading) {
+            if showingFPSMenu { fpsOverlay }
+        }
         // No background of its own: the strip inherits the editor's Color(white: 0.10),
         // identical to the canvas and tool strip, and has no dividers above or below — so
         // it blends in as one continuous surface.
     }
 
-    /// Dark, pixel-font replacement for a native fps `Menu` (which renders with
-    /// system chrome we can't theme). Tap a row to set the speed.
-    private var fpsMenu: some View {
-        VStack(spacing: 0) {
-            ForEach(Self.fpsChoices, id: \.self) { choice in
-                Button {
-                    state.fps = choice
-                    showingFPSMenu = false
-                } label: {
-                    HStack(spacing: 8) {
-                        Text("\(choice) FPS")
-                            .font(.pixel(10))
-                        Spacer(minLength: 0)
-                        PixelArtIcon(pattern: PixelArtIcon.checkmark, size: 12)
-                            .opacity(choice == state.fps ? 1 : 0)
-                            .accessibilityHidden(true)
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("FramesStrip.fps.\(choice)")
-                .accessibilityAddTraits(choice == state.fps ? .isSelected : [])
+    // MARK: - FPS speed dial (squared custom overlay)
 
-                if choice != Self.fpsChoices.last {
-                    Divider().overlay(Color.white.opacity(0.12))
+    /// The dial floats above the FPS button; a full-screen clear catcher dismisses on an outside tap.
+    private var fpsOverlay: some View {
+        ZStack(alignment: .bottomLeading) {
+            Color.clear
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { showingFPSMenu = false }
+            fpsDial
+                .padding(.leading, 8)
+                .offset(y: -100)   // lift clear above the 88pt strip; tuned on the sim
+        }
+    }
+
+    /// A big live FPS readout, a pixel slider snapping across the six speeds, and a tempo preview
+    /// whose sweep rate scales with the selected speed so 4 vs 24 *feels* different.
+    private var fpsDial: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("\(state.fps) FPS")
+                .font(.pixel(16))
+                .foregroundStyle(.white)
+            fpsTrack
+            tempoPreview
+        }
+        .padding(18)
+        .frame(width: 240)
+        .background(Color(white: 0.12))
+        .overlay(Rectangle().stroke(Color.white.opacity(0.18), lineWidth: 1))   // squared border
+        .shadow(color: .black.opacity(0.5), radius: 6, y: 3)                     // single drop
+    }
+
+    /// Track with six tappable stops (keeping the `FramesStrip.fps.<n>` ids so the one-tap test
+    /// still passes) plus a drag that snaps between them.
+    private var fpsTrack: some View {
+        let choices = Self.fpsChoices
+        let n = choices.count
+        return GeometryReader { g in
+            let inset: CGFloat = 8
+            let step = (g.size.width - inset * 2) / CGFloat(n - 1)
+            let activeIdx = choices.firstIndex(of: state.fps) ?? 0
+            let cy = g.size.height / 2
+            ZStack(alignment: .leading) {
+                Rectangle().fill(Color.white.opacity(0.18)).frame(height: 2).offset(y: cy - 1)
+                Rectangle().fill(Color.toolSelected)
+                    .frame(width: CGFloat(activeIdx) * step, height: 2)
+                    .offset(x: inset, y: cy - 1)
+                ForEach(Array(choices.enumerated()), id: \.element) { i, choice in
+                    let on = choice == state.fps
+                    Button { state.fps = choice } label: {
+                        Rectangle()
+                            .fill(on ? Color.toolSelected : Color.white.opacity(0.5))
+                            .frame(width: on ? 16 : 10, height: on ? 16 : 10)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("FramesStrip.fps.\(choice)")
+                    .accessibilityLabel("\(choice) FPS")
+                    .position(x: inset + CGFloat(i) * step, y: cy)
+                }
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { v in
+                        let raw = (v.location.x - inset) / step
+                        let idx = min(max(Int(raw.rounded()), 0), n - 1)
+                        if choices[idx] != state.fps { state.fps = choices[idx] }
+                    }
+            )
+        }
+        .frame(height: 24)
+    }
+
+    /// Six blocks with a highlight sweeping at a rate scaled to the fps — a felt tempo. Static under
+    /// UI test (a live `TimelineView` would keep XCUITest from ever reaching idle).
+    private var tempoPreview: some View {
+        Group {
+            if UITestSupport.isRunning {
+                tempoRow(active: -1)
+            } else {
+                TimelineView(.animation) { tl in
+                    // Wrap the clock into a 60s window so the float stays precise at any fps.
+                    let t = tl.date.timeIntervalSince1970.truncatingRemainder(dividingBy: 60)
+                    let active = Int((t * Double(state.fps) / 3.0).truncatingRemainder(dividingBy: 6))
+                    tempoRow(active: active)
                 }
             }
         }
-        .frame(width: 160)
-        .background(Color(white: 0.12))
-        .presentationCompactAdaptation(.popover)
-        .presentationBackground(Color(white: 0.12))
+    }
+
+    private func tempoRow(active: Int) -> some View {
+        HStack(spacing: 5) {
+            ForEach(0..<6, id: \.self) { i in
+                Rectangle()
+                    .fill(i == active ? Color.toolSelected : Color.white.opacity(0.18))
+                    .frame(width: 12, height: 12)
+            }
+        }
     }
 
     private var divider: some View {
