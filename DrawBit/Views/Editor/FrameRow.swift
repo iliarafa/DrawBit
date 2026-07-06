@@ -95,12 +95,12 @@ struct FrameRow: View {
                     // NB: identifiers must NOT start with "FrameRow." — the animation UI
                     // tests enumerate frame rows via `BEGINSWITH 'FrameRow.'`, and a
                     // collision pollutes that list.
-                    badgeButton(systemImage: "plus.square.on.square",
+                    badgeButton(pattern: PixelArtIcon.frameDuplicate,
                                 label: "Duplicate frame",
                                 identifier: "FrameDuplicateButton",
                                 action: onDuplicate)
                     if frameCount > 1 {
-                        badgeButton(systemImage: "xmark",
+                        badgeButton(pattern: PixelArtIcon.frameClose,
                                     label: "Delete frame",
                                     identifier: "FrameDeleteButton",
                                     action: onDelete)
@@ -111,13 +111,12 @@ struct FrameRow: View {
         }
     }
 
-    private func badgeButton(systemImage: String,
+    private func badgeButton(pattern: [String],
                              label: String,
                              identifier: String,
                              action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 9, weight: .bold))
+            PixelArtIcon(pattern: pattern, size: 12)
                 .foregroundStyle(.white)
                 .padding(4)
                 .background(Color.black.opacity(0.7))
@@ -131,6 +130,39 @@ struct FrameRow: View {
         .accessibilityIdentifier(identifier)
         .accessibilityLabel(label)
     }
+}
+
+/// Pixel-art glyphs for the on-frame action badges, in the app's 11×11 `#`/`.` style.
+private extension PixelArtIcon {
+    /// DUPLICATE — two overlapping frames (the app's copy/duplicate glyph).
+    static let frameDuplicate: [String] = [
+        "...........",
+        "....######.",
+        "....#....#.",
+        "....#....#.",
+        ".######..#.",
+        ".#..#.#..#.",
+        ".#..######.",
+        ".#....#....",
+        ".#....#....",
+        ".######....",
+        "...........",
+    ]
+
+    /// DELETE — a hard X (the app's close glyph).
+    static let frameClose: [String] = [
+        "...........",
+        ".#.......#.",
+        ".##.....##.",
+        "..##...##..",
+        "...##.##...",
+        "....###....",
+        "...##.##...",
+        "..##...##..",
+        ".##.....##.",
+        ".#.......#.",
+        "...........",
+    ]
 }
 
 /// Pulled into its own modifier so `FrameRow.body` stays small enough for the

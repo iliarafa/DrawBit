@@ -144,8 +144,7 @@ struct FramesStrip: View {
                         Text("\(choice) FPS")
                             .font(.pixel(10))
                         Spacer(minLength: 0)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 11, weight: .bold))
+                        PixelArtIcon(pattern: PixelArtIcon.checkmark, size: 12)
                             .opacity(choice == state.fps ? 1 : 0)
                             .accessibilityHidden(true)
                     }
@@ -277,6 +276,21 @@ private extension PixelArtIcon {
         ".....#.....",
         ".....#.....",
         ".....#.....",
+        "...........",
+    ]
+
+    /// Checkmark — marks the selected FPS row in the speed popover.
+    static let checkmark: [String] = [
+        "...........",
+        "...........",
+        "........##.",
+        ".......##..",
+        "......##...",
+        ".#...##....",
+        ".##.##.....",
+        "..###......",
+        "...#.......",
+        "...........",
         "...........",
     ]
 }
