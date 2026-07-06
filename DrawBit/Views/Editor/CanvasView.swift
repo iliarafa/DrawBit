@@ -60,6 +60,8 @@ struct CanvasView: View {
     var onStrokeEnd: () -> Void = {}
 
     @State private var onionCache = OnionSkinCache()
+    /// Guards the one-shot initial-zoom so re-layout never re-homes the user's current view.
+    @State private var didInitZoom = false
     var onStrokeCancel: () -> Void = {}
     var onTap: (Int, Int) -> Void = { _, _ in }
     var onLineStraighten: (_ from: (Int, Int), _ to: (Int, Int), _ justSnapped: Bool) -> Void = { _, _, _ in }
@@ -150,6 +152,8 @@ struct CanvasView: View {
             .contentShape(Rectangle())
             .clipped()
             .animation(UITestSupport.isRunning ? nil : .easeInOut(duration: 0.2), value: state.isViewTransformed)
+            // Once the viewport is known, open large canvases zoomed enough that the grid reads.
+            .onChange(of: geo.size, initial: true) { applyInitialHomeZoomIfNeeded(base: base) }
         }
         .accessibilityIdentifier("Canvas")
         .onChange(of: state.activeFrameIndex) { _, _ in
@@ -185,6 +189,30 @@ struct CanvasView: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("ResetView")
         .accessibilityLabel("Reset view")
+    }
+
+    /// On-screen cell size (points) a canvas should open at so the pixel grid reads. A fit-to-screen
+    /// large canvas has sub-4pt cells, which `gridLineAlpha` fades to nothing; opening at this size
+    /// makes the grid visible and the user pinches out to see the whole canvas. Small canvases
+    /// already exceed it, so their home stays 1.0. Single tunable knob.
+    private static let gridVisibleCellPoints: CGFloat = 12
+
+    /// The zoom a canvas opens at (and RESET returns to): 1.0 unless the fit-to-screen cell is
+    /// smaller than `gridVisibleCellPoints`, in which case zoom in just enough to reach it (clamped
+    /// to the gesture's max zoom of 40).
+    private func homeScale(base: CGSize) -> CGFloat {
+        let perPixel = base.width / CGFloat(state.size.width)   // scale-1 cell size, points
+        guard perPixel > 0 else { return 1 }
+        return min(40, max(1, Self.gridVisibleCellPoints / perPixel))
+    }
+
+    /// One-shot: once the viewport (and thus `base`) is real, set the home zoom and open there.
+    private func applyInitialHomeZoomIfNeeded(base: CGSize) {
+        guard !didInitZoom, base.width > 0 else { return }
+        didInitZoom = true
+        let home = homeScale(base: base)
+        state.homeScale = home
+        state.scale = home
     }
 
     /// Canvas display size at scale=1 in points. One square `perPixel` (integer points per

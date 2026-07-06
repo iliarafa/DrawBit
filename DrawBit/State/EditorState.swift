@@ -50,18 +50,24 @@ final class EditorState {
     var scale: CGFloat = 1.0
     var rotation: CGFloat = 0.0
 
-    /// True when the view transform is away from its default (zoom/pan/rotation). Drives the
+    /// The zoom the canvas opens at, and that RESET returns to. 1.0 for small canvases; larger for
+    /// big ones so the pixel grid is visible on open (a fit-to-screen large canvas has sub-4pt cells,
+    /// which the grid fades out). Set once by `CanvasView` from the live viewport; "home" not "1.0"
+    /// is what `isViewTransformed` and `resetView()` compare against so the chrome stays consistent.
+    var homeScale: CGFloat = 1.0
+
+    /// True when the view transform is away from its home (zoom/pan/rotation). Drives the
     /// contextual "reset view" chip — small tolerances absorb floating-point drift after a pinch.
     var isViewTransformed: Bool {
-        abs(scale - 1) > 0.001
+        abs(scale - homeScale) > 0.001
             || abs(rotation) > 0.001
             || abs(translation.width) > 0.5 || abs(translation.height) > 0.5
     }
 
-    /// Snap the canvas back to default zoom/pan/rotation. View-only — never touches pixels.
+    /// Snap the canvas back to its home zoom/pan/rotation. View-only — never touches pixels.
     func resetView() {
         translation = .zero
-        scale = 1.0
+        scale = homeScale
         rotation = 0.0
     }
 
