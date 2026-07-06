@@ -18,6 +18,23 @@ final class EditorStateTests: XCTestCase {
         XCTAssertFalse(state.canRedo)
     }
 
+    func testCycleFPSAdvancesAndWraps() {
+        let state = makeState()   // starts at fps 12
+        XCTAssertEqual(state.fps, 12)
+        // 12 → 24 → 30 → 60 → 4 (wrap) → 8 → 12
+        for expected in [24, 30, 60, 4, 8, 12] {
+            state.cycleFPS()
+            XCTAssertEqual(state.fps, expected)
+        }
+    }
+
+    func testCycleFPSSnapsOffListValueToFirstChoice() {
+        let state = makeState()
+        state.fps = 99   // not one of the standard choices
+        state.cycleFPS()
+        XCTAssertEqual(state.fps, EditorState.fpsChoices[0])
+    }
+
     func testCommitStrokePushesUndo() {
         let state = makeState()
         state.beginStrokeSnapshot()

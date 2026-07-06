@@ -12,10 +12,6 @@ struct FramesStrip: View {
     let onTogglePlay: () -> Void
     let onDeleteFrame: () -> Void
 
-    @State private var showingFPSMenu = false
-
-    private static let fpsChoices = [4, 8, 12, 24, 30, 60]
-
     /// Inter-frame gap and the frames-lane content inset — reused by the whole-frame snapping math.
     private static let frameSpacing: CGFloat = 16
     private static let frameInset: CGFloat = 4
@@ -35,9 +31,12 @@ struct FramesStrip: View {
                 .accessibilityIdentifier("FramesStrip.playPause")
                 .accessibilityLabel(state.isPlaying ? "Pause animation" : "Play animation")
 
-                // Opens the "Speed dial" — a squared custom overlay (a system popover can't be
-                // squared or themed). Toggle so a second tap on the button also closes it.
-                Button { showingFPSMenu.toggle() } label: {
+                // Tap to cycle the playback speed — the same tap-to-cycle idiom as the brush nib.
+                // Only the label under the gauge changes; nothing opens.
+                Button {
+                    SelectionFeedback.shared.fire()
+                    state.cycleFPS()
+                } label: {
                     pixelStripButton(pattern: PixelArtIcon.gauge, title: "\(state.fps) FPS")
                         .hoverPop()
                 }
@@ -47,6 +46,7 @@ struct FramesStrip: View {
                 .accessibilityIdentifier("FramesStrip.fps")
                 .accessibilityLabel("Playback speed")
                 .accessibilityValue("\(state.fps) frames per second")
+                .accessibilityHint("Tap to change the playback speed")
 
                 Button(action: { state.isOnionSkinEnabled.toggle() }) {
                     pixelStripButton(pattern: PixelArtIcon.onion, title: "ONION")
@@ -125,84 +125,9 @@ struct FramesStrip: View {
         }
         .padding(.horizontal, 52)
         .frame(height: 88)
-        // The Speed dial floats above the FPS button as a squared custom overlay (no system
-        // popover chrome to round its corners); a full-screen clear catcher dismisses on an
-        // outside tap.
-        .overlay(alignment: .bottomLeading) {
-            if showingFPSMenu { fpsOverlay }
-        }
         // No background of its own: the strip inherits the editor's Color(white: 0.10),
         // identical to the canvas and tool strip, and has no dividers above or below — so
         // it blends in as one continuous surface.
-    }
-
-    // MARK: - FPS speed dial (squared custom overlay)
-
-    /// The dial floats above the FPS button; a full-screen clear catcher dismisses on an outside tap.
-    private var fpsOverlay: some View {
-        ZStack(alignment: .bottomLeading) {
-            Color.clear
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { showingFPSMenu = false }
-            fpsDial
-                .padding(.leading, 8)
-                .offset(y: -100)   // lift clear above the 88pt strip; tuned on the sim
-        }
-    }
-
-    /// The FPS "Speed dial": a squared film-strip picker floating above the FPS button. The six
-    /// speeds are film "frames" between sprocket-hole rails; tapping a frame sets the speed and
-    /// closes. Each frame keeps its `FramesStrip.fps.<n>` id so `testFPSPopoverSetsSpeedInOneTap`
-    /// still passes.
-    private var fpsDial: some View {
-        let cell: CGFloat = 38
-        let stripInner = cell * 6 + 4 * 5   // 6 frames + 5 gaps
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("\(state.fps) FPS")
-                .font(.pixel(18)).foregroundStyle(.white)
-            VStack(spacing: 5) {
-                sprocketRow
-                HStack(spacing: 4) {
-                    ForEach(Self.fpsChoices, id: \.self) { c in
-                        let on = c == state.fps
-                        Button {
-                            state.fps = c
-                            showingFPSMenu = false
-                        } label: {
-                            Text("\(c)")
-                                .font(.pixel(11))
-                                .foregroundStyle(on ? .black : .white.opacity(0.9))
-                                .frame(width: cell, height: 40)
-                                .background(on ? Color.toolSelected : Color(white: 0.22))
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("FramesStrip.fps.\(c)")
-                        .accessibilityLabel("\(c) FPS")
-                        .accessibilityAddTraits(on ? .isSelected : [])
-                    }
-                }
-                sprocketRow
-            }
-            .padding(6)
-            .frame(width: stripInner + 12)   // frames row + 6pt padding each side
-            .background(Color.black)
-        }
-        .padding(18)
-        .background(Color(white: 0.12))
-        .overlay(Rectangle().stroke(Color.white.opacity(0.18), lineWidth: 1))   // squared border
-        .shadow(color: .black.opacity(0.5), radius: 7, y: 3)                     // single drop
-    }
-
-    /// A row of film sprocket holes spanning the filmstrip's width.
-    private var sprocketRow: some View {
-        HStack(spacing: 8) {
-            ForEach(0..<8, id: \.self) { _ in
-                Rectangle().fill(Color.white.opacity(0.4)).frame(width: 7, height: 5)
-            }
-        }
-        .frame(maxWidth: .infinity)
     }
 
     private var divider: some View {

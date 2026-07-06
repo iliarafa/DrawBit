@@ -357,7 +357,7 @@ final class AnimationStripUITests: XCTestCase {
                        "A single-frame sequence must show no delete ×")
     }
 
-    func testFPSPopoverSetsSpeedInOneTap() throws {
+    func testFPSButtonCyclesSpeedOnTap() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
         app.launch()
@@ -373,14 +373,30 @@ final class AnimationStripUITests: XCTestCase {
 
         let fps = app.buttons["FramesStrip.fps"]
         XCTAssertTrue(fps.waitForExistence(timeout: 15))
-        fps.tap()
 
-        // Pick a non-adjacent speed in a single tap from the custom popover.
-        let sixty = app.buttons["FramesStrip.fps.60"]
-        XCTAssertTrue(sixty.waitForExistence(timeout: 15), "fps popover row '60' must appear")
-        sixty.tap()
+        // Tapping the icon cycles the playback speed (no popup opens). Six speeds → six taps
+        // advance through all of them and wrap back to the start.
+        let start = fps.value as? String
+        var prev = start
+        for _ in 0..<6 {
+            fps.tap()
+            XCTAssertTrue(waitUntilValueChanges(fps, from: prev ?? ""),
+                          "each tap on the FPS icon must advance the speed")
+            prev = fps.value as? String
+        }
+        XCTAssertEqual(fps.value as? String, start,
+                       "cycling through all six speeds wraps back to the start")
+    }
 
-        XCTAssertEqual(fps.value as? String, "60 frames per second",
-                       "Selecting 60 in the popover must set fps to 60 in one tap")
+    /// Polls until the element's `value` differs from `old` — a read right after `.tap()` races the
+    /// SwiftUI rebuild (per CLAUDE.md).
+    private func waitUntilValueChanges(_ element: XCUIElement, from old: String,
+                                       timeout: TimeInterval = 4) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if (element.value as? String) != old { return true }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        return (element.value as? String) != old
     }
 }

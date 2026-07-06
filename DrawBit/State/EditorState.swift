@@ -13,6 +13,9 @@ final class EditorState {
     var activeFrameIndex: Int
     var fps: Int
 
+    /// Playback speeds the FPS control cycles through (tap the FPS icon to advance; wraps).
+    static let fpsChoices = [4, 8, 12, 24, 30, 60]
+
     /// Read/write accessor for the active frame. Most legacy call sites compile unchanged via this.
     var frame: Frame {
         get { frames[activeFrameIndex] }
@@ -216,6 +219,14 @@ final class EditorState {
 
     private func nextBrushSize(_ s: Int) -> Int {
         s >= brushSizeRange.upperBound ? brushSizeRange.lowerBound : s + 1
+    }
+
+    /// Steps the playback speed to the next `fpsChoices` value and wraps — driven by tapping the FPS
+    /// icon, the same tap-to-cycle idiom as the brush nib. Snaps to the first choice if `fps` is
+    /// somehow off-list.
+    func cycleFPS() {
+        let c = Self.fpsChoices
+        fps = c[((c.firstIndex(of: fps) ?? -1) + 1) % c.count]
     }
 
     /// Transient: whether the hold-to-straighten line was at a "perfect" angle on the last re-aim.
