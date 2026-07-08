@@ -45,6 +45,16 @@ struct GalleryView: View {
     /// top-left and the FM tile at bottom-left) so they sit as a balanced pair.
     private let edgeInset: CGFloat = 30
 
+    /// Shown only when there are no draws yet — a calm nudge toward the New tile just above it.
+    private var emptyHint: some View {
+        Text("Tap + to DRAW")
+            .font(.pixelBody(15))
+            .foregroundStyle(.white.opacity(0.4))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, edgeInset)
+            .accessibilityIdentifier("GalleryEmptyHint")
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -64,6 +74,10 @@ struct GalleryView: View {
                         }
                     }
                     .padding(edgeInset)
+
+                    if pieces.isEmpty {
+                        emptyHint
+                    }
                 }
                 .scrollContentBackground(.hidden)
                 .opacity(showWorks ? 1 : 0)

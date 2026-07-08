@@ -131,4 +131,24 @@ final class GalleryMenuUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Animate"].waitForExistence(timeout: 15),
                       "Tapping a tile must open the piece in the editor")
     }
+
+    /// An empty gallery must guide a first-time user toward the New tile, and that
+    /// hint must disappear the moment a draw exists.
+    func testEmptyGalleryShowsHintThatClearsAfterFirstDraw() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        // Fresh store → zero draws → the hint is shown.
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "GalleryEmptyHint").firstMatch.waitForExistence(timeout: 15),
+                      "An empty gallery must show a hint pointing at the New tile")
+
+        // Make the first draw, return to the gallery.
+        makePieceAndReturnToGallery(app)
+
+        // With a draw present the hint must be gone.
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "GalleryEmptyHint").firstMatch.waitForExistence(timeout: 2),
+                       "The empty hint must clear once at least one draw exists")
+    }
 }
