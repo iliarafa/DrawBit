@@ -39,7 +39,7 @@ struct FramesStrip: View {
                 } label: {
                     // Fixed-width (2-digit) so the label — and the button — never changes width as
                     // the speed cycles; otherwise ONION and the frames lane jitter sideways.
-                    pixelStripButton(pattern: PixelArtIcon.gauge, title: String(format: "%2d FPS", state.fps))
+                    pixelStripButton(pattern: PixelArtIcon.gauge, title: String(format: "%02d FPS", state.fps))
                         .hoverPop()
                 }
                 .buttonStyle(.plain)
