@@ -39,6 +39,11 @@ final class EditorState {
     /// Cleared on `PlaybackController.stop()`. Not persisted.
     var isPlaying: Bool = false
 
+    /// True when the most recent persistence attempt threw. Drives a non-blocking "couldn't save"
+    /// indicator so a failed autosave (e.g. disk full) isn't silently swallowed. Session-only,
+    /// never persisted; cleared on the next successful save.
+    var saveDidFail: Bool = false
+
     /// User-toggled onion-skin overlay state. When true and `activeFrameIndex > 0`,
     /// the canvas renders the previous frame as a faint ghost behind the active frame.
     /// Display-only — never written to pixel storage. Hidden during playback.

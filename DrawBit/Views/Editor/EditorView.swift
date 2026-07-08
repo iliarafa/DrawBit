@@ -26,6 +26,10 @@ struct EditorView: View {
     /// never overwritten by a blank, instead of silently substituting a blank canvas.
     private let loadFailed: Bool
 
+    /// Test hook: force every persistence attempt to throw so the save-error path can be driven
+    /// under UI test (a real disk-full failure is otherwise impossible to reproduce on the sim).
+    private let failSaves = ProcessInfo.processInfo.arguments.contains("-UITest-failSaves")
+
     init(piece: Piece) {
         self.piece = piece
         // Synchronous load: frameData is already in-memory on the SwiftData object.
@@ -180,6 +184,15 @@ struct EditorView: View {
                 onDismiss: { showingLayersPanel = false }
             )
         }
+        .overlay(alignment: .top) {
+            if state.saveDidFail {
+                saveErrorBanner
+                    // Centered under the dimension label, floating in the middle of the gap
+                    // between the top bar and the canvas.
+                    .padding(.top, 110)
+                    .allowsHitTesting(false)
+            }
+        }
         .background(Color(white: 0.10).ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showingSystemColorPicker) {
@@ -257,6 +270,23 @@ struct EditorView: View {
     }
 
     // MARK: - Chrome
+
+    /// Non-blocking "couldn't save" indicator. Appears when an autosave throws and clears on the
+    /// next successful save; purely informational (no hit testing) so it never blocks the canvas.
+    private var saveErrorBanner: some View {
+        HStack(spacing: 8) {
+            Circle().fill(Color.layerLocked).frame(width: 6, height: 6)
+            Text("COULDN'T SAVE")
+                .font(.pixel(9))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.black.opacity(0.78))
+        .overlay(Rectangle().stroke(Color.layerLocked.opacity(0.85), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("EditorSaveError")
+    }
 
     private var topBar: some View {
         HStack(spacing: 16) {
@@ -564,23 +594,42 @@ struct EditorView: View {
         commitStrokeAndSave()
     }
 
+    private enum SaveInjectedError: Error { case forced }
+
+    /// Runs a throwing persistence call and records the outcome on `state.saveDidFail` so a
+    /// failure surfaces the non-blocking indicator instead of vanishing into a `try?`. Clears
+    /// the flag on the next success. `failSaves` forces the throw under UI test.
+    private func attemptSave(_ work: () throws -> Void) {
+        do {
+            if failSaves { throw SaveInjectedError.forced }
+            try work()
+            if state.saveDidFail { state.saveDidFail = false }
+        } catch {
+            state.saveDidFail = true
+        }
+    }
+
     private func saveCurrentFrame() {
         // Never persist when the draw failed to load — the in-memory `state` is a blank
         // placeholder, and saving it would overwrite the corrupt-but-recoverable original.
         guard !loadFailed else { return }
         let repo = PieceRepository(context: modelContext)
-        try? repo.saveFrames(piece: piece,
-                             frames: state.frames,
-                             activeFrameIndex: state.activeFrameIndex,
-                             fps: state.fps)
+        attemptSave {
+            try repo.saveFrames(piece: piece,
+                                frames: state.frames,
+                                activeFrameIndex: state.activeFrameIndex,
+                                fps: state.fps)
+        }
     }
 
     private func saveReference() {
         guard !loadFailed else { return }
         let repo = PieceRepository(context: modelContext)
-        try? repo.saveReference(piece: piece,
-                                imageData: state.referenceImageData,
-                                opacity: state.referenceOpacity)
+        attemptSave {
+            try repo.saveReference(piece: piece,
+                                   imageData: state.referenceImageData,
+                                   opacity: state.referenceOpacity)
+        }
     }
 
     /// Persist the time-lapse recording. `recordKeyframe()` first finalizes the clip
@@ -591,7 +640,7 @@ struct EditorView: View {
         guard !loadFailed else { return }
         state.recordKeyframe()
         let repo = PieceRepository(context: modelContext)
-        try? repo.saveTimelapse(piece: piece, blob: state.encodedTimelapse())
+        attemptSave { try repo.saveTimelapse(piece: piece, blob: state.encodedTimelapse()) }
     }
 
     private func clearCanvas() {
