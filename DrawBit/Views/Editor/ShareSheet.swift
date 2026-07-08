@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct ShareSheet: View {
     let piece: Piece
@@ -12,6 +13,8 @@ struct ShareSheet: View {
     @State private var selectedScale: Int
     @State private var selectedFormat: ExportFormat
     @State private var isExporting = false
+    /// Transient — flips the Copy PNG label to "COPIED" for a moment after a successful copy.
+    @State private var didCopy = false
 
     // Preloaded once for the live preview; reused by `share()` so the piece isn't decoded twice.
     @State private var frames: [Frame] = []
@@ -124,7 +127,10 @@ struct ShareSheet: View {
 
             Spacer(minLength: 0)
 
-            exportButton
+            VStack(spacing: 10) {
+                exportButton
+                copyButton
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -197,6 +203,38 @@ struct ShareSheet: View {
         .buttonStyle(.plain)
         .disabled(isExporting)
         .accessibilityIdentifier("ShareSheet.export")
+    }
+
+    /// Secondary action: copy the active frame as a PNG straight to the clipboard, so a still can
+    /// be pasted into another app without the system share sheet. Copies at the selected SIZE.
+    private var copyButton: some View {
+        Button { copyPNG() } label: {
+            Text(didCopy ? "COPIED" : "COPY PNG")
+                .font(.pixel(11))
+                .foregroundStyle(.white.opacity(didCopy ? 0.9 : 0.6))
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("ShareSheet.copyPNG")
+    }
+
+    private func copyPNG() {
+        let size = piece.size
+        let scale = selectedScale
+        let frame: Frame
+        if !frames.isEmpty {
+            frame = frames[activeIndex]
+        } else if let loaded = try? PieceRepository(context: modelContext).loadFrames(piece: piece) {
+            frame = loaded.frames[loaded.activeFrameIndex]
+        } else {
+            return
+        }
+        guard let data = PNGExporter.export(frame: frame, size: size, scale: scale) else { return }
+        UIPasteboard.general.setData(data, forPasteboardType: UTType.png.identifier)
+        didCopy = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { didCopy = false }
     }
 
     private func loadFramesIfNeeded() {

@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// Light coverage of the redesigned export sheet: the hero preview + controls are present and
 /// switching format updates the smart-preview badge. Deliberately does NOT tap EXPORT — that
@@ -6,6 +7,37 @@ import XCTest
 final class ShareSheetUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
+    }
+
+    /// Copy PNG must place a real image on the system pasteboard (the test process shares the
+    /// simulator's general pasteboard with the app), without presenting the system share sheet.
+    func testCopyPNGPutsImageOnPasteboard() {
+        // Start from an empty pasteboard so the assertion proves THIS action populated it.
+        UIPasteboard.general.items = []
+
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
+
+        XCTAssertTrue(app.buttons["SHARE"].waitForExistence(timeout: 15))
+        app.buttons["SHARE"].tap()
+
+        let copy = app.buttons["ShareSheet.copyPNG"]
+        XCTAssertTrue(copy.waitForExistence(timeout: 15), "The export sheet must offer a Copy PNG action")
+        XCTAssertFalse(UIPasteboard.general.hasImages, "precondition: pasteboard starts empty")
+        copy.tap()
+
+        var copied = false
+        for _ in 0..<50 {
+            if UIPasteboard.general.hasImages { copied = true; break }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertTrue(copied, "Tapping Copy PNG must place a PNG image on the system pasteboard")
     }
 
     func testShareSheetShowsPreviewAndControls() {
