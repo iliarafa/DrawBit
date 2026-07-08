@@ -200,12 +200,22 @@ struct LayerRow: View {
                 // it keeps this button distinct from the removed EDIT-mode gate.
                 .accessibilityLabel("Rename")
             }
-            // One word, two states: dark/inactive when unlocked, red when locked.
+            // One word, two states. Locked shows the red word on a dark chip so it stays vivid
+            // against the cyan selected-row wash (red-on-cyan alone reads muted); unlocked is a
+            // dim, chip-less white. The chip lives inside the fixed 44×44 tap target, so toggling
+            // lock never shifts the neighbouring controls.
             Button { onToggleLocked() } label: {
                 Text("LOCK")
                     .font(.pixel(9))
+                    .lineLimit(1)
+                    .fixedSize()
                     .foregroundStyle(layer.isLocked ? Color.layerLocked : Color.white.opacity(0.3))
-                    .frame(width: 44, height: 44)
+                    .padding(.horizontal, layer.isLocked ? 5 : 0)
+                    .padding(.vertical, layer.isLocked ? 3 : 0)
+                    .background(layer.isLocked ? Color.black.opacity(0.5) : Color.clear)
+                    // Constant 52pt slot (same locked/unlocked) fits "LOCK" + the chip on one
+                    // line and keeps the control width fixed, so toggling lock never shifts row.
+                    .frame(width: 52, height: 44)
                     .contentShape(Rectangle())
                     .hoverPop()
             }
