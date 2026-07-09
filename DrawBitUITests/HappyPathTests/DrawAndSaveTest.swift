@@ -27,6 +27,29 @@ final class DrawAndSaveTest: XCTestCase {
         XCTAssertTrue(app.buttons["PieceThumbnail"].waitForExistence(timeout: 15))
     }
 
+    /// Clearing a non-empty layer must confirm first (it's a destructive action, like the other
+    /// deletes) — a blank layer clears instantly with no prompt.
+    func testClearConfirmsForNonEmptyLayer() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
+
+        // Paint one pixel so the active layer is non-empty.
+        app.windows.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+
+        let clear = app.buttons["Clear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 15))
+        clear.tap()
+
+        XCTAssertTrue(app.staticTexts["CLEAR LAYER?"].waitForExistence(timeout: 15),
+                      "Clearing a non-empty layer must present a confirmation, not wipe it instantly")
+    }
+
     /// A save that fails must not be silent: the editor surfaces a non-blocking indicator.
     /// `-UITest-failSaves` forces the content autosave to throw so we can drive the path
     /// that a disk-full failure would otherwise hit (and normally swallow via `try?`).

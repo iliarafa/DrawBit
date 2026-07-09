@@ -6,6 +6,7 @@ struct EditorView: View {
     let piece: Piece
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @State private var state: EditorState
     @State private var pencilAvailability = PencilAvailability()
     @State private var recentHex: [String] = []
@@ -15,6 +16,7 @@ struct EditorView: View {
     @State private var showingLayersPanel = false
     @State private var showTimeline = false
     @State private var showingDeleteFrameConfirm = false
+    @State private var showingClearConfirm = false
     @State private var playback: PlaybackController?
     /// Light haptic fired the instant a freehand stroke snaps to a straight line ("hold to straighten").
     private let lineSnapHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -267,6 +269,32 @@ struct EditorView: View {
             .presentationCornerRadius(0)
             .presentationBackground(Color(white: 0.10))
         }
+        .sheet(isPresented: $showingClearConfirm) {
+            ConfirmDialogSheet(
+                title: "CLEAR LAYER?",
+                message: "This wipes everything on the active layer. You can undo it.",
+                confirmLabel: "CLEAR",
+                onCancel: { showingClearConfirm = false },
+                onConfirm: {
+                    showingClearConfirm = false
+                    clearCanvas()
+                }
+            )
+            .presentationDetents([.height(220)])
+            .presentationCornerRadius(0)
+            .presentationBackground(Color(white: 0.10))
+        }
+        // Durable save when iOS backgrounds the app: .onDisappear does NOT fire on a background +
+        // OS-kill, so flush the frame AND the time-lapse (which lives in-memory until saved) here.
+        // Drawing pixels already autosave per stroke; this covers the time-lapse recording.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .background else { return }
+            if state.selection != nil {
+                if state.activeLayerIsLocked { state.cancelMarquee() } else { state.commitMarquee() }
+            }
+            saveCurrentFrame()
+            saveTimelapse()
+        }
     }
 
     // MARK: - Chrome
@@ -392,7 +420,7 @@ struct EditorView: View {
                 get: { state.color },
                 set: { state.color = $0 }
             ),
-            onClear: clearCanvas,
+            onClear: clearActiveLayerWithConfirmIfNeeded,
             onRequestColorPicker: { showingSystemColorPicker = true }
         )
         .disabled(state.isPlaying)
@@ -706,6 +734,27 @@ struct EditorView: View {
         }
         state.commitSequenceChange()
         saveCurrentFrame()
+    }
+
+    private var activeLayerHasContent: Bool {
+        // A floating marquee selection has lifted its pixels OUT of the layer, so also treat a live
+        // selection as content — otherwise CLEAR would skip the confirm when the whole drawing is
+        // currently floating.
+        state.selection != nil || state.frame.activeLayer.pixels.contains(where: { $0 != 0 })
+    }
+
+    /// CLEAR is destructive, so for a non-empty active layer it confirms first — matching delete
+    /// frame/layer — while a blank layer clears instantly. Respects the layer lock.
+    func clearActiveLayerWithConfirmIfNeeded() {
+        if state.activeLayerIsLocked {
+            triggerLockPulse(layerID: state.frame.activeLayerID)
+            return
+        }
+        if activeLayerHasContent {
+            showingClearConfirm = true
+        } else {
+            clearCanvas()
+        }
     }
 
     private var activeFrameHasContent: Bool {
