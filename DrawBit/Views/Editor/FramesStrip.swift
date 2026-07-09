@@ -119,9 +119,9 @@ struct FramesStrip: View {
                     .hoverPop()
             }
             .buttonStyle(.plain)
-            .foregroundStyle(state.frames.count >= FrameSequence.frameCap
+            .foregroundStyle(state.frames.count >= FrameSequence.frameCap || state.isPlaying
                              ? Color.white.opacity(0.25) : Color.white.opacity(0.85))
-            .disabled(state.frames.count >= FrameSequence.frameCap)
+            .disabled(state.frames.count >= FrameSequence.frameCap || state.isPlaying)
             .accessibilityIdentifier("FramesStrip.add")
             .accessibilityLabel("Add blank frame")
         }

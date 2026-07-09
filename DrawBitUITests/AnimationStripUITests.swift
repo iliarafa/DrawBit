@@ -388,6 +388,38 @@ final class AnimationStripUITests: XCTestCase {
                        "cycling through all six speeds wraps back to the start")
     }
 
+    func testAddDisabledDuringPlayback() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
+
+        // ANIMATE reveals the strip and seeds a 2nd frame, so Play is enabled.
+        let animate = app.buttons["Animate"]
+        XCTAssertTrue(animate.waitForExistence(timeout: 15))
+        animate.tap()
+
+        let add = app.buttons["FramesStrip.add"]
+        XCTAssertTrue(add.waitForExistence(timeout: 15))
+        XCTAssertTrue(add.isEnabled, "ADD must be enabled when not playing")
+
+        // Start playback — every edit control (ADD included) must go disabled.
+        let play = app.buttons["FramesStrip.playPause"]
+        XCTAssertTrue(play.waitForExistence(timeout: 15))
+        play.tap()
+
+        var disabled = false
+        for _ in 0..<50 {
+            if !add.isEnabled { disabled = true; break }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertTrue(disabled, "ADD must be disabled during playback, like every other edit control")
+    }
+
     /// Polls until the element's `value` differs from `old` — a read right after `.tap()` races the
     /// SwiftUI rebuild (per CLAUDE.md).
     private func waitUntilValueChanges(_ element: XCUIElement, from old: String,
