@@ -21,7 +21,7 @@ A native iPad pixel-art studio: draw on fixed-size canvases with layers, build f
 
 ## Platform
 
-- **iPadOS 17+**, iPad-only (no iPhone layout, no Mac Catalyst).
+- **iPadOS 18+**, iPad-only (no iPhone layout, no Mac Catalyst).
 - Swift 5.10, SwiftUI, SwiftData, CoreGraphics + ImageIO (rendering & export), AVFoundation + MediaPlayer (DrawBit FM), PhotosUI (reference-photo import), UIKit (coalesced touches, gesture recognizers).
 - Background-audio mode enabled (`UIBackgroundModes: [audio]`) for the FM station.
 - No external dependencies; no Swift Package Manager manifest.

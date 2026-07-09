@@ -37,6 +37,9 @@ targets:
         UIBackgroundModes:
           - audio
         NSPhotoLibraryAddUsageDescription: DrawBit needs permission to save your exported PNG to Photos.
+        # The app has no networking and uses no non-exempt encryption, so declare export
+        # compliance up front — otherwise App Store Connect flags every build "Missing Compliance".
+        ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "2"
