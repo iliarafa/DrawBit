@@ -50,6 +50,41 @@ final class EditorStateTests: XCTestCase {
         XCTAssertFalse(state.canRedo)
     }
 
+    func testNoOpStrokeDoesNotPushPhantomUndo() {
+        // A "stroke" that leaves the layer's pixels unchanged (the read-only eyedropper, a
+        // same-color tap, an empty fill) must not push an undo entry — otherwise Undo has an
+        // invisible no-op step that makes it look broken.
+        let state = makeState()
+        XCTAssertFalse(state.canUndo)
+        state.beginStrokeSnapshot()
+        // No pixel mutation between snapshot and commit.
+        state.commitStroke()
+        XCTAssertFalse(state.canUndo, "a stroke that changed nothing must not leave an undo entry")
+    }
+
+    func testEyedropperPickLeavesNoUndoEntry() {
+        // Regression for the pre-1.0 audit finding: after drawing then picking a colour, a single
+        // Undo must revert the actual stroke — not a phantom pick entry.
+        let state = makeState()
+        state.beginStrokeSnapshot()
+        state.mutateActiveLayerPixels { data in
+            let o = (1 * 16 + 1) * 4
+            data[o] = 255; data[o + 1] = 0; data[o + 2] = 0; data[o + 3] = 255
+        }
+        state.commitStroke()
+
+        // Simulate an eyedropper pick exactly as the view drives it: snapshot, pick (no pixel
+        // change), commit.
+        state.beginStrokeSnapshot()
+        state.pickColor(at: (1, 1))
+        state.commitStroke()
+
+        // One Undo must remove the red pixel; a phantom pick entry would make it a no-op.
+        state.undo()
+        XCTAssertEqual(state.activeLayerPixelGrid.pixel(x: 1, y: 1), .transparent,
+                       "a single Undo after a pick must revert the stroke, not a phantom pick entry")
+    }
+
     func testUndoRestoresPrevious() {
         let state = makeState()
         state.beginStrokeSnapshot()

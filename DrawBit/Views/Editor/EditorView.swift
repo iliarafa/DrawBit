@@ -659,7 +659,9 @@ struct EditorView: View {
     }
 
     private func commitStrokeAndSave() {
-        state.commitStroke()
+        // A no-op stroke (the read-only eyedropper, a same-color tap) commits nothing, so there is
+        // nothing to persist and no phantom undo step to record — skip the whole tail.
+        guard state.commitStroke() else { return }
         saveCurrentFrame()
         // Pencil-only: record color into recents on stroke commit. Skip for eraser/eyedropper.
         if state.tool == .pencil || state.tool == .fill {

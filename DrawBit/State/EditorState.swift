@@ -279,15 +279,30 @@ final class EditorState {
         lineWasPerfect = false
     }
 
-    func commitStroke() {
+    /// Bake the in-progress stroke into a single undo step. Returns `true` if an entry was pushed,
+    /// `false` when the stroke left the layer's pixels unchanged — the read-only eyedropper, a
+    /// same-color tap, an empty fill. A no-op must not push a phantom undo entry (or record a
+    /// keyframe), or Undo gains an invisible step that looks broken; callers that persist should
+    /// skip the save when this returns `false`.
+    @discardableResult
+    func commitStroke() -> Bool {
         guard let snap = preStrokeSnapshot, let layerID = preStrokeLayerID,
-              let frameID = preStrokeFrameID else { return }
+              let frameID = preStrokeFrameID else { return false }
+        defer {
+            preStrokeSnapshot = nil
+            preStrokeLayerID = nil
+            preStrokeFrameID = nil
+            pixelPerfectBuffer.reset()
+        }
+        // No-op guard: skip only when we can positively confirm the same frame+layer is still
+        // active and its pixels equal the snapshot. Any real change — or an ambiguous edge where
+        // the active frame/layer moved — commits normally.
+        if frame.id == frameID, frame.activeLayerID == layerID, frame.activeLayer.pixels == snap {
+            return false
+        }
         push(.layerPixels(frameID: frameID, layerID: layerID, before: snap))
-        preStrokeSnapshot = nil
-        preStrokeLayerID = nil
-        preStrokeFrameID = nil
-        pixelPerfectBuffer.reset()
         recordKeyframe()
+        return true
     }
 
     func cancelStroke() {
