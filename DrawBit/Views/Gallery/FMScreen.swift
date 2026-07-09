@@ -111,6 +111,11 @@ struct FMScreen: View {
                     // value change to chew on.
                     if !UITestSupport.isRunning { blinkOn.toggle() }
                 }
+                .onChange(of: radio.isPlaying) { _, playing in
+                    // onAppear only fires once, so entering the screen paused and then pressing
+                    // Play wouldn't animate — re-kick the blink when playback actually starts.
+                    if playing && !UITestSupport.isRunning { blinkOn.toggle() }
+                }
             Text(radio.isPlaying ? "ON AIR" : "OFF AIR")
                 .font(.pixel(9))
                 .foregroundStyle(.white.opacity(radio.isPlaying ? 0.9 : 0.4))
@@ -134,6 +139,9 @@ struct FMScreen: View {
         .frame(width: 36, height: 22)
         .onAppear {
             if !UITestSupport.isRunning { wavePulse.toggle() }
+        }
+        .onChange(of: radio.isPlaying) { _, playing in
+            if playing && !UITestSupport.isRunning { wavePulse.toggle() }
         }
         .accessibilityHidden(true)
     }

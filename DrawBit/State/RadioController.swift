@@ -65,11 +65,19 @@ final class RadioController {
         updateNowPlaying()
     }
 
-    func pause() {
+    /// `deactivateSession` releases the shared audio session so a previously-interrupted app
+    /// (Spotify, a podcast) may auto-resume — the good-citizen behavior for a *user* pause; play()
+    /// reactivates it. System-induced pauses (an interruption began, headphones unplugged) pass
+    /// `false`: the OS already owns the session on an interruption, and handing audio to another
+    /// app on an unplug isn't wanted.
+    func pause(deactivateSession: Bool = true) {
         player?.pause()
         isPlaying = false
         stopProgressTimer()
         updateNowPlaying()
+        if deactivateSession {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
 
     func next() {
@@ -160,6 +168,7 @@ final class RadioController {
         progress = 0
         currentTime = 0
         clearNowPlaying()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     // MARK: - Progress timer
@@ -223,7 +232,7 @@ final class RadioController {
               let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
         switch type {
         case .began:
-            if isPlaying { pause() }
+            if isPlaying { pause(deactivateSession: false) }
         case .ended:
             if let optRaw = info[AVAudioSessionInterruptionOptionKey] as? UInt,
                AVAudioSession.InterruptionOptions(rawValue: optRaw).contains(.shouldResume) {
@@ -238,8 +247,9 @@ final class RadioController {
         guard let info = note.userInfo,
               let raw = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
               let reason = AVAudioSession.RouteChangeReason(rawValue: raw) else { return }
-        // Headphones/Bluetooth removed → pause, the expected behavior.
-        if reason == .oldDeviceUnavailable, isPlaying { pause() }
+        // Headphones/Bluetooth removed → pause, the expected behavior. System-induced, so keep the
+        // session (don't hand audio to another app blasting on the speaker).
+        if reason == .oldDeviceUnavailable, isPlaying { pause(deactivateSession: false) }
     }
 
     // MARK: - Now Playing / remote commands
