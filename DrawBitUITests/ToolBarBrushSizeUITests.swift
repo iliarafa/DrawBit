@@ -3,8 +3,6 @@ import XCTest
 /// Tapping an already-selected pencil/eraser cycles its brush size; the size is exposed as the
 /// button's accessibility value, and the glyph (the nib square) grows with it.
 final class ToolBarBrushSizeUITests: XCTestCase {
-    private let shotDir = "/private/tmp/claude-501/-Users-iliasrafailidis-development-bitme/a3013f43-a0bf-4a7d-9d10-f65198e741e1/scratchpad"
-
     func testTapSelectedPencilCyclesSizeAndStaysIndependentFromEraser() {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
@@ -20,13 +18,11 @@ final class ToolBarBrushSizeUITests: XCTestCase {
         let pencil = app.buttons["Tool-pencil"]
         XCTAssertTrue(pencil.waitForExistence(timeout: 15))
         XCTAssertEqual(pencil.value as? String, "1")        // default size
-        saveShot("toolbar-pencil-size1")
 
         pencil.tap()                                        // already selected → cycle
         XCTAssertTrue(waitForValue(pencil, "2"), "pencil should cycle to 2")
         pencil.tap()
         XCTAssertTrue(waitForValue(pencil, "3"), "pencil should cycle to 3")
-        saveShot("toolbar-pencil-size3")
 
         // Per-tool independence: the eraser kept its own size.
         XCTAssertEqual(app.buttons["Tool-eraser"].value as? String, "1")
@@ -46,10 +42,5 @@ final class ToolBarBrushSizeUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.05)
         }
         return (element.value as? String) == expected
-    }
-
-    private func saveShot(_ name: String) {
-        let png = XCUIScreen.main.screenshot().pngRepresentation
-        try? png.write(to: URL(fileURLWithPath: "\(shotDir)/\(name).png"))
     }
 }
