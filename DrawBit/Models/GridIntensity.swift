@@ -8,8 +8,9 @@ import Foundation
 /// working and `SOFT` calms the grid everywhere (including the big-cell/small-canvas case, which was
 /// otherwise pinned at full strength).
 ///
-/// The pre-feature grid drew at full strength (multiplier 1.0) and read as too loud, so no level
-/// reproduces it: `STRONG` is the boldest step but deliberately sits below full strength.
+/// The bolder looks are retired for good: the pre-feature grid drew at full strength (1.0) and the
+/// first-cut STRONG sat at 0.6 — both read as too loud. Today `STRONG` carries the first-cut SOFT
+/// strength (0.35), and `SOFT` is the midpoint between that and invisible.
 ///
 /// Persisted globally via `AppSettings.gridIntensity` — it's a viewing preference, not part of the
 /// artwork. `EditorState` holds the live session copy that the canvas renders.
@@ -18,14 +19,14 @@ enum GridIntensity: Int, CaseIterable {
     case soft = 1
     case strong = 2
 
-    /// Multiplies `gridLineAlpha(...)`: `OFF` hides the interior mesh, `SOFT` is the calm default,
-    /// `STRONG` is the boldest step (still below the retired 1.0 full-strength look). Dialed on real
-    /// captures with the founder.
+    /// Multiplies `gridLineAlpha(...)`: `OFF` hides the interior mesh, `SOFT` is the calm
+    /// whisper-level default, `STRONG` is the boldest step (well below the retired 0.6 and 1.0
+    /// looks). Dialed on real captures with the founder.
     var multiplier: Double {
         switch self {
         case .off: 0
-        case .soft: 0.35
-        case .strong: 0.6
+        case .soft: 0.175
+        case .strong: 0.35
         }
     }
 

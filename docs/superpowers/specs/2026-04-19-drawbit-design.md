@@ -132,10 +132,11 @@ Implicit: no line tool, no rectangle tool, no selection, no brush sizes. The pen
 - **GRID intensity control** — a tap-to-cycle button in the top bar, beside LAYERS/ANIMATE:
   `OFF → SOFT → STRONG`, resting on **SOFT**. Each level is a strength multiplier on the zoom-fade
   above (`GridIntensity.multiplier`), so:
-  - **SOFT** (default) roughly halves the contrast — a gentle guide, not a mesh — and, because it's
-    a multiplier, also calms the big-cell/small-canvas case that was otherwise pinned at full strength.
-  - **STRONG** is the boldest step but stays *below* the pre-feature full-strength grid, which read as
-    too loud and is no longer reproduced by any level.
+  - **SOFT** (default, 0.175) is a gentle whisper — a guide, not a mesh — and, because it's a
+    multiplier, also calms the big-cell/small-canvas case that was otherwise pinned at full strength.
+  - **STRONG** (0.35) is the boldest step. The louder looks are retired for good: the pre-feature
+    full-strength (1.0) grid and the first-cut 0.6 both read as too loud and are no longer
+    reproduced by any level.
   - **OFF** hides the interior mesh but keeps a whisper of the canvas *edge* so bounds still read.
   The level persists globally in `AppSettings.gridIntensity` (a viewing preference, not part of the
   artwork); the button is glyph-only, its sprite + tint carrying the state.
