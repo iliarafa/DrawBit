@@ -231,6 +231,7 @@ struct EditorView: View {
             if let settings = try? repo.appSettings() {
                 recentHex = settings.recentColors
                 customPalettes = settings.customPalettes
+                state.gridIntensity = settings.gridIntensity   // persisted global viewing preference
             }
             showTimeline = state.frames.count > 1
         }
@@ -355,6 +356,20 @@ struct EditorView: View {
                 .font(.pixel(12))
                 .foregroundStyle(.white.opacity(0.85))
             Spacer()
+            Button {
+                SelectionFeedback.shared.fire()
+                state.cycleGridIntensity()
+                persistGridIntensity()
+            } label: {
+                PixelArtIcon(pattern: Self.gridGlyph(for: state.gridIntensity), size: 22)
+                    .frame(width: 44, height: 44)
+                    .hoverPop()
+            }
+            .foregroundStyle(Self.gridTint(for: state.gridIntensity))
+            .disabled(state.isPlaying)
+            .accessibilityIdentifier("EditorView.gridIntensity")
+            .accessibilityLabel("Grid intensity")
+            .accessibilityValue(Self.gridA11yValue(for: state.gridIntensity))
             Button {
                 showingLayersPanel.toggle()
             } label: {
@@ -716,6 +731,16 @@ struct EditorView: View {
         }
     }
 
+    /// Persists the grid-intensity preference globally so it sticks across draws + launches.
+    /// Same SwiftData seam as `addRecent` / `persistCustomPalettes`.
+    private func persistGridIntensity() {
+        let repo = PieceRepository(context: modelContext)
+        if let settings = try? repo.appSettings() {
+            settings.gridIntensity = state.gridIntensity
+            try? modelContext.save()
+        }
+    }
+
     // MARK: - Frame-sequence mutations
 
     /// Wraps any frame-sequence mutation in the standard pattern:
@@ -869,6 +894,33 @@ struct EditorView: View {
     /// Tint for LAYERS when the panel is open — a deeper, more saturated
     /// emerald that reads as a clearly different state from ANIMATE's lime.
     private static let layersActiveGreen = Color(red: 0.20, green: 0.60, blue: 0.35)
+
+    // MARK: - GRID toggle (top bar)
+    //
+    // The glyph-only button conveys its OFF/SOFT/STRONG level with a struck-through sprite for OFF
+    // plus a brightening tint (SOFT dim → STRONG full white), mirroring ONION's tint scheme. Exact
+    // sprites + tints are dialed on real captures. a11y exposes the level as a value so UI tests key
+    // off the value, never the glyph (which swaps between states).
+
+    private static func gridGlyph(for intensity: GridIntensity) -> [String] {
+        intensity == .off ? PixelArtIcon.gridOff : PixelArtIcon.grid
+    }
+
+    private static func gridTint(for intensity: GridIntensity) -> Color {
+        switch intensity {
+        case .off:    .white.opacity(0.3)
+        case .soft:   .white.opacity(0.6)
+        case .strong: .white
+        }
+    }
+
+    private static func gridA11yValue(for intensity: GridIntensity) -> String {
+        switch intensity {
+        case .off:    "off"
+        case .soft:   "soft"
+        case .strong: "strong"
+        }
+    }
 
 }
 

@@ -283,9 +283,14 @@ struct CanvasView: View {
                                             scale: state.scale, rotation: state.rotation,
                                             translation: state.translation)
 
-            // Interior gridlines fade out as the on-screen cell shrinks, so a zoomed-out large
-            // canvas reads as dark-canvas-with-art instead of a gray wash.
-            let alpha = gridLineAlpha(screenCellPoints: cell * state.scale)
+            // Interior gridlines fade out as the on-screen cell shrinks (`fade`), and then the
+            // user's GRID intensity scales that: OFF hides the interior mesh, SOFT is the calm
+            // default, and STRONG is the boldest step — still below the retired full-strength (×1)
+            // look, which no level reproduces (see GridIntensity.multiplier). Doing it as a
+            // multiplier on the existing zoom-fade means SOFT also calms the big-cell/small-canvas
+            // case that was otherwise pinned at full strength.
+            let fade = gridLineAlpha(screenCellPoints: cell * state.scale)
+            let alpha = fade * state.gridIntensity.multiplier
             if alpha > 0.01 {
                 var grid = Path()
                 for i in 1..<w {                   // interior verticals (0 and w are the border)
@@ -301,11 +306,13 @@ struct CanvasView: View {
                 ctx.stroke(grid.applying(t), with: .color(Color(white: 0.4).opacity(alpha)), lineWidth: 1)
             }
 
-            // Canvas border — drawn as just another grid line (same grey, same fade via `alpha`),
-            // so the edge is exactly as subtle as the interior lines and never reads as a frame.
-            // It fades away with the grid when zoomed right out.
+            // Canvas border — same grey hairline as the interior lines, but kept at a whisper (≥0.15×
+            // the zoom-fade) even when the interior mesh is OFF, so the canvas edge still reads and
+            // bounds don't vanish. At SOFT/STRONG it equals the interior alpha; it still fades away
+            // with the grid when zoomed right out.
+            let borderAlpha = fade * max(state.gridIntensity.multiplier, 0.15)
             let border = Path(CGRect(x: 0, y: 0, width: base.width, height: base.height))
-            ctx.stroke(border.applying(t), with: .color(Color(white: 0.4).opacity(alpha)), lineWidth: 1)
+            ctx.stroke(border.applying(t), with: .color(Color(white: 0.4).opacity(borderAlpha)), lineWidth: 1)
         }
         .frame(width: viewport.width, height: viewport.height)
         .allowsHitTesting(false)

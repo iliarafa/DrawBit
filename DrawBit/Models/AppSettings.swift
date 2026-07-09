@@ -8,16 +8,26 @@ final class AppSettings {
     /// User-curated global palettes. Additive defaulted field → inferred lightweight migration
     /// (no new VersionedSchema). Built-in palettes are NOT stored here; see `BuiltInPalettes`.
     var customPalettes: [ColorPalette] = []
+    /// Persisted grid-intensity preference (OFF/SOFT/STRONG). Additive defaulted field → inferred
+    /// lightweight migration; the default MUST stay so pre-field stores open. See `GridIntensity`
+    /// and `GridIntensityMigrationTests`.
+    var gridIntensityRaw: Int = GridIntensity.soft.rawValue
 
     var lastUsedTool: Tool {
         get { Tool(rawValue: lastUsedToolRaw) ?? .pencil }
         set { lastUsedToolRaw = newValue.rawValue }
     }
 
+    var gridIntensity: GridIntensity {
+        get { GridIntensity(rawValue: gridIntensityRaw) ?? .soft }
+        set { gridIntensityRaw = newValue.rawValue }
+    }
+
     init() {
         self.recentColors = []
         self.lastUsedToolRaw = Tool.pencil.rawValue
         self.customPalettes = []
+        self.gridIntensityRaw = GridIntensity.soft.rawValue
     }
 
     func addRecentColor(_ hex: String, limit: Int = 23) {

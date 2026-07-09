@@ -21,4 +21,19 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(s.recentColors.first, "#00001D")
         XCTAssertEqual(s.recentColors.last, "#000007")
     }
+
+    // MARK: - Grid intensity (persisted global viewing preference)
+
+    func testGridIntensityDefaultsToSoft() {
+        XCTAssertEqual(AppSettings().gridIntensity, .soft)
+    }
+
+    func testGridIntensityRoundTripsThroughRawStorage() {
+        let s = AppSettings()
+        s.gridIntensity = .off
+        XCTAssertEqual(s.gridIntensityRaw, GridIntensity.off.rawValue)
+        XCTAssertEqual(s.gridIntensity, .off)
+        s.gridIntensity = .strong
+        XCTAssertEqual(s.gridIntensity, .strong)
+    }
 }

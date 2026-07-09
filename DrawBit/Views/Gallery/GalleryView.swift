@@ -313,6 +313,37 @@ struct PixelArtIcon: View {
         "...........",
     ]
 
+    /// GRID toggle — a 3×3 mesh (11×11). Shown for SOFT/STRONG; the tint carries the level.
+    static let grid: [String] = [
+        "###########",
+        "#..#...#..#",
+        "#..#...#..#",
+        "###########",
+        "#..#...#..#",
+        "#..#...#..#",
+        "#..#...#..#",
+        "###########",
+        "#..#...#..#",
+        "#..#...#..#",
+        "###########",
+    ]
+
+    /// GRID toggle OFF — a bordered square with a bold diagonal slash, so "grid hidden" reads at a
+    /// glance (distinct from the meshed `grid`).
+    static let gridOff: [String] = [
+        "###########",
+        "#........##",
+        "#.......#.#",
+        "#......#..#",
+        "#.....#...#",
+        "#....#....#",
+        "#...#.....#",
+        "#..#......#",
+        "#.#.......#",
+        "##........#",
+        "###########",
+    ]
+
     var body: some View {
         Canvas { ctx, sz in
             let cols = pattern.first?.count ?? 0

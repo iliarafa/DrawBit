@@ -54,6 +54,12 @@ final class EditorState {
     /// fill / colorSwap; eyedropper and marquee are unaffected.
     var isMirrorEnabled: Bool = false
 
+    /// Live grid-intensity the canvas renders (OFF/SOFT/STRONG). Seeded from the persisted
+    /// `AppSettings.gridIntensity` when the editor opens and written back by `EditorView` when the
+    /// top-bar GRID button cycles it. Defaults to the calmer `.soft` before seeding. Display-only —
+    /// never touches pixel storage. See `GridIntensity` and `CanvasView.gridOverlay`.
+    var gridIntensity: GridIntensity = .soft
+
     var translation: CGSize = .zero
     var scale: CGFloat = 1.0
     var rotation: CGFloat = 0.0
@@ -232,6 +238,13 @@ final class EditorState {
     func cycleFPS() {
         let c = Self.fpsChoices
         fps = c[((c.firstIndex(of: fps) ?? -1) + 1) % c.count]
+    }
+
+    /// Steps the grid intensity `OFF → SOFT → STRONG` and wraps — the same tap-to-cycle idiom as the
+    /// brush nib and FPS. Pure state mutation; the haptic and the persist-to-AppSettings both fire
+    /// from `EditorView`'s button (the SwiftData seam lives in the view, as with `lastUsedTool`).
+    func cycleGridIntensity() {
+        gridIntensity = gridIntensity.next()
     }
 
     /// Transient: whether the hold-to-straighten line was at a "perfect" angle on the last re-aim.

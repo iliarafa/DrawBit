@@ -35,6 +35,20 @@ final class EditorStateTests: XCTestCase {
         XCTAssertEqual(state.fps, EditorState.fpsChoices[0])
     }
 
+    func testInitialGridIntensityIsSoft() {
+        // Session default before AppSettings seeds it — the calmer look ships by default.
+        XCTAssertEqual(makeState().gridIntensity, .soft)
+    }
+
+    func testCycleGridIntensityAdvancesAndWraps() {
+        let state = makeState()   // starts at .soft
+        // soft → strong → off → soft (mirrors the brush-nib / FPS tap-to-cycle idiom)
+        for expected in [GridIntensity.strong, .off, .soft] {
+            state.cycleGridIntensity()
+            XCTAssertEqual(state.gridIntensity, expected)
+        }
+    }
+
     func testCommitStrokePushesUndo() {
         let state = makeState()
         state.beginStrokeSnapshot()

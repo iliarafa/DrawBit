@@ -126,8 +126,19 @@ Implicit: no line tool, no rectangle tool, no selection, no brush sizes. The pen
 
 ## Pixel grid overlay
 
-- Faint grid lines automatically appear when zoom level ≥ 4×, disappear when below that.
-- No toggle. Grid is always 1 device pixel wide regardless of zoom (hairline), drawn between pixel cells, so it never obscures the art.
+- Grid lines auto-fade with the on-screen cell size — a calm guide when cells are large, gone once
+  they're too small to target (the zoom-fade ramp in `gridLineAlpha`). Drawn as a crisp 1pt hairline
+  between pixel cells at any zoom (see the "crisp grid at any zoom" invariant), so it never blurs.
+- **GRID intensity control** — a tap-to-cycle button in the top bar, beside LAYERS/ANIMATE:
+  `OFF → SOFT → STRONG`, resting on **SOFT**. Each level is a strength multiplier on the zoom-fade
+  above (`GridIntensity.multiplier`), so:
+  - **SOFT** (default) roughly halves the contrast — a gentle guide, not a mesh — and, because it's
+    a multiplier, also calms the big-cell/small-canvas case that was otherwise pinned at full strength.
+  - **STRONG** is the boldest step but stays *below* the pre-feature full-strength grid, which read as
+    too loud and is no longer reproduced by any level.
+  - **OFF** hides the interior mesh but keeps a whisper of the canvas *edge* so bounds still read.
+  The level persists globally in `AppSettings.gridIntensity` (a viewing preference, not part of the
+  artwork); the button is glyph-only, its sprite + tint carrying the state.
 
 ## Export / share
 
