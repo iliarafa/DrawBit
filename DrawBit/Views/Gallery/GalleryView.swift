@@ -12,6 +12,10 @@ struct GalleryView: View {
     @State private var showingFM = false
     /// True while the help destination is pushed. Same shape as `showingFM`.
     @State private var showingHelp = false
+    @State private var showingCreateError = false
+
+    /// Test hook: force a New Draw creation to throw so the error path can be driven under UI test.
+    private enum CreateDrawError: Error { case forced }
 
     @State private var deleteTarget: Piece?
     /// Which tile is currently showing its Duplicate/Delete chips (long-pressed).
@@ -128,10 +132,15 @@ struct GalleryView: View {
                                 showingNewSheet = false
                                 do {
                                     let repo = PieceRepository(context: modelContext)
+                                    if ProcessInfo.processInfo.arguments.contains("-UITest-failCreate") {
+                                        throw CreateDrawError.forced
+                                    }
                                     let piece = try repo.createPiece(size: size)
                                     selectedPiece = piece
                                 } catch {
-                                    // v1: swallow; surface via alert later if needed
+                                    // createPiece throws only on a full/corrupt store. Don't dead-end
+                                    // silently — tell the user so they can free space and retry.
+                                    showingCreateError = true
                                 }
                             },
                             onCancel: { showingNewSheet = false }
@@ -149,6 +158,11 @@ struct GalleryView: View {
             }
             .navigationDestination(isPresented: $showingHelp) {
                 HelpScreen()
+            }
+            .alert("Couldn't create the draw", isPresented: $showingCreateError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Your device may be low on storage. Free up some space and try again.")
             }
             .sheet(isPresented: Binding(
                 get: { deleteTarget != nil },

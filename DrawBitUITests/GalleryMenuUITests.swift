@@ -119,6 +119,24 @@ final class GalleryMenuUITests: XCTestCase {
         XCTAssertEqual(field.value as? String, "33", "Plus must nudge the size to 33")
     }
 
+    /// A failed New Draw must surface an error instead of silently dead-ending (sheet closes, no
+    /// editor, no message). `-UITest-failCreate` forces the create to throw.
+    func testNewDrawFailureShowsError() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-UITest-reset", "-UITest-skipLanding", "-UITest-failCreate"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["NewButton"].waitForExistence(timeout: 15))
+        app.buttons["NewButton"].tap()
+        XCTAssertTrue(app.buttons["NewPiece-create"].waitForExistence(timeout: 15))
+        app.buttons["NewPiece-create"].tap()
+
+        XCTAssertTrue(app.staticTexts["Couldn't create the draw"].waitForExistence(timeout: 15),
+                      "a failed create must surface an error, not silently dead-end")
+        XCTAssertFalse(app.buttons["Animate"].waitForExistence(timeout: 1),
+                       "the editor must not open when the create failed")
+    }
+
     func testTapOpensPiece() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-UITest-reset", "-UITest-skipLanding"]
