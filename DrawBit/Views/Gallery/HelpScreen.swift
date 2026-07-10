@@ -142,7 +142,7 @@ struct HelpScreen: View {
         HelpTopic(id: "Help.section.tools", icon: .pixel(Self.toolbox), title: "TOOLS",
                   body: "Pencil, eraser, fill, swap, pick, select — tap one in the bottom bar. Tap the pencil or eraser again to resize it. Draw and hold to snap a stroke straight. Select grabs a patch to flip, rotate, copy, or delete. Mirror reflects every stroke. Undo and redo sit up top."),
         HelpTopic(id: "Help.section.canvas", icon: .pixel(Self.gridLines), title: "CANVAS",
-                  body: "Tap + to start a new draw — square, wide, or tall, from 8 to 256 pixels. Pinch to zoom, two-finger drag to pan or rotate; tap RESET to snap the view back. Two-finger tap undoes, three-finger tap redoes. Pixels never move, so exports stay upright and crisp."),
+                  body: "Tap + to start a new draw — square, wide, or tall, from 8 to 256 pixels. Pinch to zoom, two-finger drag to pan or rotate; tap RESET to snap the view back. Tap GRID up top to dial the grid — soft, strong, or off. Two-finger tap undoes, three-finger tap redoes. Pixels never move, so exports stay upright and crisp."),
         HelpTopic(id: "Help.section.layers", icon: .asset("LayersIcon"), title: "LAYERS",
                   body: "Tap LAYERS in the editor top bar to add, hide, or lock. Press and drag a layer by its thumbnail to reorder. The top layer sits above the canvas."),
         HelpTopic(id: "Help.section.trace", icon: .pixel(Self.traceImage), title: "TRACE",
