@@ -34,8 +34,9 @@ targets:
         UIAppFonts:
           - PressStart2P-Regular.ttf
           - VT323-Regular.ttf
-        UIBackgroundModes:
-          - audio
+        # No UIBackgroundModes: DrawBit FM plays only while the app is in the
+        # foreground. Declaring the "audio" background mode without persistent
+        # background playback trips App Review guideline 2.5.4, so it's omitted.
         NSPhotoLibraryAddUsageDescription: DrawBit needs permission to save your exported PNG to Photos.
         # The app has no networking and uses no non-exempt encryption, so declare export
         # compliance up front — otherwise App Store Connect flags every build "Missing Compliance".

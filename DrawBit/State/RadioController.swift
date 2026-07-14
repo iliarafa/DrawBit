@@ -204,9 +204,11 @@ final class RadioController {
         IntroAudio.shared.stop()
         let session = AVAudioSession.sharedInstance()
         if !sessionConfigured {
-            // .playback: DrawBit FM is the app's primary audio — plays over the
-            // silent switch and continues in the background. (Interrupts other
-            // apps' audio, e.g. Spotify; that's intended for a station.)
+            // .playback: DrawBit FM is the app's primary audio — it plays over the
+            // silent switch while the app is in the foreground. (Interrupts other
+            // apps' audio, e.g. Spotify; that's intended for a station.) The app
+            // declares no `audio` UIBackgroundModes, so playback stops when the app
+            // is backgrounded — see project.yml (App Review guideline 2.5.4).
             try? session.setCategory(.playback, mode: .default)
             configureRemoteCommands()
             sessionConfigured = true
